@@ -39,36 +39,6 @@ services:
         ipv4_address: 10.51.0.3
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
-  gitea:
-    container_name: gitea
-    restart: unless-stopped
-    image: docker.gitea.com/gitea:1.25.2
-    depends_on:
-      - postgres
-    networks:
-      default:
-        ipv4_address: 10.51.0.4
-    volumes:
-      - ${GITEA_DATA_DIR}:/data
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    ports:
-      - 3000:3000
-      - 222:222
-  gitea-runner:
-    image: docker.io/gitea/act_runner:nightly
-    container_name: gitea-runner
-    restart: unless-stopped
-    user: 0:0
-    networks:
-      default:
-        ipv4_address: 10.51.0.5
-    environment:
-      GITEA_INSTANCE_URL: ${GITEA_INSTANCE_URL}
-      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_REGISTRATION_TOKEN}
-      GITEA_RUNNER_NAME: ${GITEA_RUNNER_NAME}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -99,121 +69,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.7
-  mongodb:
-    image: docker.io/mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
-    container_name: mongodb
-    restart: unless-stopped
-    volumes:
-      - ${MONGODB_HOST_PATH:-mongodb_data}:/data/db:rw
-    user: "${MONGODB_USER_ID:-1001}"
-    entrypoint:
-      - sh
-      - -ec
-      - |
-        echo "=====> Waiting for /data/db to be owned by uid=$$MONGODB_USER_ID (mongodb user) ...";
-        for i in $(seq 1 60); do
-          owner="$(stat -c %u /data/db 2>/dev/null || true)";
-          if [ "$$owner" = "$$MONGODB_USER_ID" ]; then
-            echo "=====> /data/db ownership OK ($$owner) - starting MongoDB";
-            exec mongod --replSet "$$MONGODB_REPLICA_SET_NAME" --bind_ip_all;
-          fi;
-          echo "=====> /data/db owner is '$$owner' (expected $$MONGODB_USER_ID), retrying in 5 seconds...";
-          sleep 5;
-        done;
-        echo "=====> Giving up waiting for /data/db ownership after 5 minutes";
-        exit 1
-    environment:
-      MONGODB_USER_ID: ${MONGODB_USER_ID:-1001}
-      MONGODB_REPLICA_SET_NAME: ${MONGODB_REPLICA_SET_NAME:-rs0}
-      MONGODB_PORT_NUMBER: ${MONGODB_PORT_NUMBER:-27017}
-      MONGODB_ADVERTISED_HOSTNAME: ${MONGODB_ADVERTISED_HOSTNAME:-mongodb}
-      ALLOW_EMPTY_PASSWORD: ${ALLOW_EMPTY_PASSWORD:-yes}
-    networks:
-      default:
-        ipv4_address: 10.51.0.8
-    logging:
-      driver: "json-file"
-    labels:
-      container_tag: "${COMPOSE_PROJECT_NAME:-rocketchat}#mongodb"
-    healthcheck:
-      test:
-        - CMD
-        - mongosh
-        - "mongodb://${MONGODB_ADVERTISED_HOSTNAME:-mongodb}:${MONGODB_PORT_NUMBER:-27017}/?directConnection=true"
-        - --eval
-        - '"db.adminCommand(''ping'')"'
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-    ports:
-      - "${MONGODB_BIND_IP:-127.0.0.1}:${MONGODB_PORT_NUMBER:-27017}:${MONGODB_PORT_NUMBER:-27017}"
-  mongodb-exporter:
-    image: docker.io/percona/mongodb_exporter:${MONGODB_EXPORTER_VERSION:-0.44.0}
-    container_name: mongodb-exporter
-    restart: unless-stopped
-    depends_on:
-      - mongodb
-    expose:
-      - 9216
-    networks:
-      default:
-        ipv4_address: 10.51.0.9
-    command:
-      - --mongodb.uri=${MONGODB_URI:-mongodb://mongodb:27017}
-      - --collect-all
-      - --compatible-mode
-  mongodb-fix-permission-container:
-    image: docker.io/mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
-    container_name: mongodb-fix-permissions
-    restart: unless-stopped
-    user: "0"
-    volumes:
-      - ${MONGODB_HOST_PATH:-mongodb_data}:/data/db:rw
-    environment:
-      MONGODB_USER_ID: ${MONGODB_USER_ID:-1001}
-    networks:
-      default:
-        ipv4_address: 10.51.0.10
-    entrypoint: |
-      sh -xc '
-        owner="$(stat -c %u /data/db)";
-        # for fresh installs
-        if [ "$$owner" != "$$MONGODB_USER_ID" ]; then
-          echo "=====> Fixing directory ownership to uid $$MONGODB_USER_ID"
-          chown -R "$$MONGODB_USER_ID" /data/db;
-        else echo "=====> Nothing to do"; fi;
-      '
-  mongodb-init-container:
-    image: docker.io/mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
-    container_name: mongodb-init
-    restart: unless-stopped
-    user: "0"
-    environment:
-      MONGODB_REPLICA_SET_NAME: ${MONGODB_REPLICA_SET_NAME:-rs0}
-      MONGODB_PORT_NUMBER: ${MONGODB_PORT_NUMBER:-27017}
-      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/?directConnection=true}
-      MONGODB_ADVERTISED_HOSTNAME: ${MONGODB_ADVERTISED_HOSTNAME:-mongodb}
-    volumes:
-      - ${MONGODB_HOST_PATH:-mongodb_data}:/data/db:rw
-    networks:
-      default:
-        ipv4_address: 10.51.0.11
-    logging:
-      driver: "json-file"
-    labels:
-      container_tag: "${COMPOSE_PROJECT_NAME:-rocketchat}#mongodb-init-container"
-    entrypoint: |
-      sh -xc '
-        echo "=====> Waiting for MongoDB to be healthy before initiating replica set...";
-        until mongosh "$$MONGODB_URI" --eval "db.adminCommand(\"ping\")" >/dev/null 2>&1; do
-          echo "=====> MongoDB not ready yet, retrying in 5 seconds...";
-          sleep 5;
-        done;
-        echo "=====> Initiating ReplSet $$MONGODB_REPLICA_SET_NAME at $$MONGODB_ADVERTISED_HOSTNAME:$$MONGODB_PORT_NUMBER...";
-        mongosh "$$MONGODB_URI" --eval "rs.initiate({_id: \"$$MONGODB_REPLICA_SET_NAME\", members: [{ _id: 0, host: \"$$MONGODB_ADVERTISED_HOSTNAME:$$MONGODB_PORT_NUMBER\" }]})";
-        echo "=====> Initiating ReplSet done...";
-      '
   mosquitto:
     image: eclipse-mosquitto:openssl
     container_name: mosquitto
@@ -253,39 +108,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.13
-  nats:
-    image: docker.io/nats:${NATS_VERSION:-2.11-alpine}
-    container_name: nats
-    restart: unless-stopped
-    expose:
-      - 4222
-      - 8222
-      - 6222
-    command: --http_port 8222
-    ports:
-      - "${NATS_BIND_IP:-127.0.0.1}:${NATS_PORT_NUMBER:-4222}:4222"
-    logging:
-      driver: "json-file"
-    labels:
-      container_tag: "${COMPOSE_PROJECT_NAME:-rocketchat}#nats"
-    networks:
-      default:
-        ipv4_address: 10.51.0.14
-  nats-exporter:
-    image: docker.io/natsio/prometheus-nats-exporter:${NATS_EXPORTER_VERSION:-0.17.3}
-    container_name: nats-exporter
-    restart: unless-stopped
-    depends_on:
-      - nats
-    expose:
-      - 7777
-    networks:
-      default:
-        ipv4_address: 10.51.0.15
-    command:
-      - -healthz
-      - -varz
-      - "http://nats:8222"
   npm:
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
@@ -322,21 +144,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.26
-  openproject:
-    image: openproject/openproject:17.4-rc
-    container_name: openproject
-    restart: unless-stopped
-    ports:
-      - 8081:80
-    environment:
-      SECRET_KEY_BASE: d4da71cb-6e08-403d-88a1-1f28450e2ef8
-      OPENPROJECT_HOST__NAME: project.mouras.me
-    networks:
-      default:
-        ipv4_address: 10.51.0.25
-    volumes:
-      - ${OPEN_PROJECT_DATA}:/var/openproject/pgdata
-      - ${OPEN_PROJECT_ASSETS}:/var/openproject/assets
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
@@ -397,63 +204,6 @@ services:
         ipv4_address: 10.51.0.21
     volumes:
       - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
-  qdrant:
-    image: qdrant/qdrant:v1.3.0
-    container_name: qdrant
-    restart: unless-stopped
-    ports:
-      - 6333:6333
-    volumes:
-      - ${QDRANT_DATA_DIR}:/qdrant/storage
-    networks:
-      default:
-        ipv4_address: 10.51.0.24
-  rocketchat:
-    image: ${IMAGE:-registry.rocket.chat/rocketchat/rocket.chat}:${RELEASE:-latest}
-    container_name: rocketchat
-    restart: unless-stopped
-    labels:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: ${METRICS_PORT:-9458}
-      container_tag: "${COMPOSE_PROJECT_NAME:-rocketchat}#rocketchat"
-    environment:
-      ROOT_URL: ${ROOT_URL:-http://localhost}
-      PORT: ${PORT:-3001}
-      DEPLOY_METHOD: docker
-      DEPLOY_PLATFORM: compose
-      REG_TOKEN: ${REG_TOKEN:-}
-      LICENSE_DEBUG: true
-      OVERWRITE_SETTING_Prometheus_Enabled: true
-      OVERWRITE_SETTING_Prometheus_Port: "${METRICS_PORT:-9458}"
-      MONGO_URL: ${MONGO_URL:-mongodb://mongodb:27017/rocketchat?replicaSet=rs0}
-      TRANSPORTER: "${NATS_URL-monolith+nats://nats:4222}"
-      INSTANCE_IP: "${INSTANCE_IP:-}"
-    networks:
-      default:
-        ipv4_address: 10.51.0.22
-    entrypoint: sh
-    command:
-      - -c
-      - |
-        echo "=====> Waiting for MongoDB (mongodb:27017) to be ready before starting Rocket.Chat...";
-        for i in $(seq 1 60); do
-          if nc -z mongodb 27017 >/dev/null 2>&1; then
-            echo "=====> MongoDB is up - starting Rocket.Chat";
-            exec node main.js;
-          fi;
-          echo "=====> MongoDB not ready yet, retrying in 5 seconds...";
-          sleep 5;
-        done;
-        echo "=====> Giving up waiting for MongoDB after 5 minutes";
-        exit 1
-    expose:
-      - ${PORT:-3001}
-      - ${METRICS_PORT:-9458}
-    ports:
-      - "${BIND_IP:-0.0.0.0}:${HOST_PORT:-3001}:${PORT:-3000}"
-      - "${BIND_IP:-0.0.0.0}:${METRICS_PORT:-9458}:${METRICS_PORT:-9458}"
-    logging:
-      driver: "json-file"
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
@@ -476,8 +226,6 @@ services:
       - 9091:9091
       - 51413:51413
       - 51413:51413/udp
-volumes:
-  mongodb_data: {driver: local}
 networks:
   default:
     driver: bridge
