@@ -1,8 +1,8 @@
 # Home Lab
 
-Personal home-lab infrastructure managed with Docker Compose, plus a small .NET worker used to discover and enqueue movie downloads through Transmission.
+Personal home-lab infrastructure managed with Docker Compose, plus a small .NET 10 worker used to discover and enqueue movie downloads through Transmission.
 
-The main stack lives in `infra/compose.yaml`. Runtime values are loaded from `infra/.env`; use `infra/template.env` as the starting point when creating a local environment file.
+The main stack lives in `infra/compose.yaml`. Runtime values are loaded from `infra/.env`.
 
 ## Repository Layout
 
@@ -10,7 +10,7 @@ The main stack lives in `infra/compose.yaml`. Runtime values are loaded from `in
 .
 ├── infra/
 │   ├── compose.yaml       # Docker Compose stack
-│   ├── template.env       # Sample environment values
+│   ├── .env               # Compose environment values
 │   ├── digger/            # Compose build context for Digger
 │   └── openclaw/          # Compose build context for OpenClaw
 └── src/
@@ -53,13 +53,7 @@ All containers are attached to a custom bridge network on `10.51.0.0/24` with st
 
 ## Configuration
 
-Create your local environment file from the template:
-
-```sh
-cp infra/template.env infra/.env
-```
-
-Then edit `infra/.env` and replace the sample values. At minimum, review:
+Review `infra/.env` before starting the stack. It contains the host paths, service credentials, and bind settings used by Docker Compose. At minimum, review:
 
 | Variable | Used for |
 | --- | --- |
@@ -71,7 +65,7 @@ Then edit `infra/.env` and replace the sample values. At minimum, review:
 | `ROOT_URL`, `REG_TOKEN`, `RELEASE` | Rocket.Chat configuration |
 | `*_DIR`, `*_DATA`, `*_ASSETS` | Host paths for persistent service data |
 
-`infra/template.env` contains sample values only. Keep real secrets in `infra/.env` and out of version control.
+`infra/.env` is machine-specific. Do not replace its values with production secrets unless you are comfortable with how this repository is stored and shared.
 
 ## Running The Stack
 
@@ -108,13 +102,15 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 
 ## Digger Worker
 
-`src/Digger` contains a .NET background worker. It reads movie data from YTS, stores state in SQLite, and uses the Transmission RPC API to enqueue and clean up downloads.
+`src/Digger` contains a .NET 10 background worker. It reads movie data from YTS, stores state in SQLite, and uses the Transmission RPC API to enqueue and clean up downloads.
 
 Key settings are in `src/Digger/Digger.Worker/appsettings.json`:
 
 | Setting | Description |
 | --- | --- |
 | `Transmission:ServerUrl` | Transmission RPC endpoint inside the compose network |
+| `Transmission:User`, `Transmission:Password` | Transmission RPC credentials read by the worker |
+| `Transmission:UseAuth` | Enables Transmission RPC authentication |
 | `Yts:*` | Movie discovery filters, languages, seed threshold, and API URL |
 | `DownloadDirectory` | Container path where movie downloads are organized |
 | `ConnectionStrings:DiggerContext` | SQLite database location |
@@ -142,6 +138,6 @@ Most persistent data is controlled by paths in `infra/.env`. Back up these direc
 
 ## Notes
 
-- `infra/.env` is machine-specific. Use `infra/template.env` for shareable sample values.
+- `infra/.env` is machine-specific and is the environment file used by all documented Docker Compose commands.
 - Several services assume reverse-proxy hostnames such as `automation.mouras.me`, `project.mouras.me`, and the URLs supplied in `.env`.
 - The stack uses privileged host integrations for some services, including Docker socket access for Portainer and the Gitea runner.
