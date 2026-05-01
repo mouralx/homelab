@@ -24,7 +24,7 @@ appsettings.json
 appsettings.*.json
 
 # Visual Studio 2019 auto generated files
-lauchSettings.json
+launchSettings.json
 
 # Build results
 [Dd]ebug/
