@@ -20,13 +20,6 @@
 mono_crash.*
 
 # Build results
-appsettings.json
-appsettings.*.json
-
-# Visual Studio 2019 auto generated files
-launchSettings.json
-
-# Build results
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
