@@ -1,8 +1,8 @@
 services:
   digger:
     build:
-      context: ./digger
-      dockerfile: Digger/Dockerfile
+      context: ../src/Digger
+      dockerfile: ../../infra/digger/Dockerfile
     container_name: digger
     restart: unless-stopped
     environment:
