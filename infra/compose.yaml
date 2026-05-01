@@ -49,7 +49,7 @@ services:
     restart: unless-stopped
     networks:
       default:
-        ipv4_address: 10.51.0.6
+        ipv4_address: 10.51.0.4
     ports:
       - 8123:8123
   jellyfin:
@@ -68,7 +68,7 @@ services:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
     networks:
       default:
-        ipv4_address: 10.51.0.7
+        ipv4_address: 10.51.0.5
   mosquitto:
     image: eclipse-mosquitto:openssl
     container_name: mosquitto
@@ -79,7 +79,7 @@ services:
       - ${MOSQUITTO_LOGS_DIR}:/mosquitto/log
     networks:
       default:
-        ipv4_address: 10.51.0.12
+        ipv4_address: 10.51.0.6
     ports:
       - 1883:1883
   n8n:
@@ -107,7 +107,7 @@ services:
       - ${N8N_DATA_DIR}:/home/node/.n8n
     networks:
       default:
-        ipv4_address: 10.51.0.13
+        ipv4_address: 10.51.0.7
   npm:
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
@@ -123,13 +123,13 @@ services:
       - ${NPM_CERTIFICATE_DIR}:/etc/letsencrypt
     networks:
       default:
-        ipv4_address: 10.51.0.16
+        ipv4_address: 10.51.0.8
   ollama:
     container_name: ollama
     image: ollama/ollama:latest
     networks:
       default:
-        ipv4_address: 10.51.0.17
+        ipv4_address: 10.51.0.9
     restart: unless-stopped
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
@@ -143,7 +143,7 @@ services:
       - 18789:18789
     networks:
       default:
-        ipv4_address: 10.51.0.26
+        ipv4_address: 10.51.0.10
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
@@ -152,7 +152,7 @@ services:
     restart: unless-stopped
     networks:
       default:
-        ipv4_address: 10.51.0.18
+        ipv4_address: 10.51.0.11
     ports:
       - 8080:8080
     environment:
@@ -171,7 +171,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     networks:
       default:
-        ipv4_address: 10.51.0.19
+        ipv4_address: 10.51.0.12
     volumes:
       - ${PGADMIN_DATA_DIR}/servers.json:/pgadmin4/servers.json
   portainer:
@@ -185,7 +185,7 @@ services:
       - ${PORTAINER_DATA_DIR}:/data
     networks:
       default:
-        ipv4_address: 10.51.0.20
+        ipv4_address: 10.51.0.13
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   postgres:
@@ -201,7 +201,7 @@ services:
       - 5432:5432
     networks:
       default:
-        ipv4_address: 10.51.0.21
+        ipv4_address: 10.51.0.14
     volumes:
       - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
   transmission:
@@ -210,7 +210,7 @@ services:
     restart: unless-stopped
     networks:
       default:
-        ipv4_address: 10.51.0.23
+        ipv4_address: 10.51.0.15
     environment:
       - PUID=0
       - PGID=0
