@@ -58,6 +58,7 @@ services:
   gitea-runner:
     image: docker.io/gitea/act_runner:nightly
     container_name: gitea-runner
+    restart: unless-stopped
     user: 0:0
     networks:
       default:
@@ -101,7 +102,7 @@ services:
   mongodb:
     image: docker.io/mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
     container_name: mongodb
-    restart: always
+    restart: unless-stopped
     volumes:
       - ${MONGODB_HOST_PATH:-mongodb_data}:/data/db:rw
     user: "${MONGODB_USER_ID:-1001}"
@@ -150,6 +151,7 @@ services:
   mongodb-exporter:
     image: docker.io/percona/mongodb_exporter:${MONGODB_EXPORTER_VERSION:-0.44.0}
     container_name: mongodb-exporter
+    restart: unless-stopped
     depends_on:
       - mongodb
     expose:
@@ -164,7 +166,7 @@ services:
   mongodb-fix-permission-container:
     image: docker.io/mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
     container_name: mongodb-fix-permissions
-    restart: on-failure
+    restart: unless-stopped
     user: "0"
     volumes:
       - ${MONGODB_HOST_PATH:-mongodb_data}:/data/db:rw
@@ -185,7 +187,7 @@ services:
   mongodb-init-container:
     image: docker.io/mongodb/mongodb-community-server:${MONGODB_VERSION:-8.2}-ubi8
     container_name: mongodb-init
-    restart: on-failure
+    restart: unless-stopped
     user: "0"
     environment:
       MONGODB_REPLICA_SET_NAME: ${MONGODB_REPLICA_SET_NAME:-rs0}
@@ -254,7 +256,7 @@ services:
   nats:
     image: docker.io/nats:${NATS_VERSION:-2.11-alpine}
     container_name: nats
-    restart: always
+    restart: unless-stopped
     expose:
       - 4222
       - 8222
@@ -272,6 +274,7 @@ services:
   nats-exporter:
     image: docker.io/natsio/prometheus-nats-exporter:${NATS_EXPORTER_VERSION:-0.17.3}
     container_name: nats-exporter
+    restart: unless-stopped
     depends_on:
       - nats
     expose:
@@ -339,7 +342,7 @@ services:
     container_name: openwebui
     depends_on:
       - ollama
-    restart: always
+    restart: unless-stopped
     networks:
       default:
         ipv4_address: 10.51.0.18
@@ -380,7 +383,7 @@ services:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   postgres:
     container_name: postgres
-    restart: always
+    restart: unless-stopped
     image: postgres:15
     shm_size: 128mb
     environment:
@@ -408,7 +411,7 @@ services:
   rocketchat:
     image: ${IMAGE:-registry.rocket.chat/rocketchat/rocket.chat}:${RELEASE:-latest}
     container_name: rocketchat
-    restart: always
+    restart: unless-stopped
     labels:
       prometheus.io/scrape: "true"
       prometheus.io/port: ${METRICS_PORT:-9458}
