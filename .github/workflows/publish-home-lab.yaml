@@ -13,5 +13,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v5
       - name: Checkout repository
         uses: actions/checkout@v3
