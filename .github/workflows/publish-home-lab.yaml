@@ -34,6 +34,10 @@ jobs:
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
           cat infra/.env
       
+      # Debugging step to list files and directories to ensure the .env file is created correctly and the directory structure is as expected
+      - name: List files and directories for debugging
+        run: ls -la
+      
       # Build the Docker Compose file to ensure all necessary images are built before deployment
       - name: Build Compose File
-        run: docker compose -f infra/docker-compose.yml build
+        run: docker compose -f ./infra/docker-compose.yml build
