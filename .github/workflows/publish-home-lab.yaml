@@ -5,6 +5,7 @@ on:
       environment:
         description: 'Select the environment to deploy to:'
         required: true
+        type: choice
         default: 'mouras-home-lab'
         options:
           - mouras-home-lab
