@@ -32,3 +32,6 @@ jobs:
         run: |
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > infra/.env
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
+        
+      - name: Build Compose File
+        run: docker compose build --file infra/docker-compose.yml
