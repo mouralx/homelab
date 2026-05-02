@@ -30,14 +30,5 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: |
-          jq -r '
-            to_entries[]
-            | select(.key != "GITHUB_TOKEN")
-            | "\(.key)=\(.value | tostring)"
-          ' <<< "$ENVIRONMENT_VARS" > .env
-          jq -r '
-            to_entries[]
-            | select(.key != "GITHUB_TOKEN")
-            | "\(.key)=\(.value | tostring)"
-          ' <<< "$ENVIRONMENT_SECRETS" >> .env
-          cat .env
+          jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > infra/.env
+          jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
