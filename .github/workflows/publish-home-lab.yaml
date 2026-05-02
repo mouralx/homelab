@@ -11,19 +11,22 @@ on:
           - mouras-home-lab
 jobs:
   deploy:
-    name: Home Lab Deployment
+    name: Home lab deployment
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      
-      # Set up Docker to run deployment scripts that may require Docker containers
-      - name: Set up Docker
-        uses: docker/setup-docker-action@v5
 
       # Check out the repository to access the .env file and deployment scripts
       - name: Checkout repository
         uses: actions/checkout@v3
       
+      # Set up Docker on the runner to enable building and deploying the Docker Compose application
+      - name: Set up Docker
+        run: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sh get-docker.sh
+          rm get-docker.sh
+
       # Create .env file from the variables and secrets attached to the selected GitHub Environment
       - name: Create .env file from selected environment
         env:
