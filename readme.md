@@ -1,60 +1,92 @@
 # Home Lab
 
-Personal home-lab infrastructure managed with Docker Compose, plus a small .NET 10 worker used to discover and enqueue movie downloads through Transmission.
+Personal home-lab infrastructure managed with Docker Compose, plus a small .NET worker named Digger that discovers movies and queues downloads through Transmission.
 
-The main stack lives in `infra/compose.yaml`. Runtime values are loaded from `infra/.env`.
+The Docker stack lives in `infra/compose.yaml`. Compose runtime values are expected in `infra/.env`, which is created locally by you or during deployment by the GitHub Actions workflow.
 
 ## Repository Layout
 
 ```text
 .
+├── .github/workflows/
+│   └── publish-home-lab.yaml  # Manual deployment workflow
 ├── infra/
-│   ├── compose.yaml       # Docker Compose stack
-│   ├── .env               # Compose environment values
-│   ├── digger/            # Compose build context for Digger
-│   └── openclaw/          # Compose build context for OpenClaw
+│   ├── compose.yaml           # Home-lab Docker Compose stack
+│   ├── digger/Dockerfile      # Container image for the Digger worker
+│   └── openclaw/Dockerfile    # Container image for OpenClaw
+├── scripts/
+│   ├── copy-env-vars.sh       # GitHub environment variable helper
+│   └── readme.md
 └── src/
-    └── Digger/            # .NET Digger worker source
+    └── Digger/                # .NET Digger solution
 ```
 
-## Services
+## Infrastructure
 
-The compose stack currently includes:
+`infra/compose.yaml` defines the services that run on the home-lab host. Most services mount host directories supplied through environment variables, so `infra/.env` must exist before starting the stack.
 
-| Service | Purpose | Exposed ports |
+Current services:
+
+| Service | Purpose | Ports |
 | --- | --- | --- |
-| `digger` | Custom .NET worker that syncs YTS movie discovery with Transmission | none |
+| `digger` | Custom .NET worker for YTS discovery and Transmission queueing | none |
 | `frigate` | NVR and camera processing | `8971`, `8554`, `8555`, `5000` |
 | `homeassistant` | Home automation | `8123` |
 | `jellyfin` | Media server | `8096`, `7359/udp` |
 | `mosquitto` | MQTT broker | `1883` |
-| `n8n` | Automation workflows | behind configured host/proxy |
+| `n8n` | Automation workflows backed by PostgreSQL | reverse proxy / internal |
 | `npm` | Nginx Proxy Manager | `80`, `81`, `443` |
 | `ollama` | Local model runtime | internal |
-| `openclaw` | OpenClaw gateway | `18789` |
+| `opeclaw` | OpenClaw gateway container built from `infra/openclaw` | `18789` |
 | `openwebui` | Web UI for Ollama | `8080` |
-| `pgadmin` | PostgreSQL administration | behind configured host/proxy |
+| `pgadmin` | PostgreSQL administration UI | reverse proxy / internal |
 | `portainer` | Docker management UI | `9000` |
 | `postgres` | Shared PostgreSQL database | `5432` |
-| `transmission` | Torrent client | `9091`, `51413` |
+| `transmission` | Torrent client used by Digger | `9091`, `51413` |
 
-All containers are attached to a custom bridge network on `10.51.0.0/24` with static addresses.
+All services are attached to a custom bridge network on `10.51.0.0/24` with static container addresses.
 
 ## Configuration
 
-Review `infra/.env` before starting the stack. It contains the variable names used by Docker Compose, with each value written as a pass-through placeholder such as `DIGGER_DATA_DIR=${DIGGER_DATA_DIR}`. Set the real values in your shell, deployment environment, or another secret-management layer before starting the stack. At minimum, provide:
+Create `infra/.env` with the variables referenced by `infra/compose.yaml`. The workflow also writes this file during deployment from the selected GitHub Environment's variables and secrets.
 
-| Variable | Used for |
-| --- | --- |
-| `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL, n8n, and pgAdmin access |
-| `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` | Initial pgAdmin login |
-| `TRANSMISSION_USERNAME`, `TRANSMISSION_PASSWORD`, `TRANSMISSION_WHITELIST` | Transmission authentication and access control |
-| `FRIGATE_PASSWORD` | Frigate RTSP password |
-| `*_DIR`, `*_DATA` | Host paths for persistent service data |
+Required Compose variables:
 
-`infra/.env` is intentionally secret-free and machine-specific. Keep production secrets out of the repository and provide them at runtime.
+```text
+DIGGER_DATA_DIR
+FRIGATE_CONFIG_DIR
+FRIGATE_MEDIA_DIR
+FRIGATE_PASSWORD
+HOMEASSISTANT_CONFIG_DIR
+JELLYFIN_CACHE_DIR
+JELLYFIN_CONFIG_DIR
+JELLYFIN_MEDIA_DIR
+JELLYFIN_SERVER_URL
+MOSQUITTO_CONFIG_DIR
+MOSQUITTO_DATA_DIR
+MOSQUITTO_LOGS_DIR
+N8N_DATA_DIR
+NPM_CERTIFICATE_DIR
+NPM_DATA_DIR
+OLLAMA_DIR
+OPEN_WEBUI_DATA_DIR
+PGADMIN_DATA_DIR
+PGADMIN_DEFAULT_EMAIL
+PGADMIN_DEFAULT_PASSWORD
+PORTAINER_DATA_DIR
+POSTGRES_DATA_DIR
+POSTGRES_PASSWORD
+POSTGRES_USER
+TRANSMISSION_CONFIG_DIR
+TRANSMISSION_DOWNLOADS_DIR
+TRANSMISSION_PASSWORD
+TRANSMISSION_USERNAME
+TRANSMISSION_WHITELIST
+```
 
-## Running The Stack
+Keep real values out of the repository. `infra/.env` contains local paths and secrets for the host where the stack runs.
+
+## Running Locally
 
 From the repository root:
 
@@ -80,50 +112,53 @@ Stop the stack:
 docker compose --env-file infra/.env -f infra/compose.yaml down
 ```
 
-Pull updated images:
+Pull updated images and recreate containers:
 
 ```sh
 docker compose --env-file infra/.env -f infra/compose.yaml pull
 docker compose --env-file infra/.env -f infra/compose.yaml up -d
 ```
 
+## Deployment Workflow
+
+`.github/workflows/publish-home-lab.yaml` defines a manual `workflow_dispatch` deployment for a self-hosted runner.
+
+The workflow:
+
+- lets you choose a GitHub Environment, currently `mouras-home-lab`;
+- checks out this repository on the runner;
+- installs Docker;
+- creates `infra/.env` from the selected environment's GitHub Actions `vars` and `secrets`;
+- runs `docker compose -f infra/compose.yaml up -d --quiet-pull`.
+
+The selected GitHub Environment must contain the same variable names required by `infra/compose.yaml`.
+
 ## Digger Worker
 
-`src/Digger` contains a .NET 10 background worker. It reads movie data from YTS, stores state in SQLite, and uses the Transmission RPC API to enqueue and clean up downloads.
+`src/Digger` contains the .NET worker used by the `digger` Compose service. It reads movie data from YTS, stores state in SQLite, and talks to Transmission through the RPC API.
 
-Key settings are in `src/Digger/Digger.Worker/appsettings.json`:
+Important settings live in `src/Digger/Digger.Worker/appsettings.json`:
 
 | Setting | Description |
 | --- | --- |
-| `Transmission:ServerUrl` | Transmission RPC endpoint inside the compose network |
-| `Transmission:User`, `Transmission:Password` | Transmission RPC credentials read by the worker |
+| `Transmission:ServerUrl` | Transmission RPC endpoint inside the Compose network |
+| `Transmission:User`, `Transmission:Password` | Transmission RPC credentials |
 | `Transmission:UseAuth` | Enables Transmission RPC authentication |
 | `Yts:*` | Movie discovery filters, languages, seed threshold, and API URL |
-| `DownloadDirectory` | Container path where movie downloads are organized |
+| `DownloadDirectory` | Container path for organized movie downloads |
 | `ConnectionStrings:DiggerContext` | SQLite database location |
 | `MaxAllocatedSpace` | Maximum allocated movie storage |
 | `MaxEnqueuedRetries` | Retry limit before marking a movie failed |
 | `MaxEnqueuedTorrents` | Maximum active queued torrents |
 | `StopTime` | Delay between worker cycles, in minutes |
 
-The compose service mounts:
+The Compose service mounts:
 
 ```text
 ${TRANSMISSION_DOWNLOADS_DIR}/movies -> /downloads/movies
-${DIGGER_DATA_DIR}                     -> /digger/data
+${DIGGER_DATA_DIR}                   -> /digger/data
 ```
 
-## Data And Backups
+## Backups
 
-Most persistent data is controlled by paths in `infra/.env`. Back up these directories before host maintenance, image upgrades, or destructive compose operations:
-
-- PostgreSQL data
-- Nginx Proxy Manager data and certificates
-- Home Assistant, Frigate, Mosquitto, n8n, Jellyfin, Portainer, Open WebUI, Ollama, and Transmission data
-- Digger SQLite data under `DIGGER_DATA_DIR`
-
-## Notes
-
-- `infra/.env` is machine-specific and is the environment file used by all documented Docker Compose commands.
-- Several services assume reverse-proxy hostnames such as `automation.mouras.me` and the URLs supplied through the runtime environment.
-- The stack uses privileged host integrations for some services, including Docker socket access for Portainer.
+Back up the host directories referenced in `infra/.env` before host maintenance, image upgrades, or destructive Compose operations. The most important data is PostgreSQL, Nginx Proxy Manager certificates, Home Assistant, Frigate, n8n, Jellyfin, Portainer, Open WebUI, Ollama, Transmission, and Digger's SQLite database under `DIGGER_DATA_DIR`.

@@ -1,10 +1,16 @@
 # Scripts
 
-Helper scripts for repository maintenance and deployment workflows.
+Maintenance helpers for this repository. These scripts are not part of the running Docker Compose stack; they support setup and GitHub Actions environment management.
+
+## Files
+
+| File | Purpose |
+| --- | --- |
+| `copy-env-vars.sh` | Copies GitHub Actions environment variables from one repository environment to another and recreates secret names with placeholder values. |
 
 ## `copy-env-vars.sh`
 
-Copies GitHub Actions environment variable and secret names from one repository environment to another.
+Use this when preparing a GitHub Environment for the deployment workflow in `.github/workflows/publish-home-lab.yaml`.
 
 ```sh
 ./scripts/copy-env-vars.sh \
@@ -23,31 +29,30 @@ Example:
   moura/source-repo \
   production \
   moura/target-repo \
-  production
+  mouras-home-lab
 ```
 
 Arguments:
 
 | Argument | Description |
 | --- | --- |
-| `GITHUB_TOKEN` | (Optional) GitHub token used for API requests. If not provided, you must be already logged in via `gh auth login`. |
+| `GITHUB_TOKEN` | Optional token used to authenticate `gh`. Omit it when already logged in with `gh auth login`. |
 | `SOURCE_REPO` | Source repository in `owner/repo` format. |
-| `SOURCE_ENVIRONMENT` | Source GitHub Actions environment name. |
+| `SOURCE_ENVIRONMENT` | Source GitHub Actions Environment name. |
 | `TARGET_REPO` | Target repository in `owner/repo` format. |
-| `TARGET_ENVIRONMENT` | Target GitHub Actions environment name. |
+| `TARGET_ENVIRONMENT` | Target GitHub Actions Environment name. |
 
-Dependencies:
+## Requirements
 
 - `bash`
-- `brew` (Homebrew)
+- Homebrew (`brew`)
+- GitHub CLI (`gh`)
 - `jq`
 
-Note: The script will automatically install `gh` (GitHub CLI) if it is not present.
+The script checks for `gh` and `jq` and installs missing tools with Homebrew. It exits if Homebrew is not installed.
 
-Important note: GitHub Actions secrets cannot be retrieved in plaintext after they are stored. This script can list secret names, but it cannot truly copy secret values from GitHub unless those values are available from another source. Treat the current script as a helper scaffold that may need adjustment before use in a production migration.
+## Important Notes
 
-Security notes:
+GitHub does not allow stored secret values to be read back in plaintext. This script can list secret names from the source environment, but it cannot copy the real secret values. Target secrets are created with `REPLACE_WITH_SECRET_VALUE`, so replace those placeholders in GitHub before running a deployment.
 
-- Avoid passing long-lived personal access tokens directly in shell history.
-- Prefer short-lived or fine-scoped tokens.
-- Confirm the target repository and environment before running, as the script will overwrite existing variables and secrets with the same names.
+The script overwrites target variables and secrets with matching names. Confirm the source and target repositories before running it.
