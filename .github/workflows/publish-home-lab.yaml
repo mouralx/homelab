@@ -35,4 +35,4 @@ jobs:
       
       # Build the Docker Compose file to ensure all necessary images are built before deployment
       - name: Build Compose File
-        run: docker compose build --file infra/docker-compose.yml
+        run: docker compose build -f infra/docker-compose.yml
