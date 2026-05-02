@@ -43,5 +43,4 @@ jobs:
 
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Run compose file
-        depends-on: Build compose file
         run: docker compose -f infra/compose.yaml up -d
