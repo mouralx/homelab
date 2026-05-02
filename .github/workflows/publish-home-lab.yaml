@@ -6,7 +6,7 @@ on:
         description: 'Select the environment to deploy to:'
         required: true
         type: choice
-        default: 'mouras-home-lab'
+        placeholder: 'Select environment'
         options:
           - mouras-home-lab
 jobs:
@@ -19,6 +19,29 @@ jobs:
       # Check out the repository to access the .env file and deployment scripts
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      # Install jq and use it to replace the Transmission username and password in the appsettings.json file with the values from the selected environment's variables and secrets
+      - name: Replace appsettings.json with environment values
+        env:
+          TRANSMISSION_USERNAME: ${{ vars.TRANSMISSION_USERNAME }}
+          TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null || apt install -y jq
+          : "${TRANSMISSION_USERNAME:?TRANSMISSION_USERNAME variable is required}"
+          : "${TRANSMISSION_PASSWORD:?TRANSMISSION_PASSWORD secret is required}"
+
+          appsettings_path="src/Digger/Digger.Worker/appsettings.json"
+          appsettings_tmp="$(mktemp)"
+
+          jq \
+            --arg transmissionUsername "$TRANSMISSION_USERNAME" \
+            --arg transmissionPassword "$TRANSMISSION_PASSWORD" \
+            'setpath(["Transmission", "User"]; $transmissionUsername)
+             | setpath(["Transmission", "Password"]; $transmissionPassword)' \
+            "$appsettings_path" > "$appsettings_tmp"
+          jq empty "$appsettings_tmp"
+          mv "$appsettings_tmp" "$appsettings_path"
       
       # Set up Docker on the runner to enable building and deploying the Docker Compose application
       - name: Set up docker
@@ -33,7 +56,6 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: |
-          apt install -y jq
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > infra/.env
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
           cat infra/.env
