@@ -11,9 +11,29 @@ on:
           - mouras-home-lab
 jobs:
   deploy:
+    name: Home Lab Deployment
     runs-on: ubuntu-latest
     steps:
+      
+      # Set up Docker to run deployment scripts that may require Docker containers
       - name: Set up Docker
         uses: docker/setup-docker-action@v5
+
+      # Check out the repository to access the .env file and deployment scripts
       - name: Checkout repository
         uses: actions/checkout@v3
+      
+      # Create .env file automatically from all environment variables (repo-level and secrets)
+      - name: Create .env file from environment variables
+        run: |
+          # Create an empty .env file
+          touch .env
+          # Loop through all environment variables and write them to .env file
+          for var in $(printenv | awk -F= '{print $1}'); do
+            # If variable matches your desired pattern (e.g., starts with your prefix), append it to the .env file
+            if [[ $var == *"_DIR"* || $var == *"_URL"* || $var == *"_PASSWORD"* ]]; then
+              echo "$var=${!var}" >> .env
+            fi
+          done
+          # Optionally, show the contents of the .env file (be cautious with secrets!)
+          cat .env
