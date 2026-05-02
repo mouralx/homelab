@@ -12,7 +12,7 @@ on:
 jobs:
   deploy:
     name: Home lab deployment
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: ${{ inputs.environment }}
     steps:
 
