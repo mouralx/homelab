@@ -40,3 +40,4 @@ jobs:
             | select(.key != "GITHUB_TOKEN")
             | "\(.key)=\(.value | tostring)"
           ' <<< "$ENVIRONMENT_SECRETS" >> .env
+          cat .env
