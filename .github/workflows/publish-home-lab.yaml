@@ -1,0 +1,16 @@
+name: Home Lab Deployment
+on:
+  workflow_dispatch:
+inputs:
+  environment:
+    description: 'Select the environment to deploy to:'
+    required: true
+    default: 'mouras-home-lab'
+    options:
+      - mouras-home-lab
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
