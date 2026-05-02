@@ -13,6 +13,7 @@ jobs:
   deploy:
     name: Home Lab Deployment
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
       
       # Set up Docker to run deployment scripts that may require Docker containers
@@ -23,17 +24,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       
-      # Create .env file automatically from all environment variables (repo-level and secrets)
-      - name: Create .env file from environment variables
+      # Create .env file from the variables and secrets attached to the selected GitHub Environment
+      - name: Create .env file from selected environment
+        env:
+          ENVIRONMENT_VARS: ${{ toJson(vars) }}
+          ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: |
-          # Create an empty .env file
-          touch .env
-          # Loop through all environment variables and write them to .env file
-          for var in $(printenv | awk -F= '{print $1}'); do
-            # If variable matches your desired pattern (e.g., starts with your prefix), append it to the .env file
-            if [[ $var == *"_DIR"* || $var == *"_URL"* || $var == *"_PASSWORD"* ]]; then
-              echo "$var=${!var}" >> .env
-            fi
-          done
-          # Optionally, show the contents of the .env file (be cautious with secrets!)
-          cat .env
+          jq -r '
+            to_entries[]
+            | select(.key != "GITHUB_TOKEN")
+            | "\(.key)=\(.value | tostring)"
+          ' <<< "$ENVIRONMENT_VARS" > .env
+          jq -r '
+            to_entries[]
+            | select(.key != "GITHUB_TOKEN")
+            | "\(.key)=\(.value | tostring)"
+          ' <<< "$ENVIRONMENT_SECRETS" >> .env
