@@ -59,6 +59,10 @@ jobs:
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > infra/.env
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
           cat infra/.env
+      
+      # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
+      - name: Build compose file
+        run: docker compose -f infra/compose.yaml build --quiet
 
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Run compose file
