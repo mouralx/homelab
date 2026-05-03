@@ -104,6 +104,8 @@ services:
     volumes:
       - ${NPM_DATA_DIR}:/data
       - ${NPM_CERTIFICATE_DIR}:/etc/letsencrypt
+    ports:
+      - 443:443
     networks:
       default:
         ipv4_address: 10.51.0.8
