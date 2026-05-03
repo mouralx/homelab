@@ -8,7 +8,7 @@
     "auth": {
       "mode": "trusted-proxy",
       "trustedProxy": {
-        "userHeader": "x-forwarded-user"
+        "userHeader": "Server"
       }
     }
   }
