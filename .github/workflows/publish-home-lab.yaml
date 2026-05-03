@@ -6,22 +6,21 @@ on:
         description: 'Select the environment to deploy to:'
         required: true
         type: choice
-        placeholder: 'Select environment'
         options:
           - mouras-home-lab
 jobs:
   deploy:
-    name: Home lab deployment
+    name: "Deploy to: ${{ inputs.environment }}"
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
     steps:
 
       # Check out the repository to access the .env file and deployment scripts
-      - name: Checkout repository
+      - name: Checking out repository
         uses: actions/checkout@v3
 
       # Install jq and use it to replace the Transmission username and password in the appsettings.json file with the values from the selected environment's variables and secrets
-      - name: Replace appsettings.json with environment values
+      - name: Redacting configurations
         env:
           TRANSMISSION_USERNAME: ${{ vars.TRANSMISSION_USERNAME }}
           TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
@@ -44,7 +43,7 @@ jobs:
           mv "$appsettings_tmp" "$appsettings_path"
       
       # Set up Docker on the runner to enable building and deploying the Docker Compose application
-      - name: Set up docker
+      - name: Set up container runtime
         run: |
           curl -fsSL https://get.docker.com -o get-docker.sh
           sh get-docker.sh
@@ -60,10 +59,14 @@ jobs:
           jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
           cat infra/.env
       
+      # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
+      - name: Bring current infrastructure down
+        run: docker compose -f infra/compose.yaml down --quiet
+
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
-      - name: Build compose file
+      - name: Build infrastructure
         run: docker compose -f infra/compose.yaml build --quiet
 
       # Deploy the application using Docker Compose, running the containers in detached mode
-      - name: Run compose file
+      - name: Instantiate infrastructure
         run: docker compose -f infra/compose.yaml up -d --quiet-pull

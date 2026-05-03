@@ -120,7 +120,7 @@ services:
     restart: unless-stopped
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
-  opeclaw:
+  openclaw:
     build:
       context: ./openclaw
       dockerfile: Dockerfile
