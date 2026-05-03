@@ -28,12 +28,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - ${FRIGATE_CONFIG_DIR}:/config
       - ${FRIGATE_MEDIA_DIR}:/media/frigate
-    ports:
-      - 8971:8971
-      - 8554:8554
-      - 8555:8555/tcp
-      - 8555:8555/udp
-      - 5000:5000
     networks:
       default:
         ipv4_address: 10.51.0.3
@@ -50,16 +44,11 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.4
-    ports:
-      - 8123:8123
   jellyfin:
     container_name: jellyfin
     image: jellyfin/jellyfin
     restart: unless-stopped
     user: 0:0
-    ports:
-      - 8096:8096/tcp
-      - 7359:7359/udp
     volumes:
       - ${JELLYFIN_CONFIG_DIR}:/config
       - ${JELLYFIN_CACHE_DIR}:/cache
@@ -80,8 +69,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.6
-    ports:
-      - 1883:1883
   n8n:
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
@@ -114,10 +101,6 @@ services:
     restart: unless-stopped
     environment:
       TZ: Europe/Lisbon
-    ports:
-      - 80:80
-      - 81:81
-      - 443:443
     volumes:
       - ${NPM_DATA_DIR}:/data
       - ${NPM_CERTIFICATE_DIR}:/etc/letsencrypt
@@ -139,8 +122,6 @@ services:
       dockerfile: Dockerfile
     container_name: openclaw
     restart: unless-stopped
-    ports:
-      - 18789:18789
     networks:
       default:
         ipv4_address: 10.51.0.10
@@ -153,8 +134,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.11
-    ports:
-      - 8080:8080
     environment:
       - OLLAMA_API_BASE=http://ollama:11434
     volumes:
@@ -178,8 +157,6 @@ services:
     container_name: portainer
     image: portainer/portainer-ce:latest
     restart: unless-stopped
-    ports:
-      - 9000:9000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PORTAINER_DATA_DIR}:/data
@@ -197,8 +174,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
-    ports:
-      - 5432:5432
     networks:
       default:
         ipv4_address: 10.51.0.14
@@ -222,10 +197,6 @@ services:
     volumes:
       - ${TRANSMISSION_CONFIG_DIR}:/config
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
-    ports:
-      - 9091:9091
-      - 51413:51413
-      - 51413:51413/udp
 networks:
   default:
     driver: bridge
