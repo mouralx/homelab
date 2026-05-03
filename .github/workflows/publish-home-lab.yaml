@@ -61,7 +61,7 @@ jobs:
       
       # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
       - name: Bring current infrastructure down
-        run: docker compose -f infra/compose.yaml down --quiet
+        run: docker compose -f infra/compose.yaml down
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build infrastructure
