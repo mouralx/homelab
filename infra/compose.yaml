@@ -75,6 +75,7 @@ services:
     restart: unless-stopped
     user: "0:0"
     environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: "Europe/Lisbon"
       TZ: "Europe/Lisbon"
       N8N_HOST: n8n.mouras.me
