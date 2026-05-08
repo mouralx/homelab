@@ -18,6 +18,17 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.2
+  forgejo:
+    container_name: forgejo
+    image: codeberg.org/forgejo/forgejo:15
+    user: 0:0
+    restart: always
+    volumes:
+      - ${FORGEJO_DATA_DIR}:/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      default:
+        ipv4_address: 10.51.0.16
   frigate:
     user: 0:0
     container_name: frigate
