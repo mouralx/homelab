@@ -125,7 +125,7 @@ services:
         ipv4_address: 10.51.0.8
   ollama:
     container_name: ollama
-    image: ollama/ollama:latest
+    image: ollama/ollama:rocm
     environment:
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
