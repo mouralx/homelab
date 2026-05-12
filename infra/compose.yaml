@@ -138,6 +138,11 @@ services:
     restart: unless-stopped
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          cpus: "8.0"
+          memory: 8G
     devices:
       - /dev/kfd
       - /dev/dri
