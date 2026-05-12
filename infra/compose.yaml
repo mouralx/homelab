@@ -138,6 +138,9 @@ services:
     restart: unless-stopped
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
+    devices:
+      - /dev/kfd
+      - /dev/dri
   openclaw:
     build:
       context: ./openclaw
