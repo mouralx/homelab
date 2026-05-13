@@ -130,8 +130,6 @@ services:
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_KEEP_ALIVE: "30m"
-    cpus: "8.0"
-    mem_limit: 16g
     networks:
       default:
         ipv4_address: 10.51.0.9
