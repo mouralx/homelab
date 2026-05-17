@@ -134,6 +134,8 @@ services:
       default:
         ipv4_address: 10.51.0.9
     restart: unless-stopped
+    ports:
+      - 11434:11434
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
   openclaw:
