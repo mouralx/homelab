@@ -125,7 +125,7 @@ services:
         ipv4_address: 10.51.0.8
   ollama:
     container_name: ollama
-    image: ollama/ollama:rocm
+    image: ollama/ollama:latest
     environment:
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
@@ -136,14 +136,6 @@ services:
     restart: unless-stopped
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
-    deploy:
-      resources:
-        limits:
-          cpus: "8.0"
-          memory: 8gb
-    devices:
-      - /dev/kfd
-      - /dev/dri
   openclaw:
     build:
       context: ./openclaw

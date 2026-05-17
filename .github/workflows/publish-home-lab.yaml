@@ -8,6 +8,11 @@ on:
         type: choice
         options:
           - mouras-home-lab
+      bring_down_first:
+        description: 'Bring down existing infrastructure before deploying?'
+        required: true
+        type: boolean
+        default: false
 jobs:
   deploy:
     name: "Deploy to: ${{ inputs.environment }}"
@@ -61,6 +66,7 @@ jobs:
       
       # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
       - name: Bring current infrastructure down
+        if: ${{ inputs.bring_down_first }}
         run: docker compose -f infra/compose.yaml down
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
