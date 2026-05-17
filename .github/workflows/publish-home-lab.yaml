@@ -76,3 +76,6 @@ jobs:
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Instantiate infrastructure
         run: docker compose -f infra/compose.yaml up -d --quiet-pull
+      
+      - name: Clean docker dangling images
+        run: docker system prune -af
