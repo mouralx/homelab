@@ -45,9 +45,9 @@ services:
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
   hermes:
-    user: 0:0
     image: nousresearch/hermes-agent:latest
     container_name: hermes
+    user: 0:0
     restart: unless-stopped
     command: gateway run
     ports:
