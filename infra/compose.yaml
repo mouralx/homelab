@@ -47,6 +47,7 @@ services:
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
+    user: "0:0"
     restart: unless-stopped
     command: gateway run
     ports:
@@ -58,9 +59,10 @@ services:
       default:
         ipv4_address: 10.51.0.17
     environment:
-      - PUID=0
-      - PGID=0
       - HERMES_DASHBOARD=1
+      - HERMES_UID=0
+      - HERMES_GID=0
+      - HERMES_ALLOW_ROOT_GATEWAY=1
     deploy:
       resources:
         limits:
