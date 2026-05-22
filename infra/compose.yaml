@@ -60,8 +60,6 @@ services:
         ipv4_address: 10.51.0.17
     environment:
       - HERMES_DASHBOARD=1
-      - HERMES_UID=0
-      - HERMES_GID=0
       - HERMES_ALLOW_ROOT_GATEWAY=1
     deploy:
       resources:
