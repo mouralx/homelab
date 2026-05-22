@@ -44,6 +44,30 @@ services:
         ipv4_address: 10.51.0.3
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+    ports:
+      - 8642:8642   # gateway API
+      - 9119:9119   # dashboard (only reached when HERMES_DASHBOARD=1)
+    volumes:
+      - ~/hermes:/opt/data
+    networks:
+      default:
+        ipv4_address: 10.51.0.17
+    environment:
+      - HERMES_DASHBOARD=1
+      # Uncomment to forward specific env vars instead of using .env file:
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
