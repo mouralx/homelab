@@ -2,12 +2,18 @@ FROM ubuntu:24.04
 
 EXPOSE 1234
 
-RUN apt update && apt upgrade -y && apt install -y curl libatomic1
-
-RUN curl -fsSL https://lmstudio.ai/install.sh | bash
+WORKDIR /lms
 
 ENV PATH="/root/.lmstudio/bin:${PATH}"
 
+RUN apt update --quiet && apt install -y curl libatomic1 libgomp --quiet
+
+RUN curl -fsSL https://lmstudio.ai/install.sh | bash
+
+RUN lms get google/gemma-4-e4b
+
+RUN lms load google/gemma-4-e4b
+
 RUN lms daemon up
 
-ENTRYPOINT [ "lms", "server", "start" ]
+CMD ["lms", "server", "start"]
