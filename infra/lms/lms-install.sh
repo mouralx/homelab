@@ -9,8 +9,8 @@ if ! command -v lms &> /dev/null; then
 
   curl -fsSL https://lmstudio.ai/install.sh | bash
 
-  lms get google/gemma-4-e4b
-  lms load google/gemma-4-e4b
+  lms get mistralai/ministral-3-14b
+  lms load mistralai/ministral-3-14b
 fi
 
 lms daemon up
