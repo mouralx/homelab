@@ -175,8 +175,6 @@ services:
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
-    depends_on:
-      - ollama
     restart: unless-stopped
     networks:
       default:
