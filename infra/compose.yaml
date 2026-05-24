@@ -91,6 +91,15 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.5
+  lms:
+    build:
+      context: ./lms
+      dockerfile: Dockerfile
+    container_name: lms
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 10.51.0.10
   mosquitto:
     image: eclipse-mosquitto:openssl
     container_name: mosquitto
@@ -160,15 +169,6 @@ services:
       - 11434:11434
     volumes:
       - ${OLLAMA_DIR}:/root/.ollama
-  openclaw:
-    build:
-      context: ./openclaw
-      dockerfile: Dockerfile
-    container_name: openclaw
-    restart: unless-stopped
-    networks:
-      default:
-        ipv4_address: 10.51.0.10
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
