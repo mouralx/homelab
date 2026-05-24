@@ -15,3 +15,6 @@ fi
 
 lms daemon up
 lms server start
+
+# Keep the script running so the Docker container doesn't exit
+tail -f /dev/null
