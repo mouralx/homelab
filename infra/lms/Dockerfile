@@ -8,10 +8,6 @@ RUN apt update && apt install -y curl libatomic1
 
 RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
-RUN lms get google/gemma-4-e4b
-
-RUN lms load google/gemma-4-e4b
-
-RUN lms daemon up
+# RUN lms daemon up
 
 ENTRYPOINT [ "lms", "server", "start" ]
