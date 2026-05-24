@@ -1,11 +1,11 @@
 FROM ubuntu:24.04
 
-EXPOSE 1234
-
-ENV PATH="/root/.lmstudio/bin:${PATH}"
-
-RUN apt update && apt upgrade -y && apt install -y curl libatomic1
+RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
-ENTRYPOINT [ "lms", "server", "start" ]
+ENV PATH="/root/.lmstudio/bin:${PATH}"
+
+EXPOSE 1234
+
+CMD sh -c "lms daemon up && lms server start --port 1234 --bind 0.0.0.0"
