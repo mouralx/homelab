@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if command -v lms &> /dev/null; then
+  echo "LMS is already installed. Skipping installation."
+  exit 0
+fi
+
 export PATH="/root/.lmstudio/bin:${PATH}"
 
 apt update
