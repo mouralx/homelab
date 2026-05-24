@@ -4,7 +4,7 @@ export PATH="/root/.lmstudio/bin:${PATH}"
 
 apt update
 apt upgrade -y
-apt install -y libatomic1 curl
+apt install -y curl libatomic1 libgomp1
 
 curl -fsSL https://lmstudio.ai/install.sh | bash
 
