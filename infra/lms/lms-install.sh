@@ -14,7 +14,4 @@ if ! command -v lms &> /dev/null; then
 fi
 
 lms daemon up
-lms server start
-
-# Keep the script running so the Docker container doesn't exit
-tail -f /dev/null
+lms server start --bind 0.0.0.0
