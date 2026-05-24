@@ -6,7 +6,7 @@ WORKDIR /lms
 
 ENV PATH="/root/.lmstudio/bin:${PATH}"
 
-RUN apt update --quiet && apt install -y curl libatomic1 libgomp --quiet
+RUN apt update --quiet && apt install -y curl libatomic1 --quiet
 
 RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
