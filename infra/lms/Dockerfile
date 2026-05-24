@@ -2,10 +2,8 @@ FROM ubuntu:24.04
 
 EXPOSE 1234
 
-ENV PATH="/root/.lmstudio/bin:${PATH}"
+WORKDIR /lms
 
-RUN apt update && apt install -y curl libatomic1
+COPY lms-install.sh lms-install.sh
 
-RUN curl -fsSL https://lmstudio.ai/install.sh | bash
-
-CMD sh -c "lms daemon up && lms server start"
+ENTRYPOINT [ "sh", "lms-install.sh" ]
