@@ -61,11 +61,11 @@ services:
     environment:
       - HERMES_DASHBOARD=1
       - HERMES_ALLOW_ROOT_GATEWAY=1
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: "2.0"
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 4G
+#          cpus: "2.0"
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -100,6 +100,11 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.10
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: "4.0"
   mosquitto:
     image: eclipse-mosquitto:openssl
     container_name: mosquitto
