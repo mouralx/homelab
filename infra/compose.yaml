@@ -99,7 +99,7 @@ services:
       default:
         ipv4_address: 10.51.0.10
     volumes:
-      - ${LMS_DATA_DIR}:~/.lmstudio
+      - ${LMS_DATA_DIR:-~/lms}:~/.lmstudio
     deploy:
       resources:
         reservations:
