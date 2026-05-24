@@ -15,3 +15,4 @@ fi
 
 lms daemon up
 lms server start --bind 0.0.0.0
+lms log stream
