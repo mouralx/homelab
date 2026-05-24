@@ -6,9 +6,7 @@ apt update
 apt upgrade -y
 apt install -y libatomic1 curl
 
-curl -fsSL https://lmstudio.ai/install.sh
-
-sh install.sh 
+curl -fsSL https://lmstudio.ai/install.sh | bash
 
 lms get google/gemma-4-e4b
 lms load google/gemma-4-e4b
