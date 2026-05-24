@@ -11,4 +11,4 @@ curl -fsSL https://lmstudio.ai/install.sh | bash
 lms get google/gemma-4-e4b
 lms load google/gemma-4-e4b
 lms daemon up
-lms start server
+lms server start
