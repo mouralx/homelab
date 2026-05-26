@@ -185,6 +185,21 @@ services:
         ipv4_address: 10.51.0.12
     volumes:
       - ${PGADMIN_DATA_DIR}/servers.json:/pgadmin4/servers.json
+  planka:
+    container_name: planka
+    image: ghcr.io/plankanban/planka:latest
+    restart: unless-stopped
+    volumes:
+      - ${PLANKA_DATA_DIR:-~/planka}:/app/data
+    ports:
+      - 1337:1337
+    environment:
+      - BASE_URL=https://planka.mouras.me
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/planka
+      - SECRET_KEY=${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:latest

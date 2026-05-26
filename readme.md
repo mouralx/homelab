@@ -13,6 +13,7 @@ The Docker stack lives in `infra/compose.yaml`. Compose runtime values are expec
 ├── infra/
 │   ├── compose.yaml           # 📦 Home-lab Docker Compose stack
 │   ├── digger/Dockerfile      # 🎬 Container image for the Digger worker
+│   ├── lms/Dockerfile         # 🧠 Container image for LM Studio
 │   └── openclaw/Dockerfile    # 🔐 Container image for OpenClaw
 ├── scripts/
 │   ├── copy-env-vars.sh       # 🛠️ GitHub environment variable helper
@@ -29,19 +30,21 @@ Current services:
 
 | Service | Purpose | Ports |
 | --- | --- | --- |
-| 🎬 `digger` | Custom .NET worker for YTS discovery and Transmission queueing | none |
-| 📹 `frigate` | NVR and camera processing | `8971`, `8554`, `8555`, `5000` |
-| 🏡 `homeassistant` | Home automation | `8123` |
-| 🎞️ `jellyfin` | Media server | `8096`, `7359/udp` |
-| 📡 `mosquitto` | MQTT broker | `1883` |
+| � `forgejo` | Self-hosted Git service | internal |
+| 📹 `frigate` | NVR and camera processing | internal |
+| 🤖 `hermes` | Nous Research Hermes AI agent gateway | `8642`, `9119` |
+| 🏡 `homeassistant` | Home automation | internal |
+| 🎞️ `jellyfin` | Media server | internal |
+| 🧠 `lms` | LM Studio - Local model runtime and UI | `1234` |
+| 📡 `mosquitto` | MQTT broker | internal |
 | 🔁 `n8n` | Automation workflows backed by PostgreSQL | reverse proxy / internal |
 | 🌐 `npm` | Nginx Proxy Manager | `80`, `81`, `443` |
-| 🧠 `ollama` | Local model runtime | internal |
-| 🔐 `opeclaw` | OpenClaw gateway container built from `infra/openclaw` | `18789` |
-| 💬 `openwebui` | Web UI for Ollama | `8080` |
+| 💬 `openwebui` | Web UI for LM Studio | internal |
+| 📋 `planka` | Kanban board application | `1337` |
 | 🗄️ `pgadmin` | PostgreSQL administration UI | reverse proxy / internal |
-| 📊 `portainer` | Docker management UI | `9000` |
-| 🗃️ `postgres` | Shared PostgreSQL database | `5432` |
+| 📊 `portainer` | Docker management UI | internal |
+| 🗃️ `postgres` | Shared PostgreSQL database | internal |
+| ⬇️ `transmission` | Torrent client used by Digger | internal
 | ⬇️ `transmission` | Torrent client used by Digger | `9091`, `51413` |
 
 All services are attached to a custom bridge network on `10.51.0.0/24` with static container addresses.
@@ -51,9 +54,7 @@ All services are attached to a custom bridge network on `10.51.0.0/24` with stat
 Create `infra/.env` with the variables referenced by `infra/compose.yaml`. The workflow also writes this file during deployment from the selected GitHub Environment's variables and secrets.
 
 Required Compose variables:
-
-```text
-DIGGER_DATA_DIR
+ORGEJO_DATA_DIR
 FRIGATE_CONFIG_DIR
 FRIGATE_MEDIA_DIR
 FRIGATE_PASSWORD
@@ -62,14 +63,19 @@ JELLYFIN_CACHE_DIR
 JELLYFIN_CONFIG_DIR
 JELLYFIN_MEDIA_DIR
 JELLYFIN_SERVER_URL
+LMS_DATA_DIR (optional, defaults to ~/lms)
 MOSQUITTO_CONFIG_DIR
 MOSQUITTO_DATA_DIR
 MOSQUITTO_LOGS_DIR
 N8N_DATA_DIR
+N8N_ENCRYPTION_KEY
 NPM_CERTIFICATE_DIR
 NPM_DATA_DIR
-OLLAMA_DIR
 OPEN_WEBUI_DATA_DIR
+PGADMIN_DATA_DIR
+PGADMIN_DEFAULT_EMAIL
+PGADMIN_DEFAULT_PASSWORD
+PLANKA_DATA_DIR (optional, defaults to ~/planka)
 PGADMIN_DATA_DIR
 PGADMIN_DEFAULT_EMAIL
 PGADMIN_DEFAULT_PASSWORD
@@ -139,7 +145,11 @@ The selected GitHub Environment must contain the same variable names required by
 
 Important settings live in `src/Digger/Digger.Worker/appsettings.json`:
 
-| Setting | Description |
+| SYts:Genres` | Genres to discover (action, adventure, comedy, crime, drama, etc.) |
+| `Yts:Languages` | Languages to filter (e.g., en, pt) |
+| `Yts:MinimumSeeders` | Minimum seeders threshold for torrents |
+| `Yts:YearsBack` | How many years back to search for movies |
+| `etting | Description |
 | --- | --- |
 | `Transmission:ServerUrl` | Transmission RPC endpoint inside the Compose network |
 | `Transmission:User`, `Transmission:Password` | Transmission RPC credentials |
@@ -152,7 +162,7 @@ Important settings live in `src/Digger/Digger.Worker/appsettings.json`:
 | `MaxEnqueuedTorrents` | Maximum active queued torrents |
 | `StopTime` | Delay between worker cycles, in minutes |
 
-The Compose service mounts:
+The Compose service mounts:Forgejo, Plank
 
 ```text
 ${TRANSMISSION_DOWNLOADS_DIR}/movies -> /downloads/movies
