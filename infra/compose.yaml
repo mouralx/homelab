@@ -97,6 +97,20 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.6
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          cpus: '8.0'
+          memory: 16gb
+    volumes:
+      - ${OLLAMA_DATA_DIR:-~/ollama}:/root/.ollama
+    networks:
+      default:
+        ipv4_address: 10.51.0.9
   n8n:
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
