@@ -47,7 +47,7 @@ services:
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
-    user: "0:0"
+    user: 0:0
     restart: unless-stopped
     command: gateway run
     ports:
@@ -99,6 +99,7 @@ services:
         ipv4_address: 10.51.0.6
   ollama:
     image: docker.io/ollama/ollama:latest
+    user: 0:0
     container_name: ollama
     restart: unless-stopped
     deploy:
@@ -115,7 +116,7 @@ services:
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
     restart: unless-stopped
-    user: "0:0"
+    user: 0:0
     environment:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: "Europe/Lisbon"
@@ -169,7 +170,7 @@ services:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
-    user: "0:0"
+    user: 0:0
     depends_on:
       - postgres
     environment:
