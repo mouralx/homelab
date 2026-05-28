@@ -47,7 +47,6 @@ services:
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
-    user: 0:0
     restart: unless-stopped
     command: gateway run
     ports:
@@ -61,6 +60,8 @@ services:
     environment:
       - HERMES_DASHBOARD=1
       - HERMES_ALLOW_ROOT_GATEWAY=1
+      - PGUID=0
+      - PGID=0
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
