@@ -49,6 +49,7 @@ services:
     container_name: hermes
     restart: unless-stopped
     command: gateway run
+    privileged: true
     ports:
       - 8642:8642
       - 9119:9119
