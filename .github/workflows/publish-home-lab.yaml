@@ -9,7 +9,17 @@ on:
         options:
           - mouras-home-lab
       bring_down_first:
-        description: 'Bring down existing infrastructure before deploying?'
+        description: 'Bring down infrastructure down.'
+        required: true
+        type: boolean
+        default: false
+      update_packages:
+        description: 'Update system packages.'
+        required: true
+        type: boolean
+        default: false
+      upgrade_packages:
+        description: 'Upgrade system packages.'
         required: true
         type: boolean
         default: false
@@ -50,9 +60,21 @@ jobs:
       # Set up Docker on the runner to enable building and deploying the Docker Compose application
       - name: Set up container runtime
         run: |
-          curl -fsSL https://get.docker.com -o get-docker.sh
-          sh get-docker.sh
-          rm get-docker.sh
+            if command -v docker >/dev/null 2>&1; then
+              echo "Docker is already installed. Skipping installation."
+            else
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+              rm get-docker.sh
+            fi
+      
+      - name: Update System Packages
+        if: ${{ inputs.update_packages }}
+        run: sudo apt-get update
+      
+      - name: Upgrade System Packages
+        if: ${{ inputs.upgrade_packages }}
+        run: sudo apt-get upgrade -y
 
       # Create .env file from the variables and secrets attached to the selected GitHub Environment
       - name: Create .env file from selected environment

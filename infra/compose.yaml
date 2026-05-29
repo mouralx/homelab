@@ -53,7 +53,7 @@ services:
       - 8642:8642
       - 9119:9119
     volumes:
-      - ${HERMES_DATA_DIR:-/root/hermes}:/opt/data
+      - ${HERMES_DATA_DIR}:/opt/data
     networks:
       default:
         ipv4_address: 10.51.0.17
