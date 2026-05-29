@@ -67,14 +67,6 @@ jobs:
               sh get-docker.sh
               rm get-docker.sh
             fi
-      
-      - name: Update System Packages
-        if: ${{ inputs.update_packages }}
-        run: sudo apt-get update
-      
-      - name: Upgrade System Packages
-        if: ${{ inputs.upgrade_packages }}
-        run: sudo apt-get upgrade -y
 
       # Create .env file from the variables and secrets attached to the selected GitHub Environment
       - name: Create .env file from selected environment
@@ -90,6 +82,16 @@ jobs:
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
         run: docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
+
+      # Update the system packages on the runner to ensure the latest security patches and updates are applied before deploying the infrastructure
+      - name: Update System Packages
+        if: ${{ inputs.update_packages && inputs.bring_down_first }}
+        run: sudo apt-get update
+      
+      # Upgrade the system packages on the runner to ensure all packages are up to date with the latest versions and security patches before deploying the infrastructure
+      - name: Upgrade System Packages
+        if: ${{ inputs.upgrade_packages && inputs.update_packages && inputs.bring_down_first }}
+        run: sudo apt-get upgrade -y
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build infrastructure
