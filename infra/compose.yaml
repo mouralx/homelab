@@ -59,7 +59,7 @@ services:
     environment:
       - HERMES_DASHBOARD=1
     volumes:
-      - hermes_data:/data
+      - hermes_data:/data:rw
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
