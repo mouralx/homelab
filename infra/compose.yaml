@@ -59,9 +59,6 @@ services:
         ipv4_address: 10.51.0.17
     environment:
       - HERMES_DASHBOARD=1
-      - HERMES_ALLOW_ROOT_GATEWAY=1
-      - PGUID=0
-      - PGID=0
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
