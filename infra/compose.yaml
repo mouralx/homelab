@@ -53,13 +53,13 @@ services:
     ports:
       - 8642:8642
       - 9119:9119
-    volumes:
-      - ${HERMES_DATA_DIR}:/opt/data
     networks:
       default:
         ipv4_address: 10.51.0.17
     environment:
       - HERMES_DASHBOARD=1
+    volumes:
+      - hermes_data:/data
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -213,3 +213,5 @@ networks:
     ipam:
       config:
         - subnet: 10.51.0.0/24
+volumes:
+  hermes_data:
