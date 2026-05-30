@@ -51,6 +51,7 @@ services:
     environment:
       - HERMES_DASHBOARD=1
       - HERMES_DASHBOARD_INSECURE=1
+      - HERMES_DASHBOARD_TUI=1
     command: gateway run
     ports:
       - 8642:8642
