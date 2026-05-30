@@ -43,7 +43,7 @@ services:
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
   hermes-dashboard:
-    image: hermes-agent
+    image: nousresearch/hermes-agent
     container_name: hermes-dashboard
     restart: unless-stopped
     depends_on:
@@ -56,7 +56,7 @@ services:
     command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
   hermes-gateway:
     build: .
-    image: hermes-agent
+    image: nousresearch/hermes-agent
     container_name: hermes
     restart: unless-stopped
     volumes:
