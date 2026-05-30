@@ -56,9 +56,7 @@ services:
     command: ["dashboard", "--host", "0.0.0.0", "--no-open", "--port", "9119", "--insecure"]
     ports:
       - 9119:9119
-    networks:
-      default:
-        ipv4_address: 10.51.0.18
+    network_mode: host
   hermes-gateway:
     image: nousresearch/hermes-agent
     container_name: hermes-gateway
@@ -71,9 +69,7 @@ services:
     command: ["gateway", "run"]
     ports:
       - 8642:8642
-    networks:
-      default:
-        ipv4_address: 10.51.0.17
+    network_mode: host
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
