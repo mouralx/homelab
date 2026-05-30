@@ -54,6 +54,9 @@ services:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
     command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
+    networks:
+      default:
+        ipv4_address: 10.51.0.18
   hermes-gateway:
     image: nousresearch/hermes-agent
     container_name: hermes-gateway
@@ -64,6 +67,9 @@ services:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
     command: ["gateway", "run"]
+    networks:
+      default:
+        ipv4_address: 10.51.0.17
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
