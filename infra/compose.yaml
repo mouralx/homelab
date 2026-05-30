@@ -49,18 +49,17 @@ services:
     depends_on:
       - hermes-gateway
     volumes:
-      - ~/.hermes:/opt/data
+      - ${HERMES_DATA_DIR}/dashboard:/opt/data
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
     command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
   hermes-gateway:
-    build: .
     image: nousresearch/hermes-agent
-    container_name: hermes
+    container_name: hermes-gateway
     restart: unless-stopped
     volumes:
-      - ~/.hermes:/opt/data
+      - ${HERMES_DATA_DIR}/gateway:/opt/data
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
