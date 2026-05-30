@@ -42,34 +42,22 @@ services:
         ipv4_address: 10.51.0.3
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
-  hermes-dashboard:
+  hermes:
     image: nousresearch/hermes-agent
-    container_name: hermes-dashboard
-    restart: unless-stopped
-    depends_on:
-      - hermes-gateway
-    volumes:
-      - ${HERMES_DATA_DIR}/dashboard:/opt/data
-    environment:
-      - HERMES_UID=${HERMES_UID:-10000}
-      - HERMES_GID=${HERMES_GID:-10000}
-    command: ["dashboard", "--host", "0.0.0.0", "--no-open", "--port", "9119", "--insecure"]
-    ports:
-      - 9119:9119
-    network_mode: host
-  hermes-gateway:
-    image: nousresearch/hermes-agent
-    container_name: hermes-gateway
+    container_name: hermes
     restart: unless-stopped
     volumes:
-      - ${HERMES_DATA_DIR}/gateway:/opt/data
+      - ${HERMES_DATA_DIR}:/opt/data
     environment:
-      - HERMES_UID=${HERMES_UID:-10000}
-      - HERMES_GID=${HERMES_GID:-10000}
-    command: ["gateway", "run"]
+      - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_INSECURE=1
+    command: gateway run
     ports:
       - 8642:8642
-    network_mode: host
+      - 9119:9119
+    networks:
+      default:
+        ipv4_address: 10.51.0.17
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
