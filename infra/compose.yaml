@@ -21,7 +21,6 @@ services:
   forgejo:
     container_name: forgejo
     image: codeberg.org/forgejo/forgejo:15
-    user: 0:0
     restart: always
     volumes:
       - ${FORGEJO_DATA_DIR}:/data
@@ -30,7 +29,6 @@ services:
       default:
         ipv4_address: 10.51.0.16
   frigate:
-    user: 0:0
     container_name: frigate
     restart: unless-stopped
     image: ghcr.io/blakeblackshear/frigate:stable
@@ -59,7 +57,7 @@ services:
     environment:
       - HERMES_DASHBOARD=1
     volumes:
-      - hermes_data:/data:rw
+      - ${HERMES_DATA_DIR}:/data:rw
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -75,7 +73,6 @@ services:
     container_name: jellyfin
     image: jellyfin/jellyfin
     restart: unless-stopped
-    user: 0:0
     volumes:
       - ${JELLYFIN_CONFIG_DIR}:/config
       - ${JELLYFIN_CACHE_DIR}:/cache
@@ -100,7 +97,6 @@ services:
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
     restart: unless-stopped
-    user: 0:0
     environment:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: "Europe/Lisbon"
@@ -152,7 +148,6 @@ services:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
-    user: 0:0
     depends_on:
       - postgres
     environment:
@@ -168,7 +163,7 @@ services:
     image: portainer/portainer-ce:latest
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /run/user/1000/docker.sock:/var/run/docker.sock
       - ${PORTAINER_DATA_DIR}:/data
     networks:
       default:
@@ -197,9 +192,7 @@ services:
       default:
         ipv4_address: 10.51.0.15
     environment:
-      - PUID=0
-      - PGID=0
-      - TZ=Etc/UTC
+      - TZ=Europe/Lisbon
       - USER=${TRANSMISSION_USERNAME}
       - PASS=${TRANSMISSION_PASSWORD}
       - WHITELIST=${TRANSMISSION_WHITELIST}
@@ -213,5 +206,3 @@ networks:
     ipam:
       config:
         - subnet: 10.51.0.0/24
-volumes:
-  hermes_data:
