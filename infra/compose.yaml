@@ -42,29 +42,10 @@ services:
         ipv4_address: 10.51.0.3
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
-  hermes:
-    image: nousresearch/hermes-agent:latest
-    container_name: hermes
-    restart: unless-stopped
-    command: hermes gateway run
-    ports:
-      - "8642:8642"
-      - "9119:9119"
-    environment:
-      HERMES_DASHBOARD: 1
-      HERMES_DASHBOARD_HOST: 0.0.0.0
-      HERMES_DASHBOARD_PORT: 9119
-      GATEWAY_ALLOW_ALL_USERS: "true"
-    volumes:
-      - ${HERMES_DATA_DIR}:/opt/data:rw
-    networks:
-      default:
-        ipv4_address: 10.51.0.17
   hermes-dashboard:
     image: hermes-agent
     container_name: hermes-dashboard
     restart: unless-stopped
-    network_mode: host
     depends_on:
       - hermes-gateway
     volumes:
@@ -78,7 +59,6 @@ services:
     image: hermes-agent
     container_name: hermes
     restart: unless-stopped
-    network_mode: host
     volumes:
       - ~/.hermes:/opt/data
     environment:
