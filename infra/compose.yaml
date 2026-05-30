@@ -46,7 +46,7 @@ services:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
-    command: gateway run
+    command: gateway run --insecure
     privileged: true
     ports:
       - 8642:8642
