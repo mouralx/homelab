@@ -60,6 +60,31 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.17
+  hermes-dashboard:
+    image: hermes-agent
+    container_name: hermes-dashboard
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - hermes-gateway
+    volumes:
+      - ~/.hermes:/opt/data
+    environment:
+      - HERMES_UID=${HERMES_UID:-10000}
+      - HERMES_GID=${HERMES_GID:-10000}
+    command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
+  hermes-gateway:
+    build: .
+    image: hermes-agent
+    container_name: hermes
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ~/.hermes:/opt/data
+    environment:
+      - HERMES_UID=${HERMES_UID:-10000}
+      - HERMES_GID=${HERMES_GID:-10000}
+    command: ["gateway", "run"]
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
