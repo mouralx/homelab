@@ -53,7 +53,7 @@ services:
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
-    command: ["dashboard", "--host", "0.0.0.0", "--no-open", "--port", "9119"]
+    command: ["dashboard", "--host", "0.0.0.0", "--no-open", "--port", "9119", "--insecure"]
     ports:
       - 9119:9119
     networks:
