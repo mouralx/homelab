@@ -46,19 +46,19 @@ services:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
-    command: gateway run --insecure
-    privileged: true
     ports:
-      - 8642:8642
-      - 9119:9119
+      - "8642:8642"
+      - "9119:9119"
+    environment:
+      HERMES_DASHBOARD: "1"
+      HERMES_DASHBOARD_HOST: "0.0.0.0"
+      HERMES_DASHBOARD_PORT: "9119"
+      GATEWAY_ALLOW_ALL_USERS: "true"
+    volumes:
+      - ${HERMES_DATA_DIR}:/opt/data:rw
     networks:
       default:
         ipv4_address: 10.51.0.17
-    environment:
-      - HERMES_DASHBOARD=1
-      - GATEWAY_ALLOW_ALL_USERS=true
-    volumes:
-      - ${HERMES_DATA_DIR}:/data:rw
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
