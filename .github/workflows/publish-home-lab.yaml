@@ -8,6 +8,7 @@ on:
         type: choice
         options:
           - mouras-home-lab
+        default: mouras-home-lab
       bring_down_first:
         description: 'Bring down infrastructure down.'
         required: true
@@ -19,6 +20,10 @@ jobs:
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
     steps:
+
+      # Publish the DeepWiki-Open image to the GitHub Container Registry to ensure the latest version is available for deployment
+      - name: "Publish / Update DeepWiki-Open image"
+        run: scripts/externals/deepwiki-open.sh
 
       # Check out the repository to access the .env file and deployment scripts
       - name: Checking out repository
