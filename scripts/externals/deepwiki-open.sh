@@ -1,3 +1,5 @@
+echo "$SUDO_PASSWORD" | sudo -S -v 
+
 git clone https://github.com/AsyncFuncAI/deepwiki-open.git
 
 docker build ./deepwiki-open -t ghcr.io/home-lab/deepwiki-open:latest
