@@ -26,8 +26,8 @@ jobs:
         uses: actions/checkout@v3
 
       # Publish the DeepWiki-Open image to the GitHub Container Registry to ensure the latest version is available for deployment
-      # - name: "Publish / Update DeepWiki-Open image"
-      #  run: sh scripts/externals/deepwiki-open.sh ${{ secrets.SUDO_PASSWORD }}
+      - name: "Publish / Update DeepWiki-Open image"
+        run: sh scripts/externals/deepwiki-open.sh ${{ secrets.SUDO_PASSWORD }}
 
       # Install jq and use it to replace the Transmission username and password in the appsettings.json file with the values from the selected environment's variables and secrets
       - name: Redacting configurations

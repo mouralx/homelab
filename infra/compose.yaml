@@ -1,7 +1,7 @@
 services:
   deepwiki:
     container_name: deepwiki
-    image: ghcr.io/asyncfuncai/deepwiki-open:latest
+    image: deepwiki-open:latest
     pull_policy: never
     ports:
       - 8001:8001
