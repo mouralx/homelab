@@ -9,7 +9,7 @@ echo "$ARG_PASSWORD" | sudo -S -v && clear
 git clone https://github.com/AsyncFuncAI/deepwiki-open.git
 
 # Build the docker image and tag it for the GitHub Container Registry
-docker build ./deepwiki-open -t ghcr.io/home-lab/deepwiki-open:latest
+docker build ./deepwiki-open -t deepwiki-open:latest
 
 # Log in to the GitHub Container Registry using the provided credentials
 rm -rf deepwiki-open
