@@ -18,6 +18,9 @@ services:
       - ~/deepwiki/logs:/app/api/logs
     mem_limit: 4g
     mem_reservation: 2g
+    networks:
+      default:
+        ipv4_address: 10.51.0.18
   digger:
     build:
       context: ../src/Digger
