@@ -1,4 +1,21 @@
 services:
+  deepwiki:
+    container_name: deepwiki
+    image: deepwiki-open:latest
+    ports:
+      - 8001:8001
+      - 3000:3000
+    environment:
+      - PORT=8001
+      - NODE_ENV=production
+      - SERVER_BASE_URL=http://deepwiki.mouras.me
+      - LOG_LEVEL=INFO
+      - LOG_FILE_PATH=api/logs/application.log
+    volumes:
+      - ~/deepwiki/data:/root/.adalflow
+      - ~/deepwiki/logs:/app/api/logs
+    mem_limit: 4g
+    mem_reservation: 2g
   digger:
     build:
       context: ../src/Digger
