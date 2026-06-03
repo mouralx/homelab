@@ -15,8 +15,6 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ~/deepwiki/data:/root/.adalflow
-      - ~/deepwiki/logs:/app/api/logs
-      - ~/deepwiki/config:/app/api/config
     mem_limit: 4g
     mem_reservation: 2g
     networks:
