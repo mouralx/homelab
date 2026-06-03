@@ -12,6 +12,7 @@ services:
       - SERVER_BASE_URL=http://deepwiki.mouras.me
       - LOG_LEVEL=INFO
       - LOG_FILE_PATH=api/logs/application.log
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ~/deepwiki/data:/root/.adalflow
       - ~/deepwiki/logs:/app/api/logs
