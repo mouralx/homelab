@@ -208,23 +208,20 @@ services:
     volumes:
       - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
   transmission:
-    image: lscr.io/linuxserver/transmission:latest
+    build:
+      context: ../src/Transmission
+      dockerfile: ../../infra/transmission/Dockerfile
     container_name: transmission
     restart: unless-stopped
     networks:
       default:
         ipv4_address: 10.51.0.15
     environment:
-      - TZ=Europe/Lisbon
-      - USER=${TRANSMISSION_USERNAME}
-      - PASS=${TRANSMISSION_PASSWORD}
-      - WHITELIST=${TRANSMISSION_WHITELIST}
-      - HOST_WHITELIST=${TRANSMISSION_WHITELIST}
-      - PUID=1000
-      - PGID=1000
+      TRANSMISSION_USER: ${TRANSMISSION_USER}
+      TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
     volumes:
-      - ${TRANSMISSION_CONFIG_DIR}:/config
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
+      - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
 networks:
   default:
     driver: bridge
