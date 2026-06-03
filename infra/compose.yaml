@@ -217,7 +217,7 @@ services:
       default:
         ipv4_address: 10.51.0.15
     environment:
-      TRANSMISSION_USER: ${TRANSMISSION_USER}
+      TRANSMISSION_USER: ${TRANSMISSION_USER:-transmission}
       TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
     volumes:
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
