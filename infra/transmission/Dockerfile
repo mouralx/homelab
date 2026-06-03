@@ -4,8 +4,8 @@ ENV TRANSMISSION_USER="transmission" TRANSMISSION_PASSWORD="transmission" TRANSM
 
 RUN apt-get update && apt-get install -y transmission-daemon && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /config /downloads /incomplete
+RUN mkdir -p /downloads /incomplete
 
 EXPOSE 9091 51413 51413/udp
 
-ENTRYPOINT ["/bin/sh", "-c", "transmission-daemon -f --config-dir /config -a \"$TRANSMISSION_ALLOWED\" --auth -u \"$TRANSMISSION_USER\" --password \"$TRANSMISSION_PASSWORD\" --incomplete-dir /incomplete -w /downloads"]
+ENTRYPOINT ["/bin/sh", "-c", "transmission-daemon -f -a \"$TRANSMISSION_ALLOWED\" --auth -u \"$TRANSMISSION_USER\" --password \"$TRANSMISSION_PASSWORD\" --incomplete-dir /incomplete -w /downloads"]
