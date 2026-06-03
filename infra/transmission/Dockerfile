@@ -8,4 +8,4 @@ RUN mkdir -p /downloads /incomplete
 
 EXPOSE 9091 51413 51413/udp
 
-ENTRYPOINT [ "transmission-daemon", "-f", "--allowed", "\"${TRANSMISSION_ALLOWED}\"", "-u", "\"${TRANSMISSION_USER}\"", "-p", "\"${TRANSMISSION_PASSWORD}\"", "--incomplete-dir", "/incomplete", "-w", "/downloads" ]
+ENTRYPOINT [ "transmission-daemon", "-f", "-a", "*.*.*.*", "-u", "\"${TRANSMISSION_USER}\"", "-p", "\"${TRANSMISSION_PASSWORD}\"", "--incomplete-dir", "/incomplete", "-w", "/downloads" ]
