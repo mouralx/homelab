@@ -22,6 +22,7 @@ services:
       default:
         ipv4_address: 10.51.0.18
   digger:
+    user: 1000:1000
     build:
       context: ../src/Digger
       dockerfile: ../../infra/digger/Dockerfile
@@ -36,7 +37,7 @@ services:
       - transmission
     volumes:
       - ${TRANSMISSION_DOWNLOADS_DIR}/movies:/downloads/movies:rw
-      - ${DIGGER_DATA_DIR}:/digger/data
+      - ${DIGGER_DATA_DIR}:/digger/data:rw
     networks:
       default:
         ipv4_address: 10.51.0.2
