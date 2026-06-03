@@ -22,7 +22,6 @@ services:
       default:
         ipv4_address: 10.51.0.18
   digger:
-    user: 1000:1000
     build:
       context: ../src/Digger
       dockerfile: ../../infra/digger/Dockerfile
@@ -221,6 +220,8 @@ services:
       - PASS=${TRANSMISSION_PASSWORD}
       - WHITELIST=${TRANSMISSION_WHITELIST}
       - HOST_WHITELIST=${TRANSMISSION_WHITELIST}
+      - PUID=1000
+      - PGID=1000
     volumes:
       - ${TRANSMISSION_CONFIG_DIR}:/config
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
