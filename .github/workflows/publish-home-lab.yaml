@@ -14,6 +14,11 @@ on:
         required: true
         type: boolean
         default: false
+      build_deepwiki_open:
+        description: 'Publish / Update DeepWiki-Open image before deployment.'
+        required: true
+        type: boolean
+        default: false
 jobs:
   deploy:
     name: "Deploy to: ${{ inputs.environment }}"
@@ -27,6 +32,7 @@ jobs:
 
       # Publish the DeepWiki-Open image to the GitHub Container Registry to ensure the latest version is available for deployment
       - name: "Publish / Update DeepWiki-Open image"
+        if: ${{ inputs.build_deepwiki_open }}
         run: sh scripts/externals/deepwiki-open.sh ${{ secrets.SUDO_PASSWORD }} ${{ secrets.OPENAI_API_KEY }}
 
       # Install jq and use it to replace the Transmission username and password in the appsettings.json file with the values from the selected environment's variables and secrets
