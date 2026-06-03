@@ -209,8 +209,8 @@ services:
       - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
   transmission:
     build:
-      context: ../src/transmission
-      dockerfile: ../../infra/transmission/Dockerfile
+      context: ./transmission
+      dockerfile: Dockerfile
     container_name: transmission
     restart: unless-stopped
     networks:
