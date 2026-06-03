@@ -8,4 +8,4 @@ RUN mkdir -p /downloads /incomplete
 
 EXPOSE 9091 51413 51413/udp
 
-ENTRYPOINT ["/bin/sh", "-c", "transmission-daemon -f --rpc-host-whitelist='*' -u \"$TRANSMISSION_USER\" -p \"$TRANSMISSION_PASSWORD\" --incomplete-dir /incomplete -w /downloads"]
+ENTRYPOINT ["/bin/sh", "-c", "transmission-daemon -f -a \"$TRANSMISSION_ALLOWED\" --auth -u \"$TRANSMISSION_USER\" --password \"$TRANSMISSION_PASSWORD\" --incomplete-dir /incomplete -w /downloads"]
