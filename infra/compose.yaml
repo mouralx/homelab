@@ -35,8 +35,8 @@ services:
     depends_on:
       - transmission
     volumes:
-      - ${TRANSMISSION_DOWNLOADS_DIR}/movies:/downloads/movies:rw
-      - ${DIGGER_DATA_DIR}:/digger/data:rw
+      - /mnt/ssd/downloads/movies:/downloads/movies:rw
+      - ~/digger:/digger/data:rw
     networks:
       default:
         ipv4_address: 10.51.0.2
@@ -45,7 +45,7 @@ services:
     image: codeberg.org/forgejo/forgejo:15
     restart: always
     volumes:
-      - ${FORGEJO_DATA_DIR}:/data
+      - ~/forgejo/data:/data
       - /etc/localtime:/etc/localtime:ro
     networks:
       default:
@@ -57,8 +57,8 @@ services:
     shm_size: "512mb"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${FRIGATE_CONFIG_DIR}:/config
-      - ${FRIGATE_MEDIA_DIR}:/media/frigate
+      - ~/frigate/config:/config
+      - ~/frigate/media:/media/frigate
     networks:
       default:
         ipv4_address: 10.51.0.3
@@ -69,7 +69,7 @@ services:
     container_name: hermes
     restart: unless-stopped
     volumes:
-      - ${HERMES_DATA_DIR}:/opt/data
+      - ~/hermes/data:/opt/data
     environment:
       - HERMES_DASHBOARD=1
       - HERMES_DASHBOARD_INSECURE=1
@@ -85,7 +85,7 @@ services:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
-      - ${HOMEASSISTANT_CONFIG_DIR}:/config
+      - ~/homeassistant/config:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
@@ -97,9 +97,9 @@ services:
     image: jellyfin/jellyfin
     restart: unless-stopped
     volumes:
-      - ${JELLYFIN_CONFIG_DIR}:/config
-      - ${JELLYFIN_CACHE_DIR}:/cache
-      - ${JELLYFIN_MEDIA_DIR}:/media
+      - ~/jellyfin/config:/config
+      - ~/jellyfin/cache:/cache
+      - /mnt/ssd/transmission/downloads:/media
     environment:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
     networks:
@@ -110,9 +110,9 @@ services:
     container_name: mosquitto
     restart: unless-stopped
     volumes:
-      - ${MOSQUITTO_DATA_DIR}:/mosquitto/data
-      - ${MOSQUITTO_CONFIG_DIR}:/mosquitto/config
-      - ${MOSQUITTO_LOGS_DIR}:/mosquitto/log
+      - ~/mosquitto/data:/mosquitto/data
+      - ~/mosquitto/config:/mosquitto/config
+      - ~/mosquitto/log:/mosquitto/log
     networks:
       default:
         ipv4_address: 10.51.0.6
@@ -141,7 +141,7 @@ services:
     ports:
       - 5678:5678
     volumes:
-      - ${N8N_DATA_DIR}:/home/node/.n8n:rw
+      - ~/n8n:/home/node/.n8n:rw
     networks:
       default:
         ipv4_address: 10.51.0.7
@@ -152,8 +152,8 @@ services:
     environment:
       TZ: Europe/Lisbon
     volumes:
-      - ${NPM_DATA_DIR}:/data
-      - ${NPM_CERTIFICATE_DIR}:/etc/letsencrypt
+      - ~/npm/data:/data
+      - ~/npm/letsencrypt:/etc/letsencrypt
     ports:
       - 443:443
       - 80:80
@@ -169,7 +169,7 @@ services:
       default:
         ipv4_address: 10.51.0.11
     volumes:
-      - ${OPEN_WEBUI_DATA_DIR}:/app/backend/data
+      - ~/openwebui/data:/app/backend/data
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
@@ -183,14 +183,14 @@ services:
       default:
         ipv4_address: 10.51.0.12
     volumes:
-      - ${PGADMIN_DATA_DIR}/servers.json:/pgadmin4/servers.json
+      - ~/pgadmin/servers.json:/pgadmin4/servers.json
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:latest
     restart: unless-stopped
     volumes:
       - /run/user/1000/docker.sock:/var/run/docker.sock
-      - ${PORTAINER_DATA_DIR}:/data
+      - ~/portainer/data:/data
     networks:
       default:
         ipv4_address: 10.51.0.13
@@ -209,7 +209,7 @@ services:
       default:
         ipv4_address: 10.51.0.14
     volumes:
-      - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
+      - ~/postgres/data:/var/lib/postgresql/data
   transmission:
     build:
       context: ./transmission
@@ -223,8 +223,8 @@ services:
       TRANSMISSION_USER: ${TRANSMISSION_USER:-transmission}
       TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
     volumes:
-      - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
-      - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
+      - /mnt/ssd/transmission/downloads:/downloads:rw
+      - /mnt/ssd/transmission/incomplete:/incomplete:rw
 networks:
   default:
     driver: bridge
