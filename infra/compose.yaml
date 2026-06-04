@@ -117,6 +117,7 @@ services:
       default:
         ipv4_address: 10.51.0.6
   n8n:
+    user: 1000:1000
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
     restart: unless-stopped
@@ -138,7 +139,7 @@ services:
       DB_POSTGRESDB_SCHEMA: public
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ${N8N_DATA_DIR}:/home/node/.n8n
+      - ${N8N_DATA_DIR}:/home/node/.n8n:rw
     networks:
       default:
         ipv4_address: 10.51.0.7
