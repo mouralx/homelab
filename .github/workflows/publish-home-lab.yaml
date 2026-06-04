@@ -92,15 +92,15 @@ jobs:
       # Pull the latest Docker images for the application if the update_images input is true, suppressing the output for cleaner logs
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
-        run: docker compose -f infra/compose.yaml pull --quiet
+        run: docker compose -f infra/compose.yaml pull
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build infrastructure
-        run: docker compose -f infra/compose.yaml build --quiet
+        run: docker compose -f infra/compose.yaml build
 
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Instantiate infrastructure
-        run: docker compose -f infra/compose.yaml up -d --quiet-pull
+        run: docker compose -f infra/compose.yaml up -d
       
       # Clean up any dangling Docker images to free up disk space on the runner
       - name: Clean docker dangling images
