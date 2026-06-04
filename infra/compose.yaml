@@ -35,7 +35,7 @@ services:
     depends_on:
       - transmission
     volumes:
-      - /mnt/ssd/downloads/movies:/downloads/movies:rw
+      - /mnt/ssd/transmission/downloads/movies:/downloads/movies:rw
       - ~/digger:/digger/data:rw
     networks:
       default:
