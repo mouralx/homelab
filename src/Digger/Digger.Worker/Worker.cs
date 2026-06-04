@@ -259,43 +259,91 @@ public class Worker : BackgroundService
             throw;
         }
     }
-        _data.Movies.UpdateRange(moviesToEnqueue);
-        _data.SaveChanges();
-    }
 
     private void GetNewMovies()
     {
-        List<YtsMovieModel> ytsMovies = _ytsService.GetMovies().ToList();
-        ytsMovies.ForEach(delegate (YtsMovieModel m)
+        try
         {
-            if (_data.Movies.Find(long.Parse(m.Id)) == null)
+            _logger.LogInformation("Fetching movies from YTS API...");
+            var newMovies = _ytsService.GetMovies();
+            _logger.LogInformation("Fetched {Count} movies from YTS", newMovies.Count);
+            
+            var addedCount = 0;
+            var skippedCount = 0;
+            
+            foreach (var movie in newMovies)
             {
-                _data.Movies.Add(new Digger.Data.Entities.Movie
+                var movieId = long.Parse(movie.Id);
+                var existingMovie = _data.Movies.FirstOrDefault(m => m.Id == movieId);
+                if (existingMovie == null)
                 {
-                    Id = long.Parse(m.Id),
-                    Name = m.Name,
-                    TorrentUrl = m.TorrentUrl,
-                    Path = Path.Combine(_configuration.GetRequiredSection("DownloadDirectory").Get<string>(), m.Id.ToString()),
-                    Size = m.Size,
-                    Timestamp = DateTime.Now,
-                    PublishDate = m.PublishDate,
-                    LastKnownStatus = MovieStatus.NotEnqueued
-                });
+                    _logger.LogDebug("Adding new movie: {MovieName} (Size: {Size} bytes, Published: {PublishDate})", 
+                        movie.Name, movie.Size, movie.PublishDate);
+                    
+                    var newMovie = new Digger.Data.Entities.Movie
+                    {
+                        Id = movieId,
+                        Name = movie.Name,
+                        Size = movie.Size,
+                        TorrentUrl = movie.TorrentUrl,
+                        PublishDate = movie.PublishDate,
+                        Path = Path.Combine("/downloads/movies", movie.Name.Replace(" ", "_")),
+                        LastKnownStatus = Digger.Data.Common.Enums.MovieStatus.NotEnqueued,
+                        Timestamp = DateTime.UtcNow
+                    };
+                    
+                    _data.Movies.Add(newMovie);
+                    addedCount++;
+                }
+                else
+                {
+                    _logger.LogDebug("Movie already exists in database: {MovieName}", movie.Name);
+                    skippedCount++;
+                }
             }
-        });
-        _data.SaveChanges();
+            
+            if (addedCount > 0 || skippedCount > 0)
+            {
+                _data.SaveChanges();
+                _logger.LogInformation("GetNewMovies completed - Added: {AddedCount}, Skipped: {SkippedCount}", addedCount, skippedCount);
+            }
+            else
+            {
+                _logger.LogInformation("No new movies found");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching new movies from YTS");
+            throw;
+        }
     }
 
     private void RetryFailedMovies()
     {
-        string[] downloadingPaths = _transmissionService.GetPaths();
-        List<Digger.Data.Entities.Movie> enqueuedButNotDownloaded = _data.Movies.Where((Digger.Data.Entities.Movie m) => !downloadingPaths.Contains<string>(m.Path) && (int)m.LastKnownStatus == 8).ToList();
-        enqueuedButNotDownloaded.ForEach(delegate (Digger.Data.Entities.Movie m)
+        try
         {
-            m.LastKnownStatus = MovieStatus.NotEnqueued;
-            m.DownloadAttempt++;
-        });
-        _data.Movies.UpdateRange(enqueuedButNotDownloaded);
-        _data.SaveChanges();
+            _logger.LogInformation("Checking for failed movies to retry...");
+            var failedMovies = _data.Movies.Where(m => (int)m.LastKnownStatus == 12).ToList();
+            _logger.LogInformation("Found {Count} failed movies", failedMovies.Count);
+            
+            foreach (var movie in failedMovies)
+            {
+                _logger.LogDebug("Resetting failed movie for retry: {MovieName} (Attempts: {Attempts})", 
+                    movie.Name, movie.DownloadAttempt);
+                movie.LastKnownStatus = MovieStatus.NotEnqueued;
+            }
+            
+            if (failedMovies.Count > 0)
+            {
+                _data.Movies.UpdateRange(failedMovies);
+                _data.SaveChanges();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrying failed movies");
+            throw;
+        }
     }
 }

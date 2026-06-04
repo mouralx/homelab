@@ -5,7 +5,6 @@ public class Cleaner : BackgroundService
 {
     private readonly ILogger<Cleaner> _logger;
     private readonly DiggerContext _dbContext;
-    private readonly IServiceProvider _serviceProvider;
 
     public Cleaner(ILogger<Cleaner> logger, DiggerContext dbContext)
     {
