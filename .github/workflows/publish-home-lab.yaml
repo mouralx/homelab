@@ -14,6 +14,11 @@ on:
         required: true
         type: boolean
         default: false
+      update_images:
+        description: 'Update Docker images before deployment.'
+        required: true
+        type: boolean
+        default: false
       build_deepwiki_open:
         description: 'Publish / Update DeepWiki-Open image before deployment.'
         required: true
@@ -83,6 +88,11 @@ jobs:
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
         run: docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
+        
+      # Pull the latest Docker images for the application if the update_images input is true, suppressing the output for cleaner logs
+      - name: Pull new images
+        if: ${{ inputs.bring_down_first && inputs.update_images }}
+        run: docker compose -f infra/compose.yaml pull --quiet
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build infrastructure
