@@ -7,7 +7,7 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddHostedService<Worker>();
 
-builder.Services.AddHostedService<Cleaner>()
+builder.Services.AddHostedService<Cleaner>();
 
 builder.Services.AddDbContext<DiggerContext>(delegate (DbContextOptionsBuilder options)
 {
