@@ -170,8 +170,11 @@ services:
     networks:
       default:
         ipv4_address: 192.168.1.19
-    mem_reservation: 8g
-    cpus_reservation: 4
+    deploy:
+      resources:
+        reservations:
+          memory: 8g
+          cpus: '4.0'
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
