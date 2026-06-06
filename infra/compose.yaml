@@ -169,7 +169,7 @@ services:
       - ~/ollama:/data    
     networks:
       default:
-        ipv4_address: 192.168.1.19
+        ipv4_address: 10.51.0.19
     deploy:
       resources:
         reservations:
