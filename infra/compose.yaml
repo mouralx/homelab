@@ -173,7 +173,7 @@ services:
     deploy:
       resources:
         reservations:
-          memory: 8g
+          memory: 16g
           cpus: '4.0'
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
