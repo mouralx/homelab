@@ -161,6 +161,17 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ~/ollama:/data    
+    networks:
+      default:
+        ipv4_address: 192.168.1.19
+    mem_reservation: 8g
+    cpus_reservation: 4
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
