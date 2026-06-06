@@ -166,7 +166,7 @@ services:
     image: ollama/ollama:latest
     restart: unless-stopped
     volumes:
-      - ~/ollama:/data    
+      - ~/ollama:/data:rw    
     networks:
       default:
         ipv4_address: 10.51.0.19
