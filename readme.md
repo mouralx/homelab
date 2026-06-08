@@ -1,112 +1,103 @@
 # 🏠 Home Lab
 
-Personal home-lab infrastructure managed with Docker Compose, plus a small .NET worker named Digger that discovers movies and queues downloads through Transmission.
+This repository combines a Docker Compose home-lab stack with a .NET background worker named Digger. The stack runs media, automation, networking, and torrent services on a dedicated bridge network, while the Digger worker discovers movies from YTS, stores state in SQLite, and queues downloads through Transmission.
 
-The Docker stack lives in `infra/compose.yaml`. Compose runtime values are expected in `infra/.env`, which is created locally by you or during deployment by the GitHub Actions workflow.
+The implementation in this repository is not just infrastructure wiring; it also contains the actual worker logic under `src/Digger`, the compose file under `infra/compose.yaml`, the deployment automation under `.github/workflows/publish-home-lab.yaml`, and the helper scripts under `scripts/`.
 
-## 🗂️ Repository Layout
+---
+
+## 1. Repository Layout
 
 ```text
 .
 ├── .github/workflows/
-│   └── publish-home-lab.yaml  # 🚀 Manual deployment workflow
+│   └── publish-home-lab.yaml       # Manual deployment workflow for the self-hosted runner
 ├── infra/
-│   ├── compose.yaml           # 📦 Home-lab Docker Compose stack
-│   ├── digger/Dockerfile      # 🎬 Container image for the Digger worker
-│   ├── lms/Dockerfile         # 🧠 Container image for LM Studio
-│   └── openclaw/Dockerfile    # 🔐 Container image for OpenClaw
+│   ├── compose.yaml                 # Full home-lab stack definition
+│   ├── digger/Dockerfile            # Digger worker container image
+│   └── transmission/Dockerfile      # Transmission daemon image
 ├── scripts/
-│   ├── copy-env-vars.sh       # 🛠️ GitHub environment variable helper
-│   └── readme.md
-└── src/
-    └── Digger/                # ⚙️ .NET Digger solution
+│   ├── externals/deepwiki-open.sh   # Optional image publishing helper
+│   └── utils/copy-env-vars.sh       # Copy GitHub variables/secrets between environments
+└── src/Digger/                      # .NET solution for the worker and services
 ```
 
-## 🧱 Infrastructure
+### Key folders
 
-`infra/compose.yaml` defines the services that run on the home-lab host. Most services mount host directories supplied through environment variables, so `infra/.env` must exist before starting the stack.
+- `.github/workflows/` contains the deployment automation used to build and start the stack on a self-hosted runner.
+- `infra/` contains the runtime definition for every container and the Docker image definitions that support the stack.
+- `scripts/` contains support tooling for deployment and GitHub environment maintenance.
+- `src/Digger/` contains the full .NET application: the worker host, the YTS service, the Transmission service, and the SQLite-backed data layer.
 
-Current services:
+---
 
-| Service | Purpose | Ports |
-| --- | --- | --- |
-| � `forgejo` | Self-hosted Git service | internal |
-| 📹 `frigate` | NVR and camera processing | internal |
-| 🤖 `hermes` | Nous Research Hermes AI agent gateway | `8642`, `9119` |
-| 🏡 `homeassistant` | Home automation | internal |
-| 🎞️ `jellyfin` | Media server | internal |
-| 🧠 `lms` | LM Studio - Local model runtime and UI | `1234` |
-| 📡 `mosquitto` | MQTT broker | internal |
-| 🔁 `n8n` | Automation workflows backed by PostgreSQL | reverse proxy / internal |
-| 🌐 `npm` | Nginx Proxy Manager | `80`, `81`, `443` |
-| 💬 `openwebui` | Web UI for LM Studio | internal |
-| 📋 `planka` | Kanban board application | `1337` |
-| 🗄️ `pgadmin` | PostgreSQL administration UI | reverse proxy / internal |
-| 📊 `portainer` | Docker management UI | internal |
-| 🗃️ `postgres` | Shared PostgreSQL database | internal |
-| ⬇️ `transmission` | Torrent client used by Digger | internal
-| ⬇️ `transmission` | Torrent client used by Digger | `9091`, `51413` |
+## 2. Runtime Stack Overview
 
-All services are attached to a custom bridge network on `10.51.0.0/24` with static container addresses.
+The stack is defined in `infra/compose.yaml` and uses a custom Docker bridge network with subnet `10.51.0.0/24`. Each service is assigned a static container IP in that range, which makes it possible to keep internal service-to-service communication predictable.
 
-## 🔧 Configuration
+### Services in the current compose file
 
-Create `infra/.env` with the variables referenced by `infra/compose.yaml`. The workflow also writes this file during deployment from the selected GitHub Environment's variables and secrets.
+| Service | Image / Build | Purpose | Key runtime details |
+| --- | --- | --- | --- |
+| `digger` | Build from `../src/Digger` with `../../infra/digger/Dockerfile` | Runs the .NET movie-discovery worker | Depends on `transmission`; mounts `/mnt/ssd/transmission/downloads/movies:/downloads/movies` and `~/digger:/digger/data`; IP `10.51.0.2` |
+| `frigate` | `ghcr.io/blakeblackshear/frigate:stable` | Camera/NVR processing | Uses `FRIGATE_PASSWORD`; IP `10.51.0.3` |
+| `hermes` | `nousresearch/hermes-agent` | AI gateway/dashboard service | Exposes `8642` and `9119`; IP `10.51.0.17` |
+| `homeassistant` | `ghcr.io/home-assistant/home-assistant:stable` | Home automation | IP `10.51.0.4` |
+| `jellyfin` | `jellyfin/jellyfin` | Media server | Uses `JELLYFIN_SERVER_URL`; mounts `/mnt/ssd/transmission/downloads` as media source; IP `10.51.0.5` |
+| `n8n` | `docker.n8n.io/n8nio/n8n:next` | Workflow automation | Uses PostgreSQL backend and `N8N_ENCRYPTION_KEY`; exposes `5678`; IP `10.51.0.7` |
+| `npm` | `jc21/nginx-proxy-manager:latest` | Reverse proxy / HTTPS manager | Exposes `80`, `81`, `443`; IP `10.51.0.8` |
+| `pgadmin` | `dpage/pgadmin4:latest` | PostgreSQL admin UI | Depends on `postgres`; IP `10.51.0.12` |
+| `portainer` | `portainer/portainer-ce:latest` | Container management | Mounts `/run/user/1000/docker.sock`; IP `10.51.0.13` |
+| `postgres` | `postgres:15` | Shared PostgreSQL database | Uses `POSTGRES_USER` / `POSTGRES_PASSWORD`; IP `10.51.0.14` |
+| `transmission` | Custom image from `infra/transmission/Dockerfile` | Torrent daemon used by Digger | Exposes `9091` and `51413/udp`; mounts `/mnt/ssd/transmission/downloads` and `/mnt/ssd/transmission/incomplete`; IP `10.51.0.15` |
 
-Required Compose variables:
-ORGEJO_DATA_DIR
-FRIGATE_CONFIG_DIR
-FRIGATE_MEDIA_DIR
-FRIGATE_PASSWORD
-HOMEASSISTANT_CONFIG_DIR
-JELLYFIN_CACHE_DIR
-JELLYFIN_CONFIG_DIR
-JELLYFIN_MEDIA_DIR
-JELLYFIN_SERVER_URL
-LMS_DATA_DIR (optional, defaults to ~/lms)
-MOSQUITTO_CONFIG_DIR
-MOSQUITTO_DATA_DIR
-MOSQUITTO_LOGS_DIR
-N8N_DATA_DIR
-N8N_ENCRYPTION_KEY
-NPM_CERTIFICATE_DIR
-NPM_DATA_DIR
-OPEN_WEBUI_DATA_DIR
-PGADMIN_DATA_DIR
-PGADMIN_DEFAULT_EMAIL
-PGADMIN_DEFAULT_PASSWORD
-PLANKA_DATA_DIR (optional, defaults to ~/planka)
-PGADMIN_DATA_DIR
-PGADMIN_DEFAULT_EMAIL
-PGADMIN_DEFAULT_PASSWORD
-PORTAINER_DATA_DIR
-POSTGRES_DATA_DIR
-POSTGRES_PASSWORD
-POSTGRES_USER
-TRANSMISSION_CONFIG_DIR
-TRANSMISSION_DOWNLOADS_DIR
-TRANSMISSION_PASSWORD
-TRANSMISSION_USERNAME
-TRANSMISSION_WHITELIST
-```
+### Notes on service wiring
 
-Keep real values out of the repository. `infra/.env` contains local paths and secrets for the host where the stack runs.
+- The `digger` worker depends on `transmission`, meaning the worker is expected to start only after the torrent daemon is available.
+- `n8n` is wired to the `postgres` service, not to an external database, and is configured with `DB_TYPE=postgresdb` and `DB_POSTGRESDB_HOST=postgres`.
+- `jellyfin` reads from the Transmission download path, making the torrent download volume part of the media stack.
+- `portainer` uses the host Docker socket to monitor and manage the local daemon.
+- `transmission` is built from `infra/transmission/Dockerfile`, which starts `transmission-daemon` with authentication enabled and exposes the RPC and torrent ports.
 
-## ▶️ Running Locally
+---
 
-From the repository root:
+## 3. Local Configuration and Environment Variables
+
+The Compose file expects several runtime values to exist in `infra/.env`. That file is not committed to the repository and should contain local host-specific paths and secrets.
+
+### Environment values currently referenced by the stack
+
+The live compose file expects the following runtime values to be available from the host environment:
+
+- `FRIGATE_PASSWORD`
+- `JELLYFIN_SERVER_URL`
+- `N8N_ENCRYPTION_KEY`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_USER`
+- `TRANSMISSION_PASSWORD`
+- `TRANSMISSION_USER` (optional, defaults to `transmission` inside the custom image)
+
+### Important operational note
+
+The deployment workflow writes `infra/.env` on the runner from the selected GitHub environment, and it redacts runtime secrets into the worker configuration before starting containers. Never store real values in the repository; keep those values in the local environment or the GitHub environment used by the runner.
+
+---
+
+## 4. How to Run the Stack Locally
+
+From the repository root, start the stack using the local environment file:
 
 ```sh
 docker compose --env-file infra/.env -f infra/compose.yaml up -d
 ```
 
-Check status:
+Check container status:
 
 ```sh
 docker compose --env-file infra/.env -f infra/compose.yaml ps
 ```
 
-Follow logs for one service:
+View logs for a container:
 
 ```sh
 docker compose --env-file infra/.env -f infra/compose.yaml logs -f transmission
@@ -118,57 +109,234 @@ Stop the stack:
 docker compose --env-file infra/.env -f infra/compose.yaml down
 ```
 
-Pull updated images and recreate containers:
+If you want to pull the latest images and recreate containers:
 
 ```sh
 docker compose --env-file infra/.env -f infra/compose.yaml pull
 docker compose --env-file infra/.env -f infra/compose.yaml up -d
 ```
 
-## 🚀 Deployment Workflow
+---
 
-`.github/workflows/publish-home-lab.yaml` defines a manual `workflow_dispatch` deployment for a self-hosted runner.
+## 5. Deployment Workflow
 
-The workflow:
+The file `.github/workflows/publish-home-lab.yaml` defines the manual deployment flow used by the self-hosted GitHub runner.
 
-- 🎯 lets you choose a GitHub Environment, currently `mouras-home-lab`;
-- 📥 checks out this repository on the runner;
-- 📦 installs Docker;
-- 🔐 creates `infra/.env` from the selected environment's GitHub Actions `vars` and `secrets`;
-- 🚢 runs `docker compose -f infra/compose.yaml up -d --quiet-pull`.
+### What the workflow does
 
-The selected GitHub Environment must contain the same variable names required by `infra/compose.yaml`.
+1. Lets you choose a GitHub environment via `workflow_dispatch`.
+2. Checks out the repository on the runner.
+3. Optionally publishes or updates the DeepWiki-Open image.
+4. Redacts Transmission RPC credentials into `src/Digger/Digger.Worker/appsettings.json`.
+5. Creates `infra/.env` from the selected GitHub environment variables and secrets.
+6. Builds the Docker Compose stack and starts it in detached mode.
 
-## 🎬 Digger Worker
+### Deployment behavior details
 
-`src/Digger` contains the .NET worker used by the `digger` Compose service. It reads movie data from YTS, stores state in SQLite, and talks to Transmission through the RPC API.
+- The workflow uses `runs-on: self-hosted`, so it expects a runner that can access the local Docker daemon and the target host volumes.
+- The `Redacting configurations` step rewrites the worker settings file to inject the selected environment’s `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD` values.
+- The `Create .env file from selected environment` step writes all selected GitHub variables and secrets into `infra/.env`, which `docker compose` then uses at runtime.
+- The optional `build_deepwiki_open` input lets the pipeline publish the custom DeepWiki-Open image before deployment.
 
-Important settings live in `src/Digger/Digger.Worker/appsettings.json`:
+---
 
-| SYts:Genres` | Genres to discover (action, adventure, comedy, crime, drama, etc.) |
-| `Yts:Languages` | Languages to filter (e.g., en, pt) |
-| `Yts:MinimumSeeders` | Minimum seeders threshold for torrents |
-| `Yts:YearsBack` | How many years back to search for movies |
-| `etting | Description |
-| --- | --- |
-| `Transmission:ServerUrl` | Transmission RPC endpoint inside the Compose network |
-| `Transmission:User`, `Transmission:Password` | Transmission RPC credentials |
-| `Transmission:UseAuth` | Enables Transmission RPC authentication |
-| `Yts:*` | Movie discovery filters, languages, seed threshold, and API URL |
-| `DownloadDirectory` | Container path for organized movie downloads |
-| `ConnectionStrings:DiggerContext` | SQLite database location |
-| `MaxAllocatedSpace` | Maximum allocated movie storage |
-| `MaxEnqueuedRetries` | Retry limit before marking a movie failed |
-| `MaxEnqueuedTorrents` | Maximum active queued torrents |
-| `StopTime` | Delay between worker cycles, in minutes |
+## 6. Digger Worker Architecture
 
-The Compose service mounts:Forgejo, Plank
+The worker implementation lives under `src/Digger` and is split into the following layers:
+
+- `Digger.Worker` — the hosted worker entrypoint and the two background services (`Worker` and `Cleaner`).
+- `Digger.Services` — the YTS discovery service and the Transmission RPC client wrapper.
+- `Digger.Data` and `Digger.Data.Common` — the SQLite database context, entity model, and movie status enum.
+
+### Worker startup flow
+
+The application entrypoint is `src/Digger/Digger.Worker/Program.cs`. It:
+
+- creates the generic host;
+- registers `Worker` and `Cleaner` as hosted services;
+- configures `DiggerContext` to use SQLite via `UseSqlite(...)`;
+- registers `IYtsService` as `YtsService`;
+- registers `ITransmissionService` as `TransmissionService`;
+- builds and runs the host.
+
+### Runtime responsibilities
+
+The `Worker` service repeatedly performs the following operations in a loop:
+
+1. fetches new movies from YTS;
+2. stores any new titles in the SQLite database;
+3. marks old, ready-to-download entries for skipping when the disk allocation cap is exceeded;
+4. checks completed or stopped torrents and updates the movie status accordingly;
+5. retries movies marked as failed;
+6. enqueues new torrents if the current download count is below the configured maximum.
+
+The `Cleaner` service runs in parallel and removes directories for movies already marked as `RolledOut`, helping keep the download folder clean as the worker rolls out old content.
+
+---
+
+## 7. Data Model and Status Flow
+
+The main entity is `Digger.Data.Entities.Movie`, which stores:
+
+- `Id` — the YTS movie identifier.
+- `Name` — the movie title.
+- `Path` — the local download folder path.
+- `TorrentUrl` — the torrent file URL used by Transmission.
+- `Timestamp` — the moment the entry was created.
+- `DownloadAttempt` — retry counter.
+- `LastKnownStatus` — the current lifecycle state.
+- `Size` — torrent size in bytes.
+- `PublishDate` — the release date used in ordering.
+
+The possible statuses are defined in `Digger.Data.Common.Enums.MovieStatus`:
 
 ```text
-${TRANSMISSION_DOWNLOADS_DIR}/movies -> /downloads/movies
-${DIGGER_DATA_DIR}                   -> /digger/data
+Stopped,
+PendingCheck,
+Checking,
+PendingDownload,
+Downloading,
+PendingSeed,
+Seeding,
+NotEnqueued,
+Enqueued,
+Failed,
+RolledOut,
+Complete,
+Skipped
 ```
 
-## 💾 Backups
+This enum is used to represent the current lifecycle of each movie from discovery to completion or failure.
 
-Back up the host directories referenced in `infra/.env` before host maintenance, image upgrades, or destructive Compose operations. The most important data is PostgreSQL, Nginx Proxy Manager certificates, Home Assistant, Frigate, n8n, Jellyfin, Portainer, Open WebUI, Ollama, Transmission, and Digger's SQLite database under `DIGGER_DATA_DIR`.
+---
+
+## 8. YTS Discovery Behavior
+
+The `YtsService` implementation fetches pages from the YTS API and filters them using the values in `appsettings.json`.
+
+### Current filter configuration
+
+The current worker configuration sets:
+
+- `Yts:ApiUrl = https://movies-api.accel.li/api/v2/list_movies.json`
+- `Yts:TorrentBaseUrl = ""`
+- `Yts:Parameters` with `quality=2160p`, `minimum_rating=4`, `sort_by=year`, `order_by=desc`, `limit=50`
+- `Yts:YearsBack = 1`
+- `Yts:Genres = [action, adventure, comedy, crime, drama, family, fantasy, film-noir, horror, musical, mystery, romance, sci-fi, thriller, war, western]`
+- `Yts:Languages = [en, pt]`
+- `Yts:MinimumSeeders = 10`
+
+### What the service does
+
+- Builds the YTS query string from the configured parameters.
+- Fetches one page at a time.
+- Filters by language, year, and genre.
+- Picks the highest-seeded torrent matching the configured quality.
+- Converts the result into `YtsMovieModel` entries that the worker can persist.
+
+This means the worker is not discovering “all movies”; it is intentionally constrained to a limited set of recent, high-quality, high-seeder torrents.
+
+---
+
+## 9. Transmission Integration
+
+The `TransmissionService` implements `ITransmissionService` and wraps the Transmission RPC client.
+
+### What it handles
+
+- `Download(string fileName, string downloadDirectory)` — adds a torrent to Transmission with a custom download directory.
+- `GetStatus(string downloadDirectory)` — reads current torrent state for a given path.
+- `DownloadsCount()` — returns the number of active torrents.
+- `ClenByStatuses(params MovieStatus[] statuses)` — removes torrent entries and returns the matching download directories.
+- `GetPaths()` — lists all torrent download paths.
+
+### Current RPC configuration
+
+The worker is currently configured with:
+
+- `Transmission:ServerUrl = http://transmission:9091/transmission/rpc`
+- `Transmission:UseAuth = true`
+- `Transmission:User` and `Transmission:Password` injected by the deployment workflow
+
+This is important because the worker talks to the Docker-internal RPC endpoint, not to a host-local URL.
+
+---
+
+## 10. Runtime Settings in `appsettings.json`
+
+The current application settings in `src/Digger/Digger.Worker/appsettings.json` are:
+
+| Setting | Current value | Meaning |
+| --- | --- | --- |
+| `Logging` | Information / Error | Logging level for runtime and EF Core database commands |
+| `Transmission:ServerUrl` | `http://transmission:9091/transmission/rpc` | Internal RPC endpoint used by the worker |
+| `Transmission:UseAuth` | `true` | Enables authentication for Transmission RPC |
+| `Yts:ApiUrl` | `https://movies-api.accel.li/api/v2/list_movies.json` | Source of the movie list |
+| `Yts:YearsBack` | `1` | Only recent movies are considered |
+| `Yts:MinimumSeeders` | `10` | Minimum seed count required |
+| `StopTime` | `1` | Worker polling interval in minutes |
+| `DownloadDirectory` | `/downloads/movies` | Container download root |
+| `ConnectionStrings:DiggerContext` | `Data Source=/digger/data/movies.db` | SQLite database file path |
+| `MaxAllocatedSpace` | `750000000000` bytes | Maximum disk allocation the worker may keep |
+| `MaxEnqueuedRetries` | `3` | Number of retries before a movie is marked failed |
+| `MaxEnqueuedTorrents` | `5` | Maximum simultaneous downloads |
+
+These settings are the operational baseline for the Digger worker in the current codebase.
+
+---
+
+## 11. Helper Scripts
+
+The `scripts/` directory currently contains the tools that support deployment and environment maintenance.
+
+### `scripts/utils/copy-env-vars.sh`
+
+This script:
+
+- checks for `brew`, `gh`, and `jq`;
+- installs missing tools with Homebrew when needed;
+- authenticates `gh` if a token is provided;
+- reads variables and secret names from one GitHub environment;
+- writes the variables to the target environment;
+- writes placeholder secret values such as `REPLACE_WITH_SECRET_VALUE` because GitHub does not allow plain secret values to be retrieved.
+
+### `scripts/externals/deepwiki-open.sh`
+
+This helper is used by the deployment workflow when the `build_deepwiki_open` input is enabled. It publishes or refreshes the DeepWiki-Open image before the main stack starts.
+
+---
+
+## 12. Operational Notes and Maintenance
+
+### Backup recommendations
+
+Before updating images, changing the host filesystem layout, or doing destructive maintenance, back up the host directories used by the stack:
+
+- PostgreSQL data
+- Nginx Proxy Manager data and certificates
+- Home Assistant config
+- Frigate config and media
+- Jellyfin config/cache/media
+- Portainer data
+- Transmission downloads and incomplete folders
+- Digger’s SQLite database under `~/digger`
+
+### Good operational habits
+
+- Keep `infra/.env` local and uncommitted.
+- Verify that the selected GitHub environment contains the same variable names expected by `infra/compose.yaml`.
+- Treat the worker settings file as a redacted deployment artifact, not as a source of real runtime secrets.
+- Review the Digger worker logs if downloads stop or if the torrent queue reaches its configured limit.
+
+---
+
+## 13. What This Repository Is Today
+
+In its current form, the repository is a practical deployment and automation project for:
+
+- running multiple self-hosted services on Docker;
+- maintaining a small movie-discovery automation pipeline;
+- integrating a YTS-based discovery service with a Transmission torrent daemon;
+- deploying the entire stack through GitHub Actions on a self-hosted runner.
+
+It is not just a simple Compose file; it is a combined infrastructure + worker + automation codebase that is meant to be operated as a single homelab platform.
