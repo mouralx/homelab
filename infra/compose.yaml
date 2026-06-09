@@ -18,6 +18,17 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.2
+  ollama:
+    container_name: ollama
+    restart: unless-stopped
+    image: ollama/ollama
+    ports:
+      - 11434:11434
+    volumes:
+      - ~/ollama:/root/.ollama
+    networks:
+      default:
+        ipv4_address: 10.51.0.19
   frigate:
     container_name: frigate
     restart: unless-stopped
