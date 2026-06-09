@@ -15,6 +15,11 @@ services:
     volumes:
       - /mnt/ssd/transmission/downloads/movies:/downloads/movies:rw
       - ~/digger:/digger/data:rw
+    deploy:
+      resources:
+        reservations:
+          cpus: "8.0"
+          memory: 16gb
     networks:
       default:
         ipv4_address: 10.51.0.2
