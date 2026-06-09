@@ -37,7 +37,7 @@ services:
     restart: unless-stopped
     image: ghcr.io/github/github-mcp-server:latest
     environment:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GH_PAT}
     networks:
       default:
         ipv4_address: 10.51.0.18
