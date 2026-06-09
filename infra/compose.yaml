@@ -34,7 +34,6 @@ services:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
   gmcp:
     container_name: gmcp
-    restart: unless-stopped
     image: ghcr.io/github/github-mcp-server:latest
     environment:
       GITHUB_PERSONAL_ACCESS_TOKEN: ${GH_PAT}
