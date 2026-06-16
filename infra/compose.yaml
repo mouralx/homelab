@@ -61,7 +61,7 @@ services:
     container_name: hermes
     restart: unless-stopped
     volumes:
-      - ~/hermes/data:/opt/data
+      - ~/hermes/data:/opt/.hermes
     environment:
       - HERMES_DASHBOARD=1
       - HERMES_DASHBOARD_INSECURE=1
