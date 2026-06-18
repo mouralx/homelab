@@ -85,6 +85,9 @@ services:
     ports:
       - 8642:8642
       - 9119:9119
+    networks:
+      default:
+        ipv4_address: 10.51.0.17
     volumes:
       - ~/hermes:/opt/data
     environment:
