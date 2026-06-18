@@ -62,7 +62,10 @@ services:
     volumes:
       - ~/hermes:/opt/data
     environment:
-      - HERMES_DASHBOARD=1
+      HERMES_DASHBOARD: 1
+      HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER:-https://keycloak.mouras.me/realms/master/.well-known/openid-configuration}
+      HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID:-hermes-dashboard}
+      HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL:-https://hermes.mouras.me}
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -197,11 +200,16 @@ services:
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-false}
       KC_HOSTNAME: ${KC_HOSTNAME:-keycloak.mouras.me}
+      KC_DB: ${KC_DB:-postgres}
+      KC_DB_URL_HOST: ${KC_DB_URL_HOST:-postgres}
+      KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:-keycloak}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
       default:
         ipv4_address: 10.51.0.16
     volumes:
-      - ~/keycloack:/opt/keycloak/data/import
+      - ~/keycloack:/opt/keycloak/data
     ports:
       - 8080:8080
     restart: unless-stopped
