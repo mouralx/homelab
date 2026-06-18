@@ -48,14 +48,6 @@ services:
         ipv4_address: 10.51.0.3
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
-  gmcp:
-    container_name: gmcp
-    image: ghcr.io/github/github-mcp-server:latest
-    environment:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GH_PAT}
-    networks:
-      default:
-        ipv4_address: 10.51.0.18
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
