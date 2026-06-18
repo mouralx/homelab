@@ -56,27 +56,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.18
-  # hermes:
-  #   image: nousresearch/hermes-agent
-  #   container_name: hermes
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ~/hermes/data:/opt/.hermes
-  #   environment:
-  #     - HERMES_DASHBOARD=1
-  #     - HERMES_DASHBOARD_INSECURE=1
-  #     - HERMES_DASHBOARD_TUI=1
-  #     - HERMES_MODEL_MAX_TOKENS=4096
-  #     - HERMES_MODEL_CONTEXT_LENGTH=65536
-  #   command: gateway run
-  #   ports:
-  #     - 8642:8642
-  #     - 9119:9119
-  #   networks:
-  #     default:
-  #       ipv4_address: 10.51.0.17
-  #   devices:
-  #     - /dev/snd:/dev/snd
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
