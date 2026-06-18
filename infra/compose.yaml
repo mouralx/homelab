@@ -195,6 +195,21 @@ services:
     volumes:
       - /mnt/ssd/transmission/downloads:/downloads:rw
       - /mnt/ssd/transmission/incomplete:/incomplete:rw
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+    networks:
+      default:
+        ipv4_address: 10.51.0.16
+    volumes:
+      - ~/keycloack:/opt/keycloak/data/import
+    ports:
+      - 8080:8080
+    restart: unless-stopped
 networks:
   default:
     driver: bridge
