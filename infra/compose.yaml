@@ -13,13 +13,8 @@ services:
     depends_on:
       - transmission
     volumes:
-      - /mnt/ssd/transmission/downloads/movies:/downloads/movies:rw
-      - /home/ubuntu/digger:/digger/data:rw
-    deploy:
-      resources:
-        reservations:
-          cpus: "8.0"
-          memory: 16gb
+      - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
+      - ~/digger:/digger/data:rw
     networks:
       default:
         ipv4_address: 10.51.0.2
@@ -30,8 +25,8 @@ services:
     shm_size: "512mb"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /home/ubuntu/frigate/config:/config
-      - /home/ubuntu/frigate/media:/media/frigate
+      - ~/frigate/config:/config
+      - ~/frigate/media:/media/frigate
     networks:
       default:
         ipv4_address: 10.51.0.3
@@ -50,19 +45,19 @@ services:
       default:
         ipv4_address: 10.51.0.17
     volumes:
-      - /home/ubuntu/hermes:/opt/data
+      - ~/hermes:/opt/data
     environment:
       HERMES_UID: 1000
       HERMES_GID: 1000
       HERMES_DASHBOARD: 1
-      HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER:-https://keycloak.mouras.me/realms/master}
-      HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID:-hermes-dashboard}
-      HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL:-https://hermes.mouras.me}
+      HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER}
+      HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID}
+      HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL}
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
-      - /home/ubuntu/homeassistant/config:/config
+      - ~/homeassistant/config:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
@@ -74,9 +69,9 @@ services:
     image: jellyfin/jellyfin
     restart: unless-stopped
     volumes:
-      - /home/ubuntu/jellyfin/config:/config
-      - /home/ubuntu/jellyfin/cache:/cache
-      - /mnt/ssd/transmission/downloads:/media
+      - ~/jellyfin/config:/config
+      - ~/jellyfin/cache:/cache
+      - ${JELLYFIN_MEDIA_DIR}:/media
     environment:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
     networks:
@@ -89,14 +84,14 @@ services:
     restart: unless-stopped
     environment:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
-      GENERIC_TIMEZONE: "Europe/Lisbon"
-      TZ: "Europe/Lisbon"
-      N8N_HOST: n8n.mouras.me
+      GENERIC_TIMEZONE: ${TIME_ZONE}
+      TZ: ${TIME_ZONE}
+      N8N_HOST: ${N8N_HOST}
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_RUNNERS_ENABLED: "true"
       N8N_PROTOCOL: https
-      N8N_EDITOR_BASE_URL: https://n8n.mouras.me/
-      WEBHOOK_URL: https://n8n.mouras.me/
+      N8N_EDITOR_BASE_URL: https://${N8N_HOST}/
+      WEBHOOK_URL: https://${N8N_HOST}/
       DB_TYPE: "postgresdb"
       DB_POSTGRESDB_DATABASE: n8n
       DB_POSTGRESDB_HOST: postgres
@@ -104,10 +99,12 @@ services:
       DB_POSTGRESDB_USER: ${POSTGRES_USER}
       DB_POSTGRESDB_SCHEMA: public
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
     ports:
       - 5678:5678
     volumes:
-      - /home/ubuntu/n8n:/home/node/.n8n:rw
+      - ~/n8n:/home/node/.n8n:rw
     networks:
       default:
         ipv4_address: 10.51.0.7
@@ -116,10 +113,10 @@ services:
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
     environment:
-      TZ: Europe/Lisbon
+      TZ: ${TIME_ZONE}
     volumes:
-      - /home/ubuntu/npm/data:/data
-      - /home/ubuntu/npm/certs:/etc/letsencrypt
+      - ~/npm/data:/data
+      - ~/npm/certs:/etc/letsencrypt
     ports:
       - 443:443
       - 80:80
@@ -140,14 +137,14 @@ services:
       default:
         ipv4_address: 10.51.0.12
     volumes:
-      - /home/ubuntu/pgadmin/servers.json:/pgadmin4/servers.json
+      - ~/pgadmin/servers.json:/pgadmin4/servers.json
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:latest
     restart: unless-stopped
     volumes:
       - ${XDG_RUNTIME_DIR:-/run/user/1000}/docker.sock:/var/run/docker.sock
-      - /home/ubuntu/portainer/data:/data
+      - ~/portainer/data:/data
     networks:
       default:
         ipv4_address: 10.51.0.13
@@ -166,7 +163,7 @@ services:
       default:
         ipv4_address: 10.51.0.14
     volumes:
-      - /home/ubuntu/postgres/data:/var/lib/postgresql/data
+      - ~/postgres/data:/var/lib/postgresql/data
   transmission:
     build:
       context: ./transmission
@@ -177,11 +174,11 @@ services:
       default:
         ipv4_address: 10.51.0.15
     environment:
-      TRANSMISSION_USER: ${TRANSMISSION_USER:-transmission}
+      TRANSMISSION_USER: ${TRANSMISSION_USERNAME}
       TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
     volumes:
-      - /mnt/ssd/transmission/downloads:/downloads:rw
-      - /mnt/ssd/transmission/incomplete:/incomplete:rw
+      - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
+      - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
@@ -191,17 +188,17 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-false}
-      KC_HOSTNAME: ${KC_HOSTNAME:-keycloak.mouras.me}
-      KC_DB: ${KC_DB:-postgres}
-      KC_DB_URL_HOST: ${KC_DB_URL_HOST:-postgres}
-      KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:-keycloak}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
       default:
         ipv4_address: 10.51.0.16
     volumes:
-      - /home/ubuntu/keycloak:/opt/keycloak/data
+      - ~/keycloak:/opt/keycloak/data
     ports:
       - 8080:8080
     restart: unless-stopped
