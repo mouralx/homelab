@@ -52,6 +52,8 @@ services:
     volumes:
       - /home/ubuntu/hermes:/opt/data
     environment:
+      HERMES_UID: 1000
+      HERMES_GID: 1000
       HERMES_DASHBOARD: 1
       HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER:-https://keycloak.mouras.me/realms/master}
       HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID:-hermes-dashboard}
