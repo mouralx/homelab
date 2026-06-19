@@ -55,6 +55,10 @@ services:
       HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER:-https://keycloak.mouras.me/realms/master}
       HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID:-hermes-dashboard}
       HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL:-https://hermes.mouras.me}
+      HERMES_UID: 1000
+      HERMES_GID: 1000
+      PUID: 1000
+      PGID: 1000
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
