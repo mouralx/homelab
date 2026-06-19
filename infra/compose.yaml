@@ -140,7 +140,7 @@ services:
     image: portainer/portainer-ce:latest
     restart: unless-stopped
     volumes:
-      - ${XDG_RUNTIME_DIR:-/run/user/1000}/docker.sock:/var/run/docker.sock
+      - /run/user/${PUID}/docker.sock:/var/run/docker.sock
       - ~/portainer/data:/data
     networks:
       default:
