@@ -41,17 +41,16 @@ jobs:
         run: |
           set -euo pipefail
           if ! command -v jq >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y jq
+            apt-get update
+            apt-get install -y jq
           fi
-          sudo -u ubuntu -H env \
+          env \
             "TRANSMISSION_USERNAME=$TRANSMISSION_USERNAME" \
             "TRANSMISSION_PASSWORD=$TRANSMISSION_PASSWORD" \
             bash -lc '
               set -euo pipefail
               : "${TRANSMISSION_USERNAME:?TRANSMISSION_USERNAME variable is required}"
               : "${TRANSMISSION_PASSWORD:?TRANSMISSION_PASSWORD secret is required}"
-
               appsettings_path="src/Digger/Digger.Worker/appsettings.json"
               appsettings_tmp="$(mktemp)"
 
@@ -82,7 +81,7 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: |
-          sudo -u ubuntu -H env \
+          env \
             "ENVIRONMENT_VARS=$ENVIRONMENT_VARS" \
             "ENVIRONMENT_SECRETS=$ENVIRONMENT_SECRETS" \
             bash -lc '
@@ -96,7 +95,7 @@ jobs:
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
         run: |
-          sudo -u ubuntu -H bash -lc '
+          bash -lc '
             set -euo pipefail
             docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
           '
@@ -105,7 +104,7 @@ jobs:
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
         run: |
-          sudo -u ubuntu -H bash -lc '
+          bash -lc '
             set -euo pipefail
             docker compose -f infra/compose.yaml pull
           '
@@ -113,7 +112,7 @@ jobs:
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build infrastructure
         run: |
-          sudo -u ubuntu -H bash -lc '
+          bash -lc '
             set -euo pipefail
             docker compose -f infra/compose.yaml build
           '
@@ -121,7 +120,7 @@ jobs:
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Instantiate infrastructure
         run: |
-          sudo -u ubuntu -H bash -lc '
+          bash -lc '
             set -euo pipefail
             docker compose -f infra/compose.yaml up -d
           '
@@ -129,7 +128,7 @@ jobs:
       # Clean up any dangling Docker images to free up disk space on the runner
       - name: Clean docker dangling images
         run: |
-          sudo -u ubuntu -H bash -lc '
+          bash -lc '
             set -euo pipefail
             docker system prune -af
           '
