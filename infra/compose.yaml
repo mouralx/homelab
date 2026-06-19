@@ -14,7 +14,7 @@ services:
       - transmission
     volumes:
       - /mnt/ssd/transmission/downloads/movies:/downloads/movies:rw
-      - ~/digger:/digger/data:rw
+      - /home/ubuntu/digger:/digger/data:rw
     deploy:
       resources:
         reservations:
@@ -30,8 +30,8 @@ services:
     shm_size: "512mb"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ~/frigate/config:/config
-      - ~/frigate/media:/media/frigate
+      - /home/ubuntu/frigate/config:/config
+      - /home/ubuntu/frigate/media:/media/frigate
     networks:
       default:
         ipv4_address: 10.51.0.3
@@ -49,7 +49,7 @@ services:
       default:
         ipv4_address: 10.51.0.17
     volumes:
-      - ~/hermes:/opt/data
+      - /home/ubuntu/hermes:/opt/data
     environment:
       HERMES_DASHBOARD: 1
       HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER:-https://keycloak.mouras.me/realms/master}
@@ -59,7 +59,7 @@ services:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
-      - ~/homeassistant/config:/config
+      - /home/ubuntu/homeassistant/config:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
@@ -71,8 +71,8 @@ services:
     image: jellyfin/jellyfin
     restart: unless-stopped
     volumes:
-      - ~/jellyfin/config:/config
-      - ~/jellyfin/cache:/cache
+      - /home/ubuntu/jellyfin/config:/config
+      - /home/ubuntu/jellyfin/cache:/cache
       - /mnt/ssd/transmission/downloads:/media
     environment:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
@@ -104,7 +104,7 @@ services:
     ports:
       - 5678:5678
     volumes:
-      - ~/n8n:/home/node/.n8n:rw
+      - /home/ubuntu/n8n:/home/node/.n8n:rw
     networks:
       default:
         ipv4_address: 10.51.0.7
@@ -115,8 +115,8 @@ services:
     environment:
       TZ: Europe/Lisbon
     volumes:
-      - ~/npm/data:/data
-      - ~/npm/certs:/etc/letsencrypt
+      - /home/ubuntu/npm/data:/data
+      - /home/ubuntu/npm/certs:/etc/letsencrypt
     ports:
       - 443:443
       - 80:80
@@ -137,14 +137,14 @@ services:
       default:
         ipv4_address: 10.51.0.12
     volumes:
-      - ~/pgadmin/servers.json:/pgadmin4/servers.json
+      - /home/ubuntu/pgadmin/servers.json:/pgadmin4/servers.json
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:latest
     restart: unless-stopped
     volumes:
-      - /run/user/1000/docker.sock:/var/run/docker.sock
-      - ~/portainer/data:/data
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/docker.sock:/var/run/docker.sock
+      - /home/ubuntu/portainer/data:/data
     networks:
       default:
         ipv4_address: 10.51.0.13
@@ -163,7 +163,7 @@ services:
       default:
         ipv4_address: 10.51.0.14
     volumes:
-      - ~/postgres/data:/var/lib/postgresql/data
+      - /home/ubuntu/postgres/data:/var/lib/postgresql/data
   transmission:
     build:
       context: ./transmission
@@ -198,7 +198,7 @@ services:
       default:
         ipv4_address: 10.51.0.16
     volumes:
-      - ~/keycloack:/opt/keycloak/data
+      - /home/ubuntu/keycloak:/opt/keycloak/data
     ports:
       - 8080:8080
     restart: unless-stopped

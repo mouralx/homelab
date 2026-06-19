@@ -24,6 +24,9 @@ jobs:
     name: "Deploy to: ${{ inputs.environment }}"
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        shell: bash
     steps:
 
       # Check out the repository to access the .env file and deployment scripts
@@ -37,21 +40,30 @@ jobs:
           TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
         run: |
           set -euo pipefail
-          command -v jq >/dev/null || apt install -y jq
-          : "${TRANSMISSION_USERNAME:?TRANSMISSION_USERNAME variable is required}"
-          : "${TRANSMISSION_PASSWORD:?TRANSMISSION_PASSWORD secret is required}"
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+          sudo -u ubuntu -H env \
+            "TRANSMISSION_USERNAME=$TRANSMISSION_USERNAME" \
+            "TRANSMISSION_PASSWORD=$TRANSMISSION_PASSWORD" \
+            bash -lc '
+              set -euo pipefail
+              : "${TRANSMISSION_USERNAME:?TRANSMISSION_USERNAME variable is required}"
+              : "${TRANSMISSION_PASSWORD:?TRANSMISSION_PASSWORD secret is required}"
 
-          appsettings_path="src/Digger/Digger.Worker/appsettings.json"
-          appsettings_tmp="$(mktemp)"
+              appsettings_path="src/Digger/Digger.Worker/appsettings.json"
+              appsettings_tmp="$(mktemp)"
 
-          jq \
-            --arg transmissionUsername "$TRANSMISSION_USERNAME" \
-            --arg transmissionPassword "$TRANSMISSION_PASSWORD" \
-            'setpath(["Transmission", "User"]; $transmissionUsername)
-             | setpath(["Transmission", "Password"]; $transmissionPassword)' \
-            "$appsettings_path" > "$appsettings_tmp"
-          jq empty "$appsettings_tmp"
-          mv "$appsettings_tmp" "$appsettings_path"
+              jq \
+                --arg transmissionUsername "$TRANSMISSION_USERNAME" \
+                --arg transmissionPassword "$TRANSMISSION_PASSWORD" \
+                '"'"'setpath(["Transmission", "User"]; $transmissionUsername)
+                 | setpath(["Transmission", "Password"]; $transmissionPassword)'"'"' \
+                "$appsettings_path" > "$appsettings_tmp"
+              jq empty "$appsettings_tmp"
+              mv "$appsettings_tmp" "$appsettings_path"
+            '
       
       # Set up Docker on the runner to enable building and deploying the Docker Compose application
       - name: Set up container runtime
@@ -70,28 +82,54 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: |
-          jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > infra/.env
-          jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
-          cat infra/.env
+          sudo -u ubuntu -H env \
+            "ENVIRONMENT_VARS=$ENVIRONMENT_VARS" \
+            "ENVIRONMENT_SECRETS=$ENVIRONMENT_SECRETS" \
+            bash -lc '
+              set -euo pipefail
+              jq -r '"'"'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'"'"' <<< "$ENVIRONMENT_VARS" > infra/.env
+              jq -r '"'"'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'"'"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
+              cat infra/.env
+            '
       
       # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
-        run: docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
+        run: |
+          sudo -u ubuntu -H bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
+          '
         
       # Pull the latest Docker images for the application if the update_images input is true, suppressing the output for cleaner logs
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
-        run: docker compose -f infra/compose.yaml pull
+        run: |
+          sudo -u ubuntu -H bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml pull
+          '
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build infrastructure
-        run: docker compose -f infra/compose.yaml build
+        run: |
+          sudo -u ubuntu -H bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml build
+          '
 
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Instantiate infrastructure
-        run: docker compose -f infra/compose.yaml up -d
+        run: |
+          sudo -u ubuntu -H bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml up -d
+          '
       
       # Clean up any dangling Docker images to free up disk space on the runner
       - name: Clean docker dangling images
-        run: docker system prune -af
+        run: |
+          sudo -u ubuntu -H bash -lc '
+            set -euo pipefail
+            docker system prune -af
+          '
