@@ -36,7 +36,6 @@ services:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
-    user: 1000:1000
     command: gateway run
     ports:
       - 8642:8642
@@ -47,8 +46,8 @@ services:
     volumes:
       - ~/hermes:/opt/data
     environment:
-      HERMES_UID: 1000
-      HERMES_GID: 1000
+      HERMES_UID: ${HERMES_UID:-1000}
+      HERMES_GID: ${HERMES_GID:-1000}
       HERMES_DASHBOARD: 1
       HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER}
       HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID}
