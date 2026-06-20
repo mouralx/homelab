@@ -10,6 +10,4 @@ RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
 RUN lms server start --bind 0.0.0.0 --port 1234
 
-RUN lms get google/gemma-4-12b
-
-CMD lms stream log
+CMD watch -n 1 lms server status
