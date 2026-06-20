@@ -127,9 +127,10 @@ services:
       dockerfile: Dockerfile
     container_name: llmster
     restart: unless-stopped
-    command: lms server start
     ports:
       - 1234:1234
+    volumes:
+      - ~/llmster/models:/llmster/.lmstudio/models
     networks:
       default:
         ipv4_address: 10.51.0.9
