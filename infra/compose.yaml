@@ -127,6 +127,7 @@ services:
       dockerfile: Dockerfile
     container_name: llmster
     restart: unless-stopped
+    command: lms server start
     ports:
       - 1234:1234
     networks:
