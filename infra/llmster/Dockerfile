@@ -10,4 +10,4 @@ RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
 RUN lms server start --bind 0.0.0.0 --port 1234
 
-CMD watch -n 1 lms server status
+ENTRYPOINT [ "watch", "-n", "1", "lms", "server", "status" ]
