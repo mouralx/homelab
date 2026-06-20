@@ -4,10 +4,12 @@ EXPOSE 1234
 
 ENV PATH="/root/.lmstudio/bin:${PATH}"
 
-RUN apt update && apt upgrade -y && apt install curl libatomic1 libgomp1 -y
+RUN apt update && apt install curl libatomic1 libgomp1 -y
 
 RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
 RUN lms server start --bind 0.0.0.0 --port 1234
+
+RUN lms get google/gemma-4-12b
 
 CMD tail -f /dev/null
