@@ -10,4 +10,6 @@ RUN curl -fsSL https://lmstudio.ai/install.sh | bash
 
 RUN lms get google/gemma-4-12b
 
-ENTRYPOINT [ "lms", "server", "start" ]
+RUN lms server start
+
+ENTRYPOINT [ "lms", "log", "stream" ]
