@@ -12,4 +12,4 @@ RUN lms server start --bind 0.0.0.0 --port 1234
 
 RUN lms get google/gemma-4-12b
 
-CMD tail -f /dev/null
+CMD lms stream log
