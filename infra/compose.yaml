@@ -121,6 +121,17 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
+  llmster:
+    build:
+      context: ./llmster
+      dockerfile: Dockerfile
+    container_name: llmster
+    restart: unless-stopped
+    ports:
+      - 1234:1234
+    networks:
+      default:
+        ipv4_address: 10.51.0.9
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
