@@ -32,6 +32,22 @@ services:
         ipv4_address: 10.51.0.3
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
+  vault:
+    container_name: vault
+    image: hashicorp/vault:latest
+    restart: unless-stopped
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:1234
+    volumes:
+      - ~/vault/config:/vault/config
+      - ~/vault/logs:/vault/logs
+      - ~/vault/file:/vault/file
+    ports:
+      - 1234:1234
+    networks:
+      default:
+        ipv4_address: 10.51.0.6
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
