@@ -18,20 +18,20 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.2
-  frigate:
-    container_name: frigate
-    restart: unless-stopped
-    image: ghcr.io/blakeblackshear/frigate:stable
-    shm_size: "512mb"
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ~/frigate/config:/config
-      - ~/frigate/media:/media/frigate
-    networks:
-      default:
-        ipv4_address: 10.51.0.3
-    environment:
-      FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
+#  frigate:
+#    container_name: frigate
+#    restart: unless-stopped
+#    image: ghcr.io/blakeblackshear/frigate:stable
+#    shm_size: "512mb"
+#    volumes:
+#      - /etc/localtime:/etc/localtime:ro
+#      - ~/frigate/config:/config
+#      - ~/frigate/media:/media/frigate
+#    networks:
+#      default:
+#        ipv4_address: 10.51.0.3
+#    environment:
+#      FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
   vault:
     container_name: vault
     image: hashicorp/vault:latest
@@ -136,20 +136,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
-  ollama:
-    container_name: ollama
-    image: ollama/ollama
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    volumes:
-      - ~/ollama:/root/.ollama
-    ports:
-      - 11434:11434
-    networks:
-      default:
-        ipv4_address: 10.51.0.10
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
