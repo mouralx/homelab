@@ -1,6 +1,5 @@
 services:
   digger:
-    user: "0:0"
     build:
       context: ../src/Digger
       dockerfile: ../../infra/digger/Dockerfile
@@ -20,7 +19,6 @@ services:
       default:
         ipv4_address: 10.51.0.2
   frigate:
-    user: "0:0"
     container_name: frigate
     restart: unless-stopped
     image: ghcr.io/blakeblackshear/frigate:stable
@@ -35,7 +33,6 @@ services:
     environment:
       FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
   vault:
-    user: "0:0"
     container_name: vault
     image: hashicorp/vault:latest
     restart: unless-stopped
@@ -52,7 +49,6 @@ services:
       default:
         ipv4_address: 10.51.0.6
   hermes:
-    user: "0:0"
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -71,7 +67,6 @@ services:
       HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID}
       HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL}
   homeassistant:
-    user: "0:0"
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
@@ -83,7 +78,6 @@ services:
       default:
         ipv4_address: 10.51.0.4
   jellyfin:
-    user: "0:0"
     container_name: jellyfin
     image: jellyfin/jellyfin
     restart: unless-stopped
@@ -97,7 +91,6 @@ services:
       default:
         ipv4_address: 10.51.0.5
   n8n:
-    user: "0:0"
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
     restart: unless-stopped
@@ -128,7 +121,6 @@ services:
       default:
         ipv4_address: 10.51.0.7
   npm:
-    user: "0:0"
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
@@ -145,7 +137,6 @@ services:
       default:
         ipv4_address: 10.51.0.8
   ollama:
-    user: "0:0"
     container_name: ollama
     image: ollama/ollama
     restart: unless-stopped
@@ -160,7 +151,6 @@ services:
       default:
         ipv4_address: 10.51.0.10
   pgadmin:
-    user: "0:0"
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
@@ -175,7 +165,6 @@ services:
     volumes:
       - ~/pgadmin/servers.json:/pgadmin4/servers.json
   portainer:
-    user: "0:0"
     container_name: portainer
     image: portainer/portainer-ce:latest
     restart: unless-stopped
@@ -188,7 +177,6 @@ services:
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   postgres:
-    user: "0:0"
     container_name: postgres
     restart: unless-stopped
     image: postgres:15
@@ -203,7 +191,6 @@ services:
     volumes:
       - ~/postgres/data:/var/lib/postgresql/data
   transmission:
-    user: "0:0"
     build:
       context: ./transmission
       dockerfile: Dockerfile
@@ -219,7 +206,6 @@ services:
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
       - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
   keycloak:
-    user: "0:0"
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     command: start-dev
