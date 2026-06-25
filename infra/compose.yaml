@@ -37,6 +37,7 @@ services:
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
+    user: "10000:10000"
     restart: unless-stopped
     command: gateway run
     ports:
