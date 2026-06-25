@@ -18,20 +18,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.2
-#  frigate:
-#    container_name: frigate
-#    restart: unless-stopped
-#    image: ghcr.io/blakeblackshear/frigate:stable
-#    shm_size: "512mb"
-#    volumes:
-#      - /etc/localtime:/etc/localtime:ro
-#      - ~/frigate/config:/config
-#      - ~/frigate/media:/media/frigate
-#    networks:
-#      default:
-#        ipv4_address: 10.51.0.3
-#    environment:
-#      FRIGATE_RTSP_PASSWORD: ${FRIGATE_PASSWORD}
   vault:
     container_name: vault
     image: hashicorp/vault:latest
@@ -164,6 +150,7 @@ services:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   postgres:
     container_name: postgres
+    user: postgres
     restart: unless-stopped
     image: postgres:15
     shm_size: 128mb
