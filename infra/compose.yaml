@@ -150,7 +150,6 @@ services:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   postgres:
     container_name: postgres
-    user: postgres
     restart: unless-stopped
     image: postgres:15
     shm_size: 128mb
