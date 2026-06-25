@@ -20,10 +20,9 @@ services:
         ipv4_address: 10.51.0.2
   vault:
     container_name: vault
+    entrypoint: /vault/config/entrypoint.sh
     image: hashicorp/vault:latest
     restart: unless-stopped
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
     volumes:
       - ~/vault/config:/vault/config
       - ~/vault/logs:/vault/logs
