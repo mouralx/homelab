@@ -121,6 +121,17 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Lisbon
+    volumes:
+      - ~/ollama:/root/.ollama
+    networks:
+      default:
+        ipv4_address: 10.51.0.9
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
