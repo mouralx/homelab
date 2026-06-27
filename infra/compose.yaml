@@ -198,7 +198,6 @@ services:
       - ~/keycloak:/opt/keycloak/data
     ports:
       - 8080:8080
-    restart: unless-stopped
 networks:
   default:
     driver: bridge
