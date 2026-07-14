@@ -2,7 +2,7 @@ services:
   digger:
     build:
       context: ../src/Digger
-      dockerfile: ../../infra/digger/Dockerfile
+      dockerfile: ../../infra/Dockerfile.digger
     container_name: digger
     restart: unless-stopped
     environment:
@@ -127,14 +127,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
-  ollama:
-    container_name: ollama
-    image: ollama/ollama:latest
+  llama:
+    build:
+      context: .
+      dockerfile: Dockerfile.llama
+    container_name: llama
     restart: unless-stopped
-    environment:
-      TZ: Europe/Lisbon
-    volumes:
-      - ~/ollama:/root/.ollama
     networks:
       default:
         ipv4_address: 10.51.0.9
@@ -180,8 +178,8 @@ services:
       - ~/postgres/data:/var/lib/postgresql/data
   transmission:
     build:
-      context: ./transmission
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.transmission
     container_name: transmission
     restart: unless-stopped
     networks:
