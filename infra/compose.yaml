@@ -136,7 +136,7 @@ services:
     volumes:
       - ~/llama:/root/.cache
     ports:
-      - 8081:8080
+      - 8081:8081
     networks:
       default:
         ipv4_address: 10.51.0.9
