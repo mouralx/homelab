@@ -134,7 +134,7 @@ services:
     container_name: llama
     restart: unless-stopped
     volumes:
-      - ~/llama:~/.cache
+      - ~/llama:/root/.cache
     ports:
       - 8080:8080
     networks:
