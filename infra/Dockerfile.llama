@@ -4,4 +4,6 @@ RUN apt update && apt install curl -y
 
 RUN curl -LsSf https://llama.app/install.sh | sh
 
+ENV PATH="/root/.local/bin:$PATH"
+
 ENTRYPOINT [ "llama", "server", "-hf", "ggml-org/Ministral-3-3B-Reasoning-2512-GGUF:Q8_0" ]
