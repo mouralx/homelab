@@ -133,6 +133,10 @@ services:
       dockerfile: Dockerfile.llama
     container_name: llama
     restart: unless-stopped
+    volumes:
+      - ~/llama:~/.cache
+    ports:
+      - 8080:8080
     networks:
       default:
         ipv4_address: 10.51.0.9
