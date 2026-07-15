@@ -4,6 +4,8 @@ This repository defines a self-hosted home-lab environment that combines media s
 
 The most important idea is that the stack is a networked home platform, not just a list of individual apps. The services interact through shared volumes, internal Docker networking, and deployment automation.
 
+> **Full documentation available in [`docs/`](docs/index.md)** — covers architecture, all services, the Digger worker, deployment pipeline, configuration, operations, and utility scripts.
+
 ---
 
 ## Table of Contents
