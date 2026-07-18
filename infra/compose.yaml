@@ -131,19 +131,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
-  llama:
-    build:
-      context: .
-      dockerfile: Dockerfile.llama
-    container_name: llama
-    restart: unless-stopped
-    volumes:
-      - ~/llama:/root/.cache
-    ports:
-      - 8081:8081
-    networks:
-      default:
-        ipv4_address: 10.51.0.9
   owui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: owui
