@@ -144,7 +144,7 @@ services:
     image: ghcr.io/open-webui/open-webui:main
     container_name: owui
     ports:
-      - "3000:8080"
+      - 3003:8080
     volumes:
       - ~/owui:/app/backend/data
     restart: always
