@@ -6,6 +6,6 @@ ENV LLM_MODEL="google/gemma-4-e2b"
 
 EXPOSE 1234
 
-COPY scripts/externals/lmstudio.sh .
+COPY ../scripts/externals/lmstudio.sh .
 
 ENTRYPOINT [ "sh", "lmstudio.sh" ]
