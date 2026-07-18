@@ -20,8 +20,8 @@ services:
         ipv4_address: 10.51.0.2
   llmster:
     build:
-      context: .
-      dockerfile: Dockerfile.llmster
+      context: ..
+      dockerfile: infra/Dockerfile.llmster
     container_name: llmster
     restart: unless-stopped
     environment:
