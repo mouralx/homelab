@@ -148,8 +148,8 @@ services:
     volumes:
       - ~/owui:/app/backend/data
     restart: always
-    extra_hosts:
-      - host.docker.internal:host-gateway
+    environment:
+      OLLAMA_BASE_URL: http://open-webui.mouras.me
     networks:
       default:
         ipv4_address: 10.51.0.10
