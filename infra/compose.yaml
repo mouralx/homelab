@@ -148,6 +148,8 @@ services:
     volumes:
       - ~/owui:/app/backend/data
     restart: always
+    extra_hosts:
+      - host.docker.internal:host-gateway
     networks:
       default:
         ipv4_address: 10.51.0.10
