@@ -9,3 +9,5 @@ curl -fsSL https://lmstudio.ai/install.sh | bash
 ~/.lmstudio/bin/lms load $LLM_MODEL
 
 ~/.lmstudio/bin/lms server start --port 4321
+
+~/.lmstudio/bin/lms log stream
