@@ -1,0 +1,17 @@
+FROM ubuntu:latest
+
+ENV PATH="/root/.local/bin:$PATH"
+
+EXPOSE 1234
+
+RUN apt update -qy
+
+RUN apt install curl -qy
+
+RUN curl -fsSL https://lmstudio.ai/install.sh | bash
+
+RUN lms get $LLM_MODEL
+
+RUN lms load $LLM_MODEL
+
+ENTRYPOINT [ "lms", "server", "start" ]

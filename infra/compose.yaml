@@ -18,6 +18,19 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.2
+  llmster:
+    build:
+      context: .
+      dockerfile: Dockerfile.llmster
+    container_name: llmster
+    restart: unless-stopped
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
+    ports:
+      - 4321:1234
+    networks:
+      default:
+        ipv4_address: 10.51.0.18
   vault:
     container_name: vault
     entrypoint: /vault/config/entrypoint.sh
