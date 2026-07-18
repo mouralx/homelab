@@ -140,6 +140,17 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.9
+  owui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: owui
+    ports:
+      - "3000:8080"
+    volumes:
+      - ~/owui:/app/backend/data
+    restart: always
+    networks:
+      default:
+        ipv4_address: 10.51.0.10
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
