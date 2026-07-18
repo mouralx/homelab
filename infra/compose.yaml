@@ -52,6 +52,8 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL}
       OPENCODE_GO_API_KEY: ${OPENCODE_API_KEY}
       OPENCODE_ZEN_API_KEY: ${OPENCODE_API_KEY}
+      API_SERVER_ENABLED: true
+      API_SERVER_KEY: ${HERMES_API_KEY}
     deploy:
       resources:
         limits:
@@ -148,8 +150,6 @@ services:
     volumes:
       - ~/owui:/app/backend/data
     restart: always
-    environment:
-      OLLAMA_BASE_URL: http://open-webui.mouras.me
     networks:
       default:
         ipv4_address: 10.51.0.10
