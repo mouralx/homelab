@@ -6,18 +6,6 @@ ENV LLM_MODEL="google/gemma-4-e2b"
 
 EXPOSE 1234
 
-RUN apt update -qy
+COPY scripts/externals/lmstudio.sh .
 
-RUN apt install wget -qy
-
-RUN wget https://lmstudio.ai/install.sh
-
-RUN sh install.sh
-
-RUN rm install.sh
-
-RUN lms get $LLM_MODEL
-
-RUN lms load $LLM_MODEL
-
-ENTRYPOINT [ "lms", "server", "start" ]
+ENTRYPOINT [ "sh", "lmstudio.sh" ]
