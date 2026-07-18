@@ -1,10 +1,11 @@
 FROM ubuntu:latest
 
 ENV PATH="/root/.local/bin:$PATH"
+
 ENV LLM_MODEL="google/gemma-4-e2b"
 
 EXPOSE 4321
 
 COPY scripts/externals/lmstudio.sh lmstudio.sh
 
-ENTRYPOINT ["sh", "/usr/local/bin/lmstudio.sh"]
+ENTRYPOINT ["sh", "lmstudio.sh"]
