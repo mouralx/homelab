@@ -147,6 +147,8 @@ services:
   owui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: owui
+    environment:
+      ENABLE_EVALUATION_ARENA_MODELS: False
     ports:
       - 3003:8080
     volumes:
