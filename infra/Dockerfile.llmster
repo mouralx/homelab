@@ -6,9 +6,13 @@ EXPOSE 1234
 
 RUN apt update -qy
 
-RUN apt install curl -qy
+RUN apt install wget -qy
 
-RUN curl -fsSL https://lmstudio.ai/install.sh | bash
+RUN wget https://lmstudio.ai/install.sh
+
+RUN sh install.sh
+
+RUN rm install.sh
 
 RUN lms get $LLM_MODEL
 
