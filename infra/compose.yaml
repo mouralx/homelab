@@ -27,7 +27,7 @@ services:
     environment:
       LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
     ports:
-      - 4321:1234
+      - 4321:4321
     networks:
       default:
         ipv4_address: 10.51.0.18

@@ -3,7 +3,7 @@ FROM ubuntu:latest
 ENV PATH="/root/.local/bin:$PATH"
 ENV LLM_MODEL="google/gemma-4-e2b"
 
-EXPOSE 1234
+EXPOSE 4321
 
 COPY scripts/externals/lmstudio.sh lmstudio.sh
 
