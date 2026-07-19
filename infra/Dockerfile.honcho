@@ -11,18 +11,13 @@ ENV AUTH_USE_AUTH="false"
 ENV OPENAI_API_BASE_URL=""
 ENV OPENAI_BASE_URL=""
 
-WORKDIR /app
-
 RUN set -eu
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends build-essential curl git libpq-dev postgresql-client
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get update -yq
+RUN apt-get install -yq --no-install-recommends build-essential curl git libpq-dev postgresql-client
 RUN pip install --no-cache-dir uv
-RUN git clone https://github.com/plastic-labs/honcho.git /app/honcho
-RUN cd /app/honcho
+RUN git clone https://github.com/plastic-labs/honcho.git 
+RUN cd honcho
 RUN uv sync
-
-WORKDIR /app/honcho
 
 EXPOSE 8000
 
@@ -30,4 +25,4 @@ COPY scripts/externals/honcho.entrypoint.sh honcho.entrypoint.sh
 
 RUN chmod +x honcho.entrypoint.sh
 
-ENTRYPOINT ["sh", "/honcho.entrypoint.sh"]
+ENTRYPOINT ["sh", "honcho.entrypoint.sh"]
