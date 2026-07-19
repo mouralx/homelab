@@ -13,6 +13,6 @@ ENV AUTH_USE_AUTH="false"
 ENV OPENAI_API_BASE_URL=""
 ENV OPENAI_BASE_URL=""
 
-COPY scripts/externals/honcho.entrypoint.sh honcho.entrypoint.sh
+COPY scripts/honcho.entrypoint.sh honcho.entrypoint.sh
 
 ENTRYPOINT ["sh", "honcho.entrypoint.sh"]
