@@ -24,7 +24,7 @@ flowchart TD
     subgraph Automation["Automation Layer"]
         n8n["n8n"]
         Hermes["Hermes"]
-        Llama["Llama / Ollama"]
+        LLMster["LLMster"]
     end
 
     subgraph Media["Media Layer"]
@@ -77,7 +77,7 @@ Handles workflow orchestration, AI inference, and background task processing.
 
 - **n8n** (`10.51.0.7`): Advanced workflow automation platform with 400+ integrations. Backed by Postgres for persistent state. Exposed through NPM for webhook access.
 - **Hermes** (`10.51.0.17`): AI agent gateway by Nous Research. Routes requests to local LLM backends. Configured with OIDC auth and resource limits (4GB RAM, 2 CPUs).
-- **Llama** (`10.51.0.9`): Local LLM inference server running the Ministral-3-3B-Reasoning model in Q8_0 quantization. Serves on port 8081 with 8 threads and a 65K token context window.
+- **LLMster** (`10.51.0.18`): Local model runtime exposing the configured LM Studio model on port 4321.
 
 ### Media Layer
 
@@ -118,8 +118,8 @@ flowchart LR
 10.51.0.7"]
         npm["npm
 10.51.0.8"]
-        llama["llama
-10.51.0.9"]
+        llmster["llmster
+10.51.0.18"]
         pgadmin["pgadmin
 10.51.0.12"]
         portainer["portainer
@@ -141,7 +141,7 @@ flowchart LR
 | 443 | NPM | HTTPS traffic |
 | 81 | NPM | Admin UI |
 | 8080 | Keycloak | Identity provider |
-| 8081 | Llama | LLM inference endpoint |
+| 4321 | LLMster | Local model runtime endpoint |
 | 5678 | n8n | Workflow editor |
 | 8642 | Hermes | AI gateway |
 | 9119 | Hermes | AI gateway (secondary) |
@@ -155,7 +155,7 @@ Services communicate over the internal bridge network using static IP addresses.
 - Digger → SQLite: Local file-based access at `/digger/data/movies.db`
 - n8n → Postgres: JDBC connection to `10.51.0.14:5432`
 - Keycloak → Postgres: JDBC connection to `10.51.0.14:5432`
-- Hermes → Ollama/Llama: HTTP inference at `http://10.51.0.9:8081`
+- Hermes → LLMster: HTTP inference at `http://10.51.0.18:4321`
 - Jellyfin → Media: Direct file system access via mounted volumes
 - Portainer → Docker: Unix socket at `/var/run/docker.sock`
 
@@ -173,8 +173,6 @@ The stack uses a mix of host-mounted volumes and container-local storage, organi
 | `~/jellyfin/config` | `/config` | Jellyfin | Media server configuration |
 | `~/jellyfin/cache` | `/cache` | Jellyfin | Metadata cache, thumbnails |
 | `~/homeassistant/config` | `/config` | Home Assistant | Automation config, entities |
-| `~/frigate/config` | `/config` | Frigate | Camera configuration |
-| `~/frigate/media` | `/media` | Frigate | Recorded footage |
 | `~/npm/data` | `/data` | NPM | Proxy configuration, SSL certs |
 | `~/npm/certs` | `/etc/letsencrypt` | NPM | Let's Encrypt certificates |
 | `~/portainer/data` | `/data` | Portainer | Container management state |
@@ -183,7 +181,7 @@ The stack uses a mix of host-mounted volumes and container-local storage, organi
 | `~/vault/file` | `/vault/file` | Vault | Encrypted secrets storage |
 | `~/hermes` | `/opt/data` | Hermes | AI gateway state |
 | `~/keycloak` | `/opt/keycloak/data` | Keycloak | Realm configuration |
-| `~/llama` | `/root/.cache` | Llama | Model cache |
+| `~/llmster` | `/root/.lmstudio/models` | LLMster | Model cache |
 | `~/pgadmin/servers.json` | `/pgadmin4/servers.json` | pgAdmin | Server connection config |
 | `/mnt/ssd/transmission/downloads` | `/downloads` | Transmission | Completed downloads (shared) |
 | `/mnt/ssd/transmission/incomplete` | `/incomplete` | Transmission | In-progress downloads |
@@ -207,7 +205,6 @@ This separation prevents media bloat from affecting system performance and makes
 | Home Assistant | Host volume (files) | Important | Config copy |
 | Jellyfin | Host volume (files) | Moderate | Config + cache rebuild |
 | Media files | Host directory | Optional | Re-downloadable |
-| Frigate | Host volume (files) | Subjective | Config + footage |
 | Portainer | Host volume (file) | Low | Re-created on deploy |
 
 ## Service Relationships
@@ -220,8 +217,7 @@ flowchart TD
     n8n --> postgres
     keycloak --> postgres
     pgadmin --> postgres
-    hermes -.-> llama
-    homeassistant -.-> frigate
+    hermes -.-> llmster
 ```
 
 ### Hard Dependencies
@@ -241,8 +237,7 @@ Services that benefit from others being available but can function independently
 
 | Service | Integration | Effect of Missing Integration |
 |---|---|---|
-| Hermes | Llama | AI inference unavailable |
-| Home Assistant | Frigate | Camera automation unavailable |
+| Hermes | LLMster | AI inference unavailable |
 | Jellyfin | Transmission media | No new content |
 | Digger | YTS API (external) | No new movie discovery |
 
@@ -329,7 +324,7 @@ Only services that need external access expose host ports:
 - **NPM (80, 443, 81)**: Required for web access and admin
 - **Keycloak (8080)**: Identity provider endpoints
 - **n8n (5678)**: Workflow webhook endpoints
-- **Llama (8081)**: Local inference API
+- **LLMster (4321)**: Local model runtime API
 - **Hermes (8642, 9119)**: AI gateway API
 - **Vault (1234)**: Secrets management API
 

@@ -52,8 +52,7 @@ flowchart LR
     Keycloak --> Postgres
     pgAdmin[pgAdmin] --> Postgres
 
-    Ollama[Ollama] --> Hermes
-    Frigate[Frigate] --> HomeAssistant
+    LLMster[LLMster] --> Hermes
 ```
 
 This diagram shows the main idea: the home lab is an ecosystem where user-facing services are exposed through a central proxy, while background workers and storage services support the media and automation workloads.
@@ -75,7 +74,9 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 │       └── Dockerfile
 ├── scripts/
 │   ├── externals/
-│   │   └── deepwiki-open.sh
+│   │   ├── deepwiki-open.sh
+│   │   ├── honcho.entrypoint.sh
+│   │   └── lmstudio.entrypoint.sh
 │   └── utils/
 │       └── copy-env-vars.sh
 └── src/
@@ -91,7 +92,7 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 
 - `.github/workflows/` contains the deployment logic for bringing the stack online on a self-hosted runner.
 - `infra/` defines the containers, networking, and startup configuration for every service.
-- `scripts/` contains utility automation for environment synchronization and optional image publishing.
+- `scripts/` contains utility automation, environment synchronization helpers, and the Honcho / LM Studio entrypoint scripts used by the container images.
 - `src/Digger/` contains the worker code that discovers and manages movie content.
 
 ---
@@ -111,12 +112,11 @@ flowchart TD
     subgraph Automation
         n8n[Workflow Automation\nn8n]
         Hermes[AI Gateway\nHermes]
-        Ollama[Local Model Runtime\nOllama]
+        LLMster[Local Model Runtime\nLLMster]
     end
 
     subgraph Home
         HA[Home Assistant]
-        Frigate[Frigate]
     end
 
     subgraph Media
@@ -147,8 +147,7 @@ flowchart TD
     Transmission --> Disk
     Jellyfin --> Disk
 
-    Hermes --> Ollama
-    Frigate --> HA
+    Hermes --> LLMster
 ```
 
 ### Relationship notes
@@ -157,8 +156,7 @@ flowchart TD
 - `Keycloak` and `n8n` both rely on `Postgres` for persistence.
 - `Jellyfin` consumes the media downloaded by `Transmission`.
 - `Digger` is the automation bridge between external movie discovery and local media storage.
-- `Hermes` and `Ollama` provide local AI capabilities that can be used by the broader stack.
-- `Frigate` feeds video-related automation into the home environment.
+- `Hermes` and the local model runtime provide local AI capabilities that can be used by the broader stack.
 
 ---
 
@@ -191,7 +189,6 @@ The stack depends on both container-local and host-mounted storage:
 - `~/n8n` for workflow state
 - `~/jellyfin/config` and `~/jellyfin/cache` for media server metadata
 - `~/homeassistant/config` for automation configuration
-- `~/frigate/config` and `~/frigate/media` for camera tooling
 - `/mnt/ssd/transmission/downloads` and `/mnt/ssd/transmission/incomplete` for torrent content
 
 This separation is important because it keeps application state, media storage, and service configuration distinct.
@@ -235,7 +232,6 @@ The stack uses two important configuration layers:
 
 ### Environment values used by the compose stack
 
-- `FRIGATE_PASSWORD`
 - `JELLYFIN_SERVER_URL`
 - `N8N_ENCRYPTION_KEY`
 - `POSTGRES_PASSWORD`
@@ -364,7 +360,6 @@ Before making changes to storage, networking, or images, back up the most import
 - Postgres data
 - Nginx Proxy Manager data and certificates
 - Home Assistant configuration
-- Frigate configuration and recordings
 - Jellyfin configuration, cache, and media
 - Portainer data
 - Transmission downloads and incomplete folders

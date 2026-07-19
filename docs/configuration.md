@@ -246,6 +246,8 @@ Variables referenced in `infra/compose.yaml` with the `${VAR_NAME}` syntax must 
 - **npm**: `${TIME_ZONE}`
 - **homeassistant**: (none; uses fixed paths)
 - **hermes**: `${HERMES_DASHBOARD_OIDC_ISSUER}`, `${HERMES_DASHBOARD_OIDC_CLIENT_ID}`, `${HERMES_DASHBOARD_PUBLIC_URL}`, `${OPENCODE_API_KEY}`
+- **llmster**: `${LLM_MODEL}`
+- **honcho**: `${OPENCODE_API_KEY}`, `${OPENCODE_API_BASE_URL}`, `${HONCHO_MEMORY_LIMIT}`
 - **transmission**: `${TRANSMISSION_USERNAME}`, `${TRANSMISSION_PASSWORD}`, `${TRANSMISSION_DOWNLOADS_DIR}`, `${TRANSMISSION_INCOMPLETE_DIR}`
 - **keycloak**: `${KC_HOSTNAME}`, `${POSTGRES_USER}`, `${POSTGRES_PASSWORD}`
 - **pgadmin**: `${PGADMIN_DEFAULT_EMAIL}`, `${PGADMIN_DEFAULT_PASSWORD}`
@@ -283,9 +285,9 @@ ENV TRANSMISSION_USER="transmission" \
 
 These are build-time defaults. Runtime values are set via environment variables from `compose.yaml`.
 
-### llama (Dockerfile.llama)
+### llmster (Dockerfile.llmster)
 
-Entrypoint is hardcoded to serve the Ministral-3-3B-Reasoning model. To change the model, modify the Dockerfile or override the entrypoint.
+The image uses the configured model from `LLM_MODEL` and exposes the LM Studio-compatible runtime on port 4321.
 
 ### digger (Dockerfile.digger)
 

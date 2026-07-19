@@ -123,7 +123,7 @@ docker compose -f infra/compose.yaml pull
 
 ### 7. Build Infrastructure
 
-Builds all images defined in the compose file (including custom Dockerfiles for digger, transmission, and llama):
+Builds all images defined in the compose file (including the custom Dockerfiles for digger, transmission, honcho, and llmster):
 
 ```sh
 docker compose -f infra/compose.yaml build
@@ -202,7 +202,6 @@ The following items must be configured in the GitHub Environment used by the wor
 | Name | Type | Description | Required |
 |---|---|---|---|
 | `DIGGER_HOST_MOVIES_DIR` | Variable | Host path for Digger movie downloads | Yes |
-| `FRIGATE_PASSWORD` | Secret | Frigate admin password | Yes (if Frigate enabled) |
 | `HERMES_DASHBOARD_OIDC_ISSUER` | Variable | OIDC issuer URL for Hermes auth | No |
 | `HERMES_DASHBOARD_OIDC_CLIENT_ID` | Variable | OIDC client ID for Hermes auth | No |
 | `HERMES_DASHBOARD_PUBLIC_URL` | Variable | Public URL for Hermes dashboard | No |

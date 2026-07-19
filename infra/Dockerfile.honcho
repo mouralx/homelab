@@ -1,50 +1,33 @@
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    UV_LINK_MODE=copy \
-    PATH="/root/.local/bin:$PATH" \
-    HOST="0.0.0.0" \
-    PORT="8000" \
-    AUTH_USE_AUTH="false" \
-    OPENAI_API_KEY="" \
-    OPENAI_API_BASE_URL="" \
-    OPENAI_BASE_URL=""
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV UV_LINK_MODE=copy
+ENV PATH="/root/.local/bin:$PATH"
+ENV HOST="0.0.0.0"
+ENV PORT="8000"
+ENV AUTH_USE_AUTH="false"
+ENV OPENAI_API_BASE_URL=""
+ENV OPENAI_BASE_URL=""
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        curl \
-        git \
-        libpq-dev \
-        postgresql-client \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir uv
-
-RUN git clone https://github.com/plastic-labs/honcho.git /app/honcho \
-    && cd /app/honcho \
-    && uv sync
+RUN set -eu
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends build-essential curl git libpq-dev postgresql-client
+RUN rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir uv
+RUN git clone https://github.com/plastic-labs/honcho.git /app/honcho
+RUN cd /app/honcho
+RUN uv sync
 
 WORKDIR /app/honcho
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "set -eu; \
-DB_HOST=${DB_HOST:-postgres}; \
-DB_PORT=${DB_PORT:-5432}; \
-DB_NAME=${DB_NAME:-${POSTGRES_DB:-postgres}}; \
-DB_USER=${DB_USER:-${POSTGRES_USER:-postgres}}; \
-DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}; \
-DB_URI=${DB_CONNECTION_URI:-postgresql+psycopg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}}; \
-export DB_CONNECTION_URI=$DB_URI; \
-export PGPASSWORD=$DB_PASSWORD; \
-until pg_isready -h \"$DB_HOST\" -p \"$DB_PORT\" -U \"$DB_USER\" >/dev/null 2>&1; do \
-  echo \"waiting for postgres at $DB_HOST:$DB_PORT\"; \
-  sleep 2; \
-done; \
-psql \"postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME\" -c \"CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;\" >/dev/null 2>&1 || true; \
-uv run alembic upgrade head && \
-uv run fastapi dev src/main.py --host ${HOST} --port ${PORT}"]
+COPY scripts/externals/honcho.entrypoint.sh honcho.entrypoint.sh
+
+RUN chmod +x honcho.entrypoint.sh
+
+ENTRYPOINT ["sh", "/honcho.entrypoint.sh"]

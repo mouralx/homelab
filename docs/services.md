@@ -17,6 +17,7 @@ Complete documentation for all 13 Docker services in the home lab stack.
 - [portainer](#portainer)
 - [vault](#vault)
 - [pgadmin](#pgadmin)
+- [honcho](#honcho)
 
 ---
 
@@ -252,12 +253,12 @@ Open-source identity and access management solution providing OIDC and SAML SSO.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.14` |
-| Image | `postgres:15` |
+| Image | `pgvector/pgvector:pg15` |
 | Restart | `unless-stopped` |
 
 ### Description
 
-Shared PostgreSQL 15 database used by n8n, Keycloak, and accessible via pgAdmin. Configured with 128MB shared memory.
+Shared PostgreSQL 15 database used by n8n, Keycloak, Honcho, and accessible via pgAdmin. Configured with 128MB shared memory and the pgvector extension support needed by Honcho.
 
 ### Environment Variables
 
@@ -275,6 +276,44 @@ Shared PostgreSQL 15 database used by n8n, Keycloak, and accessible via pgAdmin.
 The server creates a default `postgres` database. Services create their own databases:
 - `n8n` - Workflow state
 - `keycloak` - Realm configuration
+
+---
+
+## honcho
+
+| Property | Value |
+|---|---|
+| IP | `10.51.0.19` |
+| Image | Custom build (see `Dockerfile.honcho`) |
+| Restart | `unless-stopped` |
+| Depends on | `postgres` |
+
+### Description
+
+Honcho is the local self-hosted API service used for the Honcho application stack. It waits for Postgres to become available, enables the required PostgreSQL extensions, runs migrations, and starts the FastAPI service on port 8000.
+
+### Environment Variables
+
+| Variable | Description |
+|---|---|
+| `DB_HOST` | Postgres host name |
+| `DB_PORT` | Postgres port |
+| `DB_NAME` | Postgres database name |
+| `DB_USER` | Postgres username |
+| `DB_PASSWORD` | Postgres password |
+| `OPENAI_API_BASE_URL` | OpenAI-compatible API base URL |
+| `OPENAI_BASE_URL` | Alias for the OpenAI-compatible API base URL |
+| `HONCHO_MEMORY_LIMIT` | Container memory limit |
+
+### Exposed Ports
+
+| Port | Purpose |
+|---|---|
+| 8000 | Honcho API |
+
+### Entrypoint
+
+The container uses the script at `scripts/externals/honcho.entrypoint.sh`.
 
 ---
 

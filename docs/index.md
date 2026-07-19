@@ -20,7 +20,7 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 | Section | Description |
 |---|---|
 | [Architecture](architecture.md) | System architecture, layers, network model, storage layout, service relationships |
-| [Services](services.md) | Complete reference for all 13 Docker services |
+| [Services](services.md) | Complete reference for all 15 Docker services |
 | [Digger](digger.md) | Custom .NET worker for automated movie discovery and download management |
 | [Deployment](deployment.md) | GitHub Actions CI/CD pipeline, self-hosted runner setup, environment management |
 | [Configuration](configuration.md) | All configuration options, environment variables, secrets management |
@@ -35,10 +35,11 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 │   └── workflows/
 │       └── publish-home-lab.yaml   # Deployment pipeline
 ├── infra/
-│   ├── compose.yaml                # Docker Compose stack (13 services)
+│   ├── compose.yaml                # Docker Compose stack (15 services)
 │   ├── Dockerfile.digger           # Digger worker build
-│   ├── Dockerfile.transmission     # Custom Transmission image
-│   └── Dockerfile.llama            # Local LLM inference image
+│   ├── Dockerfile.honcho           # Honcho API image
+│   ├── Dockerfile.llmster          # Local LLM runtime image
+│   └── Dockerfile.transmission     # Custom Transmission image
 ├── scripts/
 │   ├── externals/
 │   │   └── deepwiki-open.sh        # Build & publish DeepWiki-Open image
@@ -57,7 +58,7 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 
 ## Service Overview
 
-The stack runs 13 containers on a dedicated Docker bridge network (`10.51.0.0/24`) with static IPs:
+The stack runs 15 containers on a dedicated Docker bridge network (`10.51.0.0/24`) with static IPs:
 
 | Service | IP | Function |
 |---|---|---|
@@ -68,12 +69,14 @@ The stack runs 13 containers on a dedicated Docker bridge network (`10.51.0.0/24
 | jellyfin | 10.51.0.5 | Media server |
 | n8n | 10.51.0.7 | Workflow automation |
 | npm | 10.51.0.8 | Reverse proxy (Nginx Proxy Manager) |
-| llama | 10.51.0.9 | Local LLM inference (Ministral-3B) |
+| llmster | 10.51.0.18 | Local model runtime |
 | pgadmin | 10.51.0.12 | Postgres administration |
 | portainer | 10.51.0.13 | Container management dashboard |
 | postgres | 10.51.0.14 | Shared relational database |
 | transmission | 10.51.0.15 | Torrent client |
 | keycloak | 10.51.0.16 | Identity and access management |
+| honcho | 10.51.0.19 | Honcho API service |
+| owui | 10.51.0.10 | Open WebUI |
 
 ## Key Concepts
 
@@ -90,7 +93,7 @@ The stack runs 13 containers on a dedicated Docker bridge network (`10.51.0.0/24
 Nginx Proxy Manager provides TLS termination and reverse proxy for all web services. Keycloak handles authentication and identity federation.
 
 ### Automation Layer
-n8n orchestrates workflows, Hermes provides AI gateway capabilities backed by local LLMs (Ollama/Llama), and Digger automates the media lifecycle.
+n8n orchestrates workflows, Hermes provides AI gateway capabilities backed by the local model runtime, and Digger automates the media lifecycle.
 
 ### Media Layer
 Transmission handles torrenting, Jellyfin serves media to users, and Digger bridges content discovery with download management.

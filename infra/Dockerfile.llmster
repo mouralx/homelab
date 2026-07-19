@@ -8,6 +8,8 @@ ENV LLM_MODEL="google/gemma-4-e2b"
 
 EXPOSE 4321
 
-COPY scripts/externals/lmstudio.sh lmstudio.sh
+COPY scripts/externals/lmstudio.entrypoint.sh lmstudio.entrypoint.sh
 
-ENTRYPOINT ["sh", "lmstudio.sh"]
+RUN chmod +x lmstudio.entrypoint.sh
+
+ENTRYPOINT [ "sh", "lmstudio.entrypoint.sh" ]

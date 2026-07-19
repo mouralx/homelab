@@ -5,6 +5,8 @@ Reference documentation for the utility scripts in `scripts/`.
 ## Contents
 
 - [deepwiki-open.sh](#deepwiki-opensh)
+- [honcho.entrypoint.sh](#honchoentrypointsh)
+- [lmstudio.entrypoint.sh](#lmstudioentrypointsh)
 - [copy-env-vars.sh](#copy-env-vars-sh)
 
 ---
@@ -38,6 +40,52 @@ sudo ./deepwiki-open.sh
 - The script does not push the image to any registry by default
 - After running, the image is available locally as `deepwiki-open:latest`
 - The cloned repository is deleted after the build completes
+
+---
+
+## honcho.entrypoint.sh
+
+**Purpose**: Starts the Honcho container, waits for Postgres to become available, creates the required PostgreSQL extensions, and launches the Honcho app.
+
+**Location**: `scripts/externals/honcho.entrypoint.sh`
+
+**Runtime behavior**:
+
+1. Reads database connection values from environment variables.
+2. Waits until Postgres is accepting connections.
+3. Creates the `vector` and `pg_trgm` extensions if they are missing.
+4. Runs the Alembic migrations.
+5. Starts Honcho with FastAPI on port 8000.
+
+**Relevant environment variables**:
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+- `OPENAI_API_BASE_URL`
+- `OPENAI_BASE_URL`
+- `HOST`
+- `PORT`
+
+---
+
+## lmstudio.entrypoint.sh
+
+**Purpose**: Installs LM Studio if needed, downloads the configured model, loads it, and starts the LM Studio server on port 4321.
+
+**Location**: `scripts/externals/lmstudio.entrypoint.sh`
+
+**Runtime behavior**:
+
+1. Checks whether the LM Studio CLI is already installed.
+2. Installs the LM Studio toolchain if missing.
+3. Downloads the model referenced by `LLM_MODEL`.
+4. Loads the model into the local runtime.
+5. Starts the LM Studio server on port 4321.
+
+**Relevant environment variables**:
+- `LLM_MODEL`
 
 ---
 
