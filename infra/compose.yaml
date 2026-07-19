@@ -26,6 +26,8 @@ services:
     restart: unless-stopped
     environment:
       LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
+    volumes:
+      - ~/llmster:/root/.lmstudio/models
     ports:
       - 4321:4321
     networks:
