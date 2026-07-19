@@ -1,12 +1,18 @@
-apt update -yq && apt install -yq curl libatomic1 libgomp1
+#!/bin/bash
 
-curl -fsSL https://lmstudio.ai/install.sh | bash
+if [ ! -f ~/.lmstudio/bin/lms ]; then
 
-~/.lmstudio/bin/lms get $LLM_MODEL
+    apt update -yq && apt install -yq curl libatomic1 libgomp1
 
-~/.lmstudio/bin/lms get $LLM_MODEL
+    curl -fsSL https://lmstudio.ai/install.sh | bash
 
-~/.lmstudio/bin/lms load $LLM_MODEL --context-length 128000 
+    ~/.lmstudio/bin/lms get $LLM_MODEL
+
+    ~/.lmstudio/bin/lms get $LLM_MODEL
+
+    ~/.lmstudio/bin/lms load $LLM_MODEL --context-length 128000
+    
+fi
 
 ~/.lmstudio/bin/lms server start --port 4321 --bind 0.0.0.0
 
