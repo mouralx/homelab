@@ -14,6 +14,15 @@ export PGPASSWORD="$DB_PASSWORD"
 export OPENAI_API_BASE_URL="${OPENAI_API_BASE_URL:-}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-}"
 
+apt-get update -yq
+apt-get install -yq --no-install-recommends build-essential curl git libpq-dev postgresql-client
+
+pip install --no-cache-dir uv
+
+git clone https://github.com/plastic-labs/honcho.git && cd honcho
+
+uv sync
+
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" >/dev/null 2>&1
  do
   echo "waiting for postgres at $DB_HOST:$DB_PORT"
