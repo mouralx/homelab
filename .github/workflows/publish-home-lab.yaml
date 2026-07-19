@@ -19,6 +19,9 @@ on:
         required: true
         type: boolean
         default: false
+  push:
+    branches:
+      - main
 jobs:
   deploy:
     name: "Deploy to: ${{ inputs.environment }}"
