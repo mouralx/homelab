@@ -204,6 +204,32 @@ services:
         ipv4_address: 10.51.0.14
     volumes:
       - ~/postgres/data:/var/lib/postgresql/data
+  honcho:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.honcho
+    container_name: honcho
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_USE_AUTH: "false"
+      HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
+    ports:
+      - 8000:8000
+    networks:
+      default:
+        ipv4_address: 10.51.0.19
+    deploy:
+      resources:
+        limits:
+          memory: ${HONCHO_MEMORY_LIMIT:-2G}
+          cpus: "1.0"
   transmission:
     build:
       context: .
