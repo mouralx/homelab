@@ -19,26 +19,6 @@ on:
         required: true
         type: boolean
         default: false
-  push:
-    environment:
-      description: 'Select the environment to deploy to:'
-      required: true
-      type: choice
-      options:
-        - mouras-home-lab
-      default: mouras-home-lab
-    bring_down_first:
-      description: 'Bring down infrastructure down.'
-      required: true
-      type: boolean
-      default: false
-    update_images:
-      description: 'Update Docker images before deployment.'
-      required: true
-      type: boolean
-      default: false
-    branches:
-      - main
 jobs:
   deploy:
     name: "Deploy to: ${{ inputs.environment }}"
