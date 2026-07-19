@@ -6,8 +6,8 @@ curl -fsSL https://lmstudio.ai/install.sh | bash
 
 ~/.lmstudio/bin/lms get $LLM_MODEL
 
-~/.lmstudio/bin/lms load $LLM_MODEL --context-length 128000 --gpu off
+~/.lmstudio/bin/lms load $LLM_MODEL --context-length 128000 
 
-~/.lmstudio/bin/lms server start --port 4321 --bind 0.0.0.0 --flash-attn --ctx-shift
+~/.lmstudio/bin/lms server start --port 4321 --bind 0.0.0.0
 
 ~/.lmstudio/bin/lms log stream
