@@ -1,4 +1,4 @@
-apt update -yq && apt install -yq curl libatomic1
+apt update -yq && apt install -yq curl libatomic1 libgomp1
 
 curl -fsSL https://lmstudio.ai/install.sh | bash
 
