@@ -47,6 +47,11 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.6
+    deploy:
+      resources:
+        reservations:
+          memory: 16GB
+          cpus: "8"
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: hermes
