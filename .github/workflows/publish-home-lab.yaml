@@ -9,6 +9,14 @@ on:
         options:
           - mouras-home-lab
         default: mouras-home-lab
+      stack:
+        description: 'Select the stack to deploy:'
+        required: true
+        type: choice
+        options:
+          - All
+          - Agentic
+        default: All
       bring_down_first:
         description: 'Bring down infrastructure down.'
         required: true
@@ -110,20 +118,24 @@ jobs:
           '
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
-      - name: Build infrastructure
-        run: |
-          bash -lc '
-            set -euo pipefail
-            docker compose -f infra/compose.yaml build
-          '
+      - name: Build complete infrastructure
+        if: ${{ inputs.stack == 'All' }}
+        run: docker compose -f infra/compose.yaml build
+      
+      # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
+      - name: Build agentic infrastructure
+        if: ${{ inputs.stack == 'All' }}
+        run: docker compose -f infra/compose.ai.yaml build
 
       # Deploy the application using Docker Compose, running the containers in detached mode
       - name: Instantiate infrastructure
-        run: |
-          bash -lc '
-            set -euo pipefail
-            docker compose -f infra/compose.yaml up -d
-          '
+        if: ${{ inputs.stack == 'All' }}
+        run: docker compose -f infra/compose.yaml up -d
+      
+      # Deploy the application using Docker Compose, running the containers in detached mode
+      - name: Instantiate agentic infrastructure
+        if: ${{ inputs.stack == 'Agentic' }}
+        run: docker compose -f infra/compose.ai.yaml up -d
       
       # Clean up any dangling Docker images to free up disk space on the runner
       - name: Clean docker dangling images
