@@ -258,8 +258,8 @@ services:
           cpus: "1.0"
   transmission:
     build:
-      context: .
-      dockerfile: Dockerfile.transmission
+      context: ..
+      dockerfile: infra/Dockerfile.transmission
     container_name: transmission
     restart: unless-stopped
     networks:
