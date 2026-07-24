@@ -70,7 +70,7 @@ jobs:
                 "$appsettings_path" > "$appsettings_tmp"
               jq empty "$appsettings_tmp"
               mv "$appsettings_tmp" "$appsettings_path"
-            '
+            '\''
       
       # Set up Docker on the runner to enable building and deploying the Docker Compose application
       - name: Set up container runtime
@@ -97,19 +97,17 @@ jobs:
               jq -r '\''"'\''to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'\''"'\'' <<< "$ENVIRONMENT_VARS" > infra/.env
               jq -r '\''"'\''to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'\''"'\'' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
               cat infra/.env
-            '
+            '\''
       
-      # Bring down any existing infrastructure — uses --remove-orphans to clean up
-      # stale containers from the compose project without touching other containers
+      # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
         run: |
-          compose_down() {
-            docker compose -f "$1" down --remove-orphans
-          }
-          compose_down infra/compose.yaml
-          compose_down infra/compose.ai.yaml
-
+          bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
+          '\''
+        
       # Pull the latest Docker images for the application if the update_images input is true, suppressing the output for cleaner logs
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
@@ -117,7 +115,7 @@ jobs:
           bash -lc '
             set -euo pipefail
             docker compose -f infra/compose.yaml pull
-          '
+          '\''
 
       # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
       - name: Build complete infrastructure
@@ -145,4 +143,4 @@ jobs:
           bash -lc '
             set -euo pipefail
             docker system prune -af
-          '
+          '\''
