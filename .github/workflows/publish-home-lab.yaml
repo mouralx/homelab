@@ -15,8 +15,7 @@ on:
         type: choice
         options:
           - All
-          - AI
-          - Core
+          - Agentic
         default: All
       bring_down_first:
         description: 'Bring down infrastructure down.'
@@ -71,7 +70,7 @@ jobs:
                 "$appsettings_path" > "$appsettings_tmp"
               jq empty "$appsettings_tmp"
               mv "$appsettings_tmp" "$appsettings_path"
-            '
+            '\''
       
       # Set up Docker on the runner to enable building and deploying the Docker Compose application
       - name: Set up container runtime
@@ -98,35 +97,45 @@ jobs:
               jq -r '\''"'\''to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'\''"'\'' <<< "$ENVIRONMENT_VARS" > infra/.env
               jq -r '\''"'\''to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'\''"'\'' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
               cat infra/.env
-            '
+            '\''
       
-      # Determine compose profile flags based on the selected stack
-      - name: Resolve compose profiles
-        id: profiles
-        run: |
-          case "${{ inputs.stack }}" in
-            All)  echo "flags=--profile ai --profile media --profile tools" >> "$GITHUB_OUTPUT" ;;
-            AI)   echo "flags=--profile ai" >> "$GITHUB_OUTPUT" ;;
-            Core) echo "flags=" >> "$GITHUB_OUTPUT" ;;
-          esac
-
-      # Bring down any existing infrastructure
+      # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
-        run: docker compose -f infra/compose.yaml down --remove-orphans
-
-      # Pull the latest Docker images for the application if the update_images input is true
+        run: |
+          bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
+          '\''
+        
+      # Pull the latest Docker images for the application if the update_images input is true, suppressing the output for cleaner logs
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
-        run: docker compose -f infra/compose.yaml pull ${{ steps.profiles.outputs.flags }}
+        run: |
+          bash -lc '
+            set -euo pipefail
+            docker compose -f infra/compose.yaml pull
+          '\''
 
-      # Build the selected stack
-      - name: Build stack
-        run: docker compose -f infra/compose.yaml build ${{ steps.profiles.outputs.flags }}
+      # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
+      - name: Build complete infrastructure
+        if: ${{ inputs.stack == 'All' }}
+        run: docker compose -f infra/compose.yaml build
+      
+      # Build the Docker Compose application using the compose file located at infra/compose.yaml, suppressing the build output for cleaner logs
+      - name: Build agentic infrastructure
+        if: ${{ inputs.stack == 'All' }}
+        run: docker compose -f infra/compose.ai.yaml build
 
-      # Deploy the selected stack
-      - name: Deploy stack
-        run: docker compose -f infra/compose.yaml ${{ steps.profiles.outputs.flags }} up -d
+      # Deploy the application using Docker Compose, running the containers in detached mode
+      - name: Instantiate infrastructure
+        if: ${{ inputs.stack == 'All' }}
+        run: docker compose -f infra/compose.yaml up -d
+      
+      # Deploy the application using Docker Compose, running the containers in detached mode
+      - name: Instantiate agentic infrastructure
+        if: ${{ inputs.stack == 'Agentic' }}
+        run: docker compose -f infra/compose.ai.yaml up -d
       
       # Clean up any dangling Docker images to free up disk space on the runner
       - name: Clean docker dangling images
@@ -134,4 +143,4 @@ jobs:
           bash -lc '
             set -euo pipefail
             docker system prune -af
-          '
+          '\''
