@@ -10,14 +10,16 @@ on:
           - mouras-home-lab
         default: mouras-home-lab
       stack:
-        description: 'Select the stack to deploy:'
+        description: 'Select the compose profile to deploy:'
         required: true
         type: choice
         options:
-          - All
-          - AI
-          - Core
-        default: All
+          - Everything
+          - AI Services
+          - Media Services
+          - Tools
+          - Core Only
+        default: Everything
       bring_down_first:
         description: 'Bring down infrastructure down.'
         required: true
@@ -91,9 +93,11 @@ jobs:
         id: profiles
         run: |
           case "${{ inputs.stack }}" in
-            All)  echo "flags=--profile ai --profile media --profile tools" >> "$GITHUB_OUTPUT" ;;
-            AI)   echo "flags=--profile ai" >> "$GITHUB_OUTPUT" ;;
-            Core) echo "flags=" >> "$GITHUB_OUTPUT" ;;
+            "Everything")  echo "flags=--profile ai --profile media --profile tools" >> "$GITHUB_OUTPUT" ;;
+            "AI Services")   echo "flags=--profile ai" >> "$GITHUB_OUTPUT" ;;
+            "Media Services") echo "flags=--profile media" >> "$GITHUB_OUTPUT" ;;
+            "Tools") echo "flags=--profile tools" >> "$GITHUB_OUTPUT" ;;
+            "Core Only") echo "flags=" >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Bring current infrastructure down
