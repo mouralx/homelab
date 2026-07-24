@@ -1,58 +1,82 @@
 services:
-  digger:
-    build:
-      context: ../src/Digger
-      dockerfile: ../../infra/Dockerfile.digger
-    container_name: digger
+  # ── Core Services (always on) ──────────────────────────────────
+
+  postgres:
+    container_name: postgres
+    restart: unless-stopped
+    image: pgvector/pgvector:pg15
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    networks:
+      default:
+        ipv4_address: 10.51.0.14
+    volumes:
+      - ~/postgres/data:/var/lib/postgresql/data
+
+  npm:
+    container_name: npm
+    image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
     environment:
-      Logging__Level__Default: Warning
-      Logging__Level__Microsoft: Warning
-      Logging__LogLevel__Microsoft_Hosting_Lifetime: Warning
-      Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
-    depends_on:
-      - transmission
+      TZ: ${TIME_ZONE}
     volumes:
-      - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
-      - ~/digger:/digger/data:rw
+      - ~/npm/data:/data
+      - ~/npm/certs:/etc/letsencrypt
+    ports:
+      - 443:443
+      - 80:80
+      - 81:81
     networks:
       default:
-        ipv4_address: 10.51.0.2
-  llmster:
-    build:
-      context: ..
-      dockerfile: infra/Dockerfile.llmster
-    container_name: llmster
+        ipv4_address: 10.51.0.8
+
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+      - ~/homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
     restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 10.51.0.4
+
+  jellyfin:
+    container_name: jellyfin
+    image: jellyfin/jellyfin
+    restart: unless-stopped
+    volumes:
+      - ~/jellyfin/config:/config
+      - ~/jellyfin/cache:/cache
+      - ${JELLYFIN_MEDIA_DIR}:/media
     environment:
-      LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
-    volumes:
-      - ~/llmster:/root/.lmstudio/models
-    ports:
-      - 4321:4321
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
     networks:
       default:
-        ipv4_address: 10.51.0.18
-  vault:
-    container_name: vault
-    entrypoint: /vault/config/entrypoint.sh
-    image: hashicorp/vault:latest
+        ipv4_address: 10.51.0.5
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
     restart: unless-stopped
     volumes:
-      - ~/vault/config:/vault/config
-      - ~/vault/logs:/vault/logs
-      - ~/vault/file:/vault/file
-    ports:
-      - 1234:1234
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/portainer/data:/data
     networks:
       default:
-        ipv4_address: 10.51.0.6
-    deploy:
-      resources:
-        reservations:
-          memory: 16GB
-          cpus: "8"
+        ipv4_address: 10.51.0.13
+    environment:
+      - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+
+  # ── AI Profile (--profile ai) ──────────────────────────────────
+
   hermes:
+    profiles:
+      - ai
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -82,130 +106,28 @@ services:
         limits:
           memory: 4G
           cpus: "2.0"
-  homeassistant:
-    container_name: homeassistant
-    image: ghcr.io/home-assistant/home-assistant:stable
-    volumes:
-      - ~/homeassistant/config:/config
-      - /etc/localtime:/etc/localtime:ro
-      - /run/dbus:/run/dbus:ro
-    restart: unless-stopped
-    networks:
-      default:
-        ipv4_address: 10.51.0.4
-  jellyfin:
-    container_name: jellyfin
-    image: jellyfin/jellyfin
-    restart: unless-stopped
-    volumes:
-      - ~/jellyfin/config:/config
-      - ~/jellyfin/cache:/cache
-      - ${JELLYFIN_MEDIA_DIR}:/media
-    environment:
-      - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
-    networks:
-      default:
-        ipv4_address: 10.51.0.5
-  n8n:
-    image: docker.n8n.io/n8nio/n8n:next
-    container_name: n8n
+
+  llmster:
+    profiles:
+      - ai
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.llmster
+    container_name: llmster
     restart: unless-stopped
     environment:
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
-      GENERIC_TIMEZONE: ${TIME_ZONE}
-      TZ: ${TIME_ZONE}
-      N8N_HOST: ${N8N_HOST}
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "false"
-      N8N_RUNNERS_ENABLED: "true"
-      N8N_PROTOCOL: https
-      N8N_EDITOR_BASE_URL: https://${N8N_HOST}/
-      WEBHOOK_URL: https://${N8N_HOST}/
-      DB_TYPE: "postgresdb"
-      DB_POSTGRESDB_DATABASE: n8n
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_USER: ${POSTGRES_USER}
-      DB_POSTGRESDB_SCHEMA: public
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
-    depends_on:
-      - postgres
+      LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
+    volumes:
+      - ~/llmster:/root/.lmstudio/models
     ports:
-      - 5678:5678
-    volumes:
-      - ~/n8n:/home/node/.n8n:rw
+      - 4321:4321
     networks:
       default:
-        ipv4_address: 10.51.0.7
-  npm:
-    container_name: npm
-    image: jc21/nginx-proxy-manager:latest
-    restart: unless-stopped
-    environment:
-      TZ: ${TIME_ZONE}
-    volumes:
-      - ~/npm/data:/data
-      - ~/npm/certs:/etc/letsencrypt
-    ports:
-      - 443:443
-      - 80:80
-      - 81:81
-    networks:
-      default:
-        ipv4_address: 10.51.0.8
-  owui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: owui
-    environment:
-      ENABLE_EVALUATION_ARENA_MODELS: False
-    ports:
-      - 3003:8080
-    volumes:
-      - ~/owui:/app/backend/data
-    restart: always
-    networks:
-      default:
-        ipv4_address: 10.51.0.10
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    restart: unless-stopped
-    container_name: pgadmin
-    depends_on:
-      - postgres
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    networks:
-      default:
-        ipv4_address: 10.51.0.12
-    volumes:
-      - ~/pgadmin/servers.json:/pgadmin4/servers.json
-  portainer:
-    container_name: portainer
-    image: portainer/portainer-ce:latest
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ~/portainer/data:/data
-    networks:
-      default:
-        ipv4_address: 10.51.0.13
-    environment:
-      - PORTAINER_MANAGE_EXTERNAL_STACKS=1
-  postgres:
-    container_name: postgres
-    restart: unless-stopped
-    image: pgvector/pgvector:pg15
-    shm_size: 128mb
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres
-    networks:
-      default:
-        ipv4_address: 10.51.0.14
-    volumes:
-      - ~/postgres/data:/var/lib/postgresql/data
+        ipv4_address: 10.51.0.18
+
   honcho:
+    profiles:
+      - ai
     build:
       context: ..
       dockerfile: infra/Dockerfile.honcho
@@ -256,22 +178,10 @@ services:
         limits:
           memory: ${HONCHO_MEMORY_LIMIT:-2G}
           cpus: "1.0"
-  transmission:
-    build:
-      context: ..
-      dockerfile: infra/Dockerfile.transmission
-    container_name: transmission
-    restart: unless-stopped
-    networks:
-      default:
-        ipv4_address: 10.51.0.15
-    environment:
-      TRANSMISSION_USER: ${TRANSMISSION_USERNAME}
-      TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
-    volumes:
-      - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
-      - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
+
   keycloak:
+    profiles:
+      - ai
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     command: start-dev
@@ -293,6 +203,134 @@ services:
       - ~/keycloak:/opt/keycloak/data
     ports:
       - 8080:8080
+
+  owui:
+    profiles:
+      - ai
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: owui
+    environment:
+      ENABLE_EVALUATION_ARENA_MODELS: False
+    ports:
+      - 3003:8080
+    volumes:
+      - ~/owui:/app/backend/data
+    restart: always
+    networks:
+      default:
+        ipv4_address: 10.51.0.10
+
+  # ── Media Profile (--profile media) ────────────────────────────
+
+  transmission:
+    profiles:
+      - media
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.transmission
+    container_name: transmission
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 10.51.0.15
+    environment:
+      TRANSMISSION_USER: ${TRANSMISSION_USERNAME}
+      TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
+    volumes:
+      - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
+      - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
+
+  digger:
+    profiles:
+      - media
+    build:
+      context: ../src/Digger
+      dockerfile: ../../infra/Dockerfile.digger
+    container_name: digger
+    restart: unless-stopped
+    environment:
+      Logging__Level__Default: Warning
+      Logging__Level__Microsoft: Warning
+      Logging__LogLevel__Microsoft_Hosting_Lifetime: Warning
+      Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
+    depends_on:
+      - transmission
+    volumes:
+      - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
+      - ~/digger:/digger/data:rw
+    networks:
+      default:
+        ipv4_address: 10.51.0.2
+
+  # ── Tools Profile (--profile tools) ────────────────────────────
+
+  n8n:
+    profiles:
+      - tools
+    image: docker.n8n.io/n8nio/n8n:next
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      GENERIC_TIMEZONE: ${TIME_ZONE}
+      TZ: ${TIME_ZONE}
+      N8N_HOST: ${N8N_HOST}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_PROTOCOL: https
+      N8N_EDITOR_BASE_URL: https://${N8N_HOST}/
+      WEBHOOK_URL: https://${N8N_HOST}/
+      DB_TYPE: "postgresdb"
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_SCHEMA: public
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
+    ports:
+      - 5678:5678
+    volumes:
+      - ~/n8n:/home/node/.n8n:rw
+    networks:
+      default:
+        ipv4_address: 10.51.0.7
+
+  vault:
+    profiles:
+      - tools
+    container_name: vault
+    entrypoint: /vault/config/entrypoint.sh
+    image: hashicorp/vault:latest
+    restart: unless-stopped
+    volumes:
+      - ~/vault/config:/vault/config
+      - ~/vault/logs:/vault/logs
+      - ~/vault/file:/vault/file
+    ports:
+      - 1234:1234
+    networks:
+      default:
+        ipv4_address: 10.51.0.6
+
+  pgadmin:
+    profiles:
+      - tools
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    container_name: pgadmin
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    networks:
+      default:
+        ipv4_address: 10.51.0.12
+    volumes:
+      - ~/pgadmin/servers.json:/pgadmin4/servers.json
+
 networks:
   default:
     driver: bridge
