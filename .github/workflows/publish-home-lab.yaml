@@ -65,8 +65,8 @@ jobs:
               jq \
                 --arg transmissionUsername "$TRANSMISSION_USERNAME" \
                 --arg transmissionPassword "$TRANSMISSION_PASSWORD" \
-                '"'"'setpath(["Transmission", "User"]; $transmissionUsername)
-                 | setpath(["Transmission", "Password"]; $transmissionPassword)'"'"' \
+                '\''"'\''setpath(["Transmission", "User"]; $transmissionUsername)
+                 | setpath(["Transmission", "Password"]; $transmissionPassword)'\''"'\'' \
                 "$appsettings_path" > "$appsettings_tmp"
               jq empty "$appsettings_tmp"
               mv "$appsettings_tmp" "$appsettings_path"
@@ -94,20 +94,22 @@ jobs:
             "ENVIRONMENT_SECRETS=$ENVIRONMENT_SECRETS" \
             bash -lc '
               set -euo pipefail
-              jq -r '"'"'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'"'"' <<< "$ENVIRONMENT_VARS" > infra/.env
-              jq -r '"'"'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'"'"' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
+              jq -r '\''"'\''to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'\''"'\'' <<< "$ENVIRONMENT_VARS" > infra/.env
+              jq -r '\''"'\''to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"'\''"'\'' <<< "$ENVIRONMENT_SECRETS" >> infra/.env
               cat infra/.env
             '
       
-      # Bring down any existing infrastructure to ensure a clean deployment, suppressing the output for cleaner logs
+      # Bring down any existing infrastructure — uses --remove-orphans to clean up
+      # stale containers from the compose project without touching other containers
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
         run: |
-          bash -lc '
-            set -euo pipefail
-            docker compose -f infra/compose.yaml down && docker ps -q | xargs -r docker kill
-          '
-        
+          compose_down() {
+            docker compose -f "$1" down --remove-orphans
+          }
+          compose_down infra/compose.yaml
+          compose_down infra/compose.ai.yaml
+
       # Pull the latest Docker images for the application if the update_images input is true, suppressing the output for cleaner logs
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
