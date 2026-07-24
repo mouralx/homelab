@@ -13,20 +13,6 @@ ENV AUTH_USE_AUTH="false"
 ENV OPENAI_API_BASE_URL=""
 ENV OPENAI_BASE_URL=""
 
-# Install build deps, system tools, and uv
-RUN apt-get update -yq && \
-    apt-get install -yq --no-install-recommends build-essential curl git libpq-dev postgresql-client && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    pip install --no-cache-dir uv
+COPY scripts/honcho.entrypoint.sh honcho.entrypoint.sh
 
-# Clone Honcho at a pinned release — no runtime clone needed
-RUN git clone https://github.com/plastic-labs/honcho.git /honcho && \
-    cd /honcho && \
-    git checkout v3.0.11 && \
-    uv sync
-
-COPY scripts/honcho.entrypoint.sh /honcho.entrypoint.sh
-
-WORKDIR /honcho
-
-ENTRYPOINT ["sh", "/honcho.entrypoint.sh"]
+ENTRYPOINT ["sh", "honcho.entrypoint.sh"]
