@@ -63,6 +63,9 @@ docker exec transmission curl -s http://localhost:9091/transmission/rpc \
 # Check Postgres connectivity
 docker exec postgres pg_isready -U postgres
 
+# Check Honcho API
+curl -s http://localhost:8000/ | head -5
+
 # Check disk usage
 df -h /mnt/ssd /home
 
@@ -108,11 +111,24 @@ docker exec digger sqlite3 /digger/data/movies.db \
   "SELECT Name, Size, PublishDate FROM Movies WHERE LastKnownStatus = 'Skipped' ORDER BY PublishDate DESC;"
 ```
 
+### Honcho Monitoring
+
+```sh
+# Check Honcho API health
+curl -s http://localhost:8000/ | python3 -m json.tool 2>/dev/null || echo "Honcho unreachable"
+
+# Check Honcho logs for dialectic processing
+docker logs honcho --tail=30
+
+# Verify Honcho Postgres connection
+docker exec postgres psql -U postgres -c "\l" | grep honcho
+```
+
 ### Automated Monitoring Setup
 
 Consider adding a health check endpoint or setting up Uptime Kuma as an additional service to monitor:
 
-- HTTP endpoint checks for NPM, Jellyfin, n8n
+- HTTP endpoint checks for NPM, Jellyfin, n8n, Hermes, Open WebUI
 - Docker container status verification
 - Disk usage alerts
 - Certificate expiry monitoring (NPM handles this internally, but additional monitoring is useful)
@@ -128,7 +144,11 @@ Consider adding a health check endpoint or setting up Uptime Kuma as an addition
 | Home Assistant config | Important | Weekly | File copy | Small |
 | Jellyfin config | Important | Weekly | File copy | Small |
 | Digger SQLite DB | Important | Weekly | File copy | Small |
+| Vault data | Important | Weekly | File copy | Small |
 | Postgres data directory | Moderate | Weekly | File copy | Medium |
+| Hermes state | Moderate | Weekly | File copy | Small |
+| Keycloak data | Moderate | Weekly | File copy | Small |
+| Open WebUI data | Moderate | Weekly | File copy | Small |
 | Media files | Low | On-demand | Re-downloadable | Large |
 
 ### Backup Scripts
@@ -162,6 +182,8 @@ tar -czf "$BACKUP_DIR/npm_$TIMESTAMP.tar.gz" ~/npm/
 tar -czf "$BACKUP_DIR/homeassistant_$TIMESTAMP.tar.gz" ~/homeassistant/config/
 tar -czf "$BACKUP_DIR/jellyfin-config_$TIMESTAMP.tar.gz" ~/jellyfin/config/
 tar -czf "$BACKUP_DIR/digger_$TIMESTAMP.tar.gz" ~/digger/
+tar -czf "$BACKUP_DIR/vault_$TIMESTAMP.tar.gz" ~/vault/
+tar -czf "$BACKUP_DIR/keycloak_$TIMESTAMP.tar.gz" ~/keycloak/
 
 # Keep only last 30 days
 find "$BACKUP_DIR" -name "*.tar.gz" -mtime +30 -delete
@@ -179,7 +201,7 @@ mkdir -p "$BACKUP_DIR"
 docker exec postgres pg_dumpall -U postgres > "$BACKUP_DIR/postgres_$TIMESTAMP.sql"
 
 # Copy all state directories
-for dir in digger postgres n8n jellyfin homeassistant npm portainer vault hermes keycloak; do
+for dir in digger postgres n8n jellyfin homeassistant npm portainer vault hermes keycloak llmster owui; do
     if [ -d ~/$dir ]; then
         cp -r ~/$dir "$BACKUP_DIR/$dir/"
     fi
@@ -196,14 +218,14 @@ rm -rf "$BACKUP_DIR"
 
 ```sh
 # Stop services that depend on Postgres
-docker compose -f infra/compose.yaml stop n8n keycloak pgadmin
+docker compose -f infra/compose.yaml stop n8n keycloak honcho pgadmin
 
 # Restore
 gunzip -c /backups/postgres/full_backup_20260715_120000.sql.gz | \
   docker exec -i postgres psql -U postgres
 
 # Restart services
-docker compose -f infra/compose.yaml start n8n keycloak pgadmin
+docker compose -f infra/compose.yaml start n8n keycloak honcho pgadmin
 ```
 
 #### Digger Database
@@ -390,6 +412,14 @@ docker compose restart jellyfin
 | Downloads stuck | `docker exec digger sqlite3 /digger/data/movies.db "SELECT Name, LastKnownStatus FROM Movies WHERE LastKnownStatus IN ('NotEnqueued', 'Enqueued');"` | Transmission unreachable | Check Transmission container |
 | Space exceeded | `df -h /mnt/ssd` | Media too large | Increase MaxAllocatedSpace or clear media |
 
+### Honcho-Specific Issues
+
+| Symptom | Diagnosis Command | Likely Cause | Resolution |
+|---|---|---|---|
+| Honcho won't start | `docker logs honcho` | Postgres not ready or missing extensions | Check Postgres health, verify pgvector extension |
+| Embedding errors | `docker logs honcho` | LLMster unreachable | Check LLMster container health |
+| Slow responses | `docker stats honcho` | Memory limit reached | Increase `HONCHO_MEMORY_LIMIT` |
+
 ### Common Error Messages
 
 ```
@@ -481,7 +511,7 @@ curl -fsSL https://get.docker.com | sh
 
 ### Resource Limits
 
-The compose file already defines resource limits for Hermes (4GB RAM, 2 CPUs). Consider adding limits to other services:
+The compose file already defines resource limits for Hermes (4GB RAM, 2 CPUs), Honcho (2GB RAM, 1 CPU), and Vault (512MB RAM, 0.5 CPU). Consider adding limits to other services:
 
 ```yaml
 services:

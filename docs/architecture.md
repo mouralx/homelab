@@ -25,6 +25,8 @@ flowchart TD
         n8n["n8n"]
         Hermes["Hermes"]
         LLMster["LLMster"]
+        Honcho["Honcho"]
+        OWUI["Open WebUI"]
     end
 
     subgraph Media["Media Layer"]
@@ -36,10 +38,11 @@ flowchart TD
     subgraph Operations["Operations Layer"]
         Vault["Vault"]
         pgAdmin["pgAdmin"]
+        HomeAssistant["Home Assistant"]
     end
 
     subgraph Data["Data Layer"]
-        Postgres["Postgres 15"]
+        Postgres["Postgres 15 + pgvector"]
         SQLite["SQLite (Digger)"]
         MediaDisk["Shared Media Storage"]
     end
@@ -47,9 +50,11 @@ flowchart TD
     User["User / Browser"] --> NPM
     NPM --> Keycloak
     NPM --> Portainer
+    NPM --> HomeAssistant
     NPM --> Jellyfin
     NPM --> n8n
     NPM --> Hermes
+    NPM --> OWUI
 
     Digger --> Transmission
     Digger --> SQLite
@@ -58,9 +63,11 @@ flowchart TD
 
     n8n --> Postgres
     Keycloak --> Postgres
+    Honcho --> Postgres
     pgAdmin --> Postgres
 
-    Hermes --> Llama
+    Hermes -.-> LLMster
+    Honcho -.-> LLMster
 ```
 
 ### Access Layer
@@ -73,11 +80,13 @@ Responsible for routing external traffic, terminating TLS, and authenticating us
 
 ### Automation Layer
 
-Handles workflow orchestration, AI inference, and background task processing.
+Handles workflow orchestration, AI inference, background task processing, and persistent agent memory.
 
 - **n8n** (`10.51.0.7`): Advanced workflow automation platform with 400+ integrations. Backed by Postgres for persistent state. Exposed through NPM for webhook access.
-- **Hermes** (`10.51.0.17`): AI agent gateway by Nous Research. Routes requests to local LLM backends. Configured with OIDC auth and resource limits (4GB RAM, 2 CPUs).
-- **LLMster** (`10.51.0.18`): Local model runtime exposing the configured LM Studio model on port 4321.
+- **Hermes** (`10.51.0.17`): AI agent gateway by Nous Research. Routes requests to local LLM backends and cloud API fallbacks. Configured with OIDC auth and resource limits (4GB RAM, 2 CPUs).
+- **LLMster** (`10.51.0.18`): Local model runtime exposing a configured embedding and chat model on port 4321. Used by both Hermes and Honcho for inference.
+- **Honcho** (`10.51.0.19`): AI memory and context persistence service. Provides dialectic reasoning, session search, and long-term peer profiles. Backed by Postgres with pgvector for embeddings.
+- **Open WebUI** (`10.51.0.10`): ChatGPT-like interface for interacting with local and remote LLMs. Connects to Hermes and LLMster backends.
 
 ### Media Layer
 
@@ -89,10 +98,11 @@ Manages the automated discovery, download, storage, and playback of media conten
 
 ### Operations Layer
 
-Infrastructure management and monitoring tools.
+Infrastructure management, secrets, home automation, and monitoring tools.
 
 - **Vault** (`10.51.0.6`): HashiCorp Vault for centralized secrets management. Configured with file-based storage and a custom entrypoint.
 - **pgAdmin** (`10.51.0.12`): Web-based Postgres administration tool. Pre-configured with server connection details via mounted JSON.
+- **Home Assistant** (`10.51.0.4`): Open-source home automation platform.
 
 ## Network Model
 
@@ -104,32 +114,21 @@ All services run on a dedicated bridge network with static IP assignments in the
 flowchart LR
     subgraph "Docker Bridge Network 10.51.0.0/24"
         direction TB
-        digger["digger
-10.51.0.2"]
-        vault["vault
-10.51.0.6"]
-        hermes["hermes
-10.51.0.17"]
-        ha["homeassistant
-10.51.0.4"]
-        jellyfin["jellyfin
-10.51.0.5"]
-        n8n["n8n
-10.51.0.7"]
-        npm["npm
-10.51.0.8"]
-        llmster["llmster
-10.51.0.18"]
-        pgadmin["pgadmin
-10.51.0.12"]
-        portainer["portainer
-10.51.0.13"]
-        postgres["postgres
-10.51.0.14"]
-        transmission["transmission
-10.51.0.15"]
-        keycloak["keycloak
-10.51.0.16"]
+        digger["digger\n10.51.0.2"]
+        vault["vault\n10.51.0.6"]
+        hermes["hermes\n10.51.0.17"]
+        ha["homeassistant\n10.51.0.4"]
+        jellyfin["jellyfin\n10.51.0.5"]
+        n8n["n8n\n10.51.0.7"]
+        npm["npm\n10.51.0.8"]
+        llmster["llmster\n10.51.0.18"]
+        honcho["honcho\n10.51.0.19"]
+        keycloak["keycloak\n10.51.0.16"]
+        owui["owui\n10.51.0.10"]
+        pgadmin["pgadmin\n10.51.0.12"]
+        portainer["portainer\n10.51.0.13"]
+        postgres["postgres\n10.51.0.14"]
+        transmission["transmission\n10.51.0.15"]
     end
 ```
 
@@ -140,24 +139,28 @@ flowchart LR
 | 80 | NPM | HTTP redirect to HTTPS |
 | 443 | NPM | HTTPS traffic |
 | 81 | NPM | Admin UI |
-| 8080 | Keycloak | Identity provider |
 | 4321 | LLMster | Local model runtime endpoint |
 | 5678 | n8n | Workflow editor |
+| 8080 | Keycloak | Identity provider |
 | 8642 | Hermes | AI gateway |
 | 9119 | Hermes | AI gateway (secondary) |
-| 1234 | Vault | Secrets management |
+| 1234 | Vault | Secrets management API |
+| 3003 | Open WebUI | Chat interface |
+| 8000 | Honcho | Honcho API |
 
 ### Inter-Service Communication
 
 Services communicate over the internal bridge network using static IP addresses. Key communication paths:
 
-- Digger → Transmission: RPC calls at `http://transmission:9091/transmission/rpc`
-- Digger → SQLite: Local file-based access at `/digger/data/movies.db`
-- n8n → Postgres: JDBC connection to `10.51.0.14:5432`
-- Keycloak → Postgres: JDBC connection to `10.51.0.14:5432`
-- Hermes → LLMster: HTTP inference at `http://10.51.0.18:4321`
-- Jellyfin → Media: Direct file system access via mounted volumes
-- Portainer → Docker: Unix socket at `/var/run/docker.sock`
+- Digger \u2192 Transmission: RPC calls at `http://transmission:9091/transmission/rpc`
+- Digger \u2192 SQLite: Local file-based access at `/digger/data/movies.db`
+- n8n \u2192 Postgres: JDBC connection to `10.51.0.14:5432`
+- Keycloak \u2192 Postgres: JDBC connection to `10.51.0.14:5432`
+- Honcho \u2192 Postgres: JDBC connection to `10.51.0.14:5432`
+- Hermes \u2192 LLMster: HTTP inference at `http://10.51.0.18:4321`
+- Honcho \u2192 LLMster: Embedding inference at `http://10.51.0.18:4321/v1`
+- Jellyfin \u2192 Media: Direct file system access via mounted volumes
+- Portainer \u2192 Docker: Unix socket at `/var/run/docker.sock`
 
 ## Storage Model
 
@@ -182,6 +185,8 @@ The stack uses a mix of host-mounted volumes and container-local storage, organi
 | `~/hermes` | `/opt/data` | Hermes | AI gateway state |
 | `~/keycloak` | `/opt/keycloak/data` | Keycloak | Realm configuration |
 | `~/llmster` | `/root/.lmstudio/models` | LLMster | Model cache |
+| `~/honcho` | \u2014 | Honcho | (State managed via Postgres) |
+| `~/owui` | `/app/backend/data` | Open WebUI | Chat history, config |
 | `~/pgadmin/servers.json` | `/pgadmin4/servers.json` | pgAdmin | Server connection config |
 | `/mnt/ssd/transmission/downloads` | `/downloads` | Transmission | Completed downloads (shared) |
 | `/mnt/ssd/transmission/incomplete` | `/incomplete` | Transmission | In-progress downloads |
@@ -204,6 +209,7 @@ This separation prevents media bloat from affecting system performance and makes
 | NPM | Host volume (files) | Important | Config export + certs |
 | Home Assistant | Host volume (files) | Important | Config copy |
 | Jellyfin | Host volume (files) | Moderate | Config + cache rebuild |
+| Vault | Host volume (files) | Important | File copy + unseal key |
 | Media files | Host directory | Optional | Re-downloadable |
 | Portainer | Host volume (file) | Low | Re-created on deploy |
 
@@ -216,8 +222,10 @@ flowchart TD
     digger --> transmission
     n8n --> postgres
     keycloak --> postgres
+    honcho --> postgres
     pgadmin --> postgres
     hermes -.-> llmster
+    honcho -.-> llmster
 ```
 
 ### Hard Dependencies
@@ -229,6 +237,7 @@ Services that must be running before their dependents start:
 | Digger | Transmission | RPC calls to add/check torrents |
 | n8n | Postgres | Database-backed workflow state |
 | Keycloak | Postgres | Database-backed realm data |
+| Honcho | Postgres | Database-backed memory and profiles |
 | pgAdmin | Postgres | Database administration target |
 
 ### Soft Dependencies
@@ -237,7 +246,8 @@ Services that benefit from others being available but can function independently
 
 | Service | Integration | Effect of Missing Integration |
 |---|---|---|
-| Hermes | LLMster | AI inference unavailable |
+| Hermes | LLMster | AI inference degraded (falls back to cloud API) |
+| Honcho | LLMster | Embedding generation unavailable |
 | Jellyfin | Transmission media | No new content |
 | Digger | YTS API (external) | No new movie discovery |
 
@@ -327,6 +337,8 @@ Only services that need external access expose host ports:
 - **LLMster (4321)**: Local model runtime API
 - **Hermes (8642, 9119)**: AI gateway API
 - **Vault (1234)**: Secrets management API
+- **Open WebUI (3003)**: Chat interface
+- **Honcho (8000)**: Honcho API
 
 All other services are only accessible within the Docker bridge network.
 
@@ -337,3 +349,4 @@ All other services are only accessible within the Docker bridge network.
 - The repository itself contains zero secrets
 - The `.env` file is listed in `.gitignore` and never committed
 - The deployment workflow explicitly excludes `GITHUB_TOKEN` from the `.env` file
+- Vault provides an additional secrets layer accessible by any container on the bridge network

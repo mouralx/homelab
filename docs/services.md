@@ -1,6 +1,6 @@
 # Services Reference
 
-Complete documentation for all 13 Docker services in the home lab stack.
+Complete documentation for all 15 Docker services in the home lab stack.
 
 ## Contents
 
@@ -13,11 +13,12 @@ Complete documentation for all 13 Docker services in the home lab stack.
 - [postgres](#postgres)
 - [homeassistant](#homeassistant)
 - [hermes](#hermes)
-- [llama](#llama)
+- [llmster](#llmster)
+- [honcho](#honcho)
+- [owui (Open WebUI)](#owui-open-webui)
 - [portainer](#portainer)
 - [vault](#vault)
 - [pgadmin](#pgadmin)
-- [honcho](#honcho)
 
 ---
 
@@ -26,9 +27,10 @@ Complete documentation for all 13 Docker services in the home lab stack.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.2` |
+| Profile | `media` |
 | Image | Custom build (see `Dockerfile.digger`) |
 | Restart | `unless-stopped` |
-| Depends on | `transmission` |
+| Depends on | `transmission` (condition: service_healthy) |
 | Volumes | `${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw`, `~/digger:/digger/data:rw` |
 
 ### Description
@@ -60,6 +62,7 @@ Uses `appsettings.json` for runtime configuration, with Transmission credentials
 | Property | Value |
 |---|---|
 | IP | `10.51.0.15` |
+| Profile | `media` |
 | Image | Custom build (see `Dockerfile.transmission`) |
 | Restart | `unless-stopped` |
 
@@ -89,9 +92,9 @@ Custom Transmission daemon running on Ubuntu. Configured with authentication for
 | `${TRANSMISSION_DOWNLOADS_DIR}` | `/downloads` |
 | `${TRANSMISSION_INCOMPLETE_DIR}` | `/incomplete` |
 
-### Dockerfile Details
+### Healthcheck
 
-Base image: `ubuntu:latest`. Installs `transmission-daemon` via apt. Runs as daemon with authentication, configurable incomplete directory, and custom download directory.
+HTTP GET to `http://localhost:9091/` every 30s, start period 15s.
 
 ---
 
@@ -100,7 +103,8 @@ Base image: `ubuntu:latest`. Installs `transmission-daemon` via apt. Runs as dae
 | Property | Value |
 |---|---|
 | IP | `10.51.0.5` |
-| Image | `jellyfin/jellyfin:latest` |
+| Profile | \u2014 |
+| Image | `jellyfin/jellyfin` |
 | Restart | `unless-stopped` |
 
 ### Description
@@ -111,7 +115,7 @@ Open-source media server that organizes, streams, and transcodes media content. 
 
 | Variable | Description | Required |
 |---|---|---|
-| `JELLYFIN_SERVER_URL` | Published server URL | Yes |
+| `JELLYFIN_PublishedServerUrl` | Published server URL | Yes |
 
 ### Volumes
 
@@ -128,9 +132,10 @@ Open-source media server that organizes, streams, and transcodes media content. 
 | Property | Value |
 |---|---|
 | IP | `10.51.0.7` |
+| Profile | `tools` |
 | Image | `docker.n8n.io/n8nio/n8n:next` |
 | Restart | `unless-stopped` |
-| Depends on | `postgres` |
+| Depends on | `postgres` (condition: service_healthy) |
 
 ### Description
 
@@ -166,6 +171,7 @@ Advanced workflow automation platform with 400+ integrations, node-based visual 
 | Property | Value |
 |---|---|
 | IP | `10.51.0.8` |
+| Profile | \u2014 |
 | Image | `jc21/nginx-proxy-manager:latest` |
 | Restart | `unless-stopped` |
 
@@ -194,16 +200,6 @@ Web-based Nginx reverse proxy manager with built-in TLS termination, Let's Encry
 | `~/npm/data` | `/data` | Config, SSL certs, access logs |
 | `~/npm/certs` | `/etc/letsencrypt` | Let's Encrypt certificates |
 
-### Typical Proxy Configuration
-
-The admin UI at port 81 should be used to configure proxy hosts for:
-- Jellyfin
-- Home Assistant
-- n8n
-- Keycloak
-- Portainer
-- Hermes
-
 ---
 
 ## keycloak
@@ -211,8 +207,10 @@ The admin UI at port 81 should be used to configure proxy hosts for:
 | Property | Value |
 |---|---|
 | IP | `10.51.0.16` |
+| Profile | `ai` |
 | Image | `quay.io/keycloak/keycloak:latest` |
 | Restart | `unless-stopped` |
+| Depends on | `postgres` (condition: service_healthy) |
 
 ### Description
 
@@ -244,7 +242,7 @@ Open-source identity and access management solution providing OIDC and SAML SSO.
 
 ### Storage
 
-- `~/keycloak:/opt/keycloak/data` - Realm configuration, users, sessions
+- `~/keycloak:/opt/keycloak/data` \u2014 Realm configuration, users, sessions
 
 ---
 
@@ -253,12 +251,13 @@ Open-source identity and access management solution providing OIDC and SAML SSO.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.14` |
+| Profile | \u2014 |
 | Image | `pgvector/pgvector:pg15` |
 | Restart | `unless-stopped` |
 
 ### Description
 
-Shared PostgreSQL 15 database used by n8n, Keycloak, Honcho, and accessible via pgAdmin. Configured with 128MB shared memory and the pgvector extension support needed by Honcho.
+Shared PostgreSQL 15 database used by n8n, Keycloak, Honcho, and accessible via pgAdmin. Configured with 128MB shared memory and the pgvector extension support needed by Honcho for vector embeddings.
 
 ### Environment Variables
 
@@ -274,46 +273,9 @@ Shared PostgreSQL 15 database used by n8n, Keycloak, Honcho, and accessible via 
 ### Databases
 
 The server creates a default `postgres` database. Services create their own databases:
-- `n8n` - Workflow state
-- `keycloak` - Realm configuration
-
----
-
-## honcho
-
-| Property | Value |
-|---|---|
-| IP | `10.51.0.19` |
-| Image | Custom build (see `Dockerfile.honcho`) |
-| Restart | `unless-stopped` |
-| Depends on | `postgres` |
-
-### Description
-
-Honcho is the local self-hosted API service used for the Honcho application stack. It waits for Postgres to become available, enables the required PostgreSQL extensions, runs migrations, and starts the FastAPI service on port 8000.
-
-### Environment Variables
-
-| Variable | Description |
-|---|---|
-| `DB_HOST` | Postgres host name |
-| `DB_PORT` | Postgres port |
-| `DB_NAME` | Postgres database name |
-| `DB_USER` | Postgres username |
-| `DB_PASSWORD` | Postgres password |
-| `OPENAI_API_BASE_URL` | OpenAI-compatible API base URL |
-| `OPENAI_BASE_URL` | Alias for the OpenAI-compatible API base URL |
-| `HONCHO_MEMORY_LIMIT` | Container memory limit |
-
-### Exposed Ports
-
-| Port | Purpose |
-|---|---|
-| 8000 | Honcho API |
-
-### Entrypoint
-
-The container uses the script at `scripts/externals/honcho.entrypoint.sh`.
+- `n8n` \u2014 Workflow state
+- `keycloak` \u2014 Realm configuration
+- `honcho` \u2014 Memory and profile data (via Honcho)
 
 ---
 
@@ -322,12 +284,13 @@ The container uses the script at `scripts/externals/honcho.entrypoint.sh`.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.4` |
+| Profile | \u2014 |
 | Image | `ghcr.io/home-assistant/home-assistant:stable` |
 | Restart | `unless-stopped` |
 
 ### Description
 
-Open-source home automation platform. Integrates with Frigate for camera-based automation. Can be integrated with n8n for complex automation workflows.
+Open-source home automation platform. Can be integrated with n8n for complex automation workflows.
 
 ### Volumes
 
@@ -344,29 +307,33 @@ Open-source home automation platform. Integrates with Frigate for camera-based a
 | Property | Value |
 |---|---|
 | IP | `10.51.0.17` |
+| Profile | `ai` |
 | Image | `nousresearch/hermes-agent:latest` |
 | Restart | `unless-stopped` |
 | Resources | 4GB RAM, 2 CPU cores |
 
 ### Description
 
-AI agent gateway by Nous Research. Routes inference requests to local LLM backends (Llama/Ollama). Provides a dashboard with OIDC authentication.
+AI agent gateway by Nous Research. Routes inference requests to local LLM backends (LLMster) and cloud API fallbacks (OpenCode). Provides a dashboard with OIDC authentication.
 
 ### Environment Variables
 
 | Variable | Description |
 |---|---|
+| `API_SERVER_ENABLED` | Enable API server (`true`) |
+| `API_SERVER_KEY` | API key for authentication |
 | `HERMES_DASHBOARD` | Enable dashboard (`1`) |
 | `HERMES_DASHBOARD_OIDC_ISSUER` | OIDC issuer URL |
 | `HERMES_DASHBOARD_OIDC_CLIENT_ID` | OIDC client ID |
 | `HERMES_DASHBOARD_PUBLIC_URL` | Public URL for dashboard |
-| `OPENCODE_API_KEY` | API key (shared for GO and ZEN) |
+| `OPENCODE_GO_API_KEY` | OpenCode Go API key |
+| `OPENCODE_ZEN_API_KEY` | OpenCode Zen API key (fallback) |
 
 ### Exposed Ports
 
 | Port | Purpose |
 |---|---|
-| 8642 | Agent gateway |
+| 8642 | Agent gateway and dashboard |
 | 9119 | Secondary interface |
 
 ### Resource Limits
@@ -376,41 +343,115 @@ AI agent gateway by Nous Research. Routes inference requests to local LLM backen
 
 ---
 
-## llama
+## llmster
 
 | Property | Value |
 |---|---|
-| IP | `10.51.0.9` |
-| Image | Custom build (see `Dockerfile.llama`) |
+| IP | `10.51.0.18` |
+| Profile | `ai` |
+| Image | Custom build (see `Dockerfile.llmster`) |
 | Restart | `unless-stopped` |
 
 ### Description
 
-Local LLM inference server running the Ministral-3-3B-Reasoning model in Q8_0 quantization via the `llama` CLI. Optimized for local inference with 8 threads and a 65K token context window.
+Local LLM inference server running inside an LM Studio container. Exposes an OpenAI-compatible API on port 4321 for both chat completions and embeddings. Used by Hermes for agent inference and by Honcho for embedding generation.
 
-### Dockerfile Details
+### Environment Variables
 
-1. Base image: `ubuntu:latest`
-2. Installs `curl`
-3. Runs the Llama CLI installer (`llama.app/install.sh`)
-4. Serves model `ggml-org/Ministral-3-3B-Reasoning-2512-GGUF:Q8_0`
+| Variable | Description | Default |
+|---|---|---|
+| `LLM_MODEL` | Model to load at startup | `google/gemma-4-e2b` |
 
-### Entrypoint
+### Volumes
 
-```sh
-llama serve -hf ggml-org/Ministral-3-3B-Reasoning-2512-GGUF:Q8_0 \
-  --host 0.0.0.0 --port 8081 -t 8 -c 65536
-```
+| Host Path | Container Path | Purpose |
+|---|---|---|
+| `~/llmster` | `/root/.lmstudio/models` | Model files cache |
 
 ### Exposed Ports
 
-| Port | Container Port |
+| Host Port | Container Port |
 |---|---|
-| 8081 | 8081 |
+| 4321 | 4321 |
 
-### Storage
+### Healthcheck
 
-- `~/llama:/root/.cache` - Cached model files
+HTTP GET to `http://localhost:4321/v1/models` every 30s, start period 120s.
+
+---
+
+## honcho
+
+| Property | Value |
+|---|---|
+| IP | `10.51.0.19` |
+| Profile | `ai` |
+| Image | Custom build (see `Dockerfile.honcho`) |
+| Restart | `unless-stopped` |
+| Depends on | `postgres` (condition: service_healthy) |
+| Resources | 2GB RAM (configurable), 1 CPU |
+
+### Description
+
+Honcho is a self-hosted AI memory and context persistence service. It provides long-term peer profiles, session search across conversations, and dialectic reasoning \u2014 enabling persistent, contextual AI interactions. Waits for Postgres to become available, enables required PostgreSQL extensions (pgvector, pg_trgm), runs Alembic migrations, and starts the FastAPI service.
+
+### Environment Variables
+
+| Variable | Description | Required |
+|---|---|---|
+| `DB_HOST` | Postgres hostname | Yes |
+| `DB_PORT` | Postgres port | Yes |
+| `DB_NAME` | Database name | Yes |
+| `DB_USER` | Postgres username | Yes |
+| `DB_PASSWORD` | Postgres password | Yes |
+| `AUTH_USE_AUTH` | Disable authentication | No (default: false) |
+| `OPENCODE_API_KEY` | OpenCode API key for LLM calls | Yes |
+| `LLM_DEFAULT_MAX_TOKENS` | Max tokens for LLM calls | No (default: 4096) |
+| `EMBEDDING_VECTOR_DIMENSIONS` | Vector embedding dimensions | No (default: 768) |
+| `HONCHO_MEMORY_LIMIT` | Container memory limit | No (default: 2G) |
+
+### LLM Configuration
+
+Honcho uses OpenCode (Go and Zen) as its LLM provider, configured to use `deepseek-v4-flash` for all dialectic levels and summary generation. Embeddings use `nomic-embed-text-v1.5` served by the local LLMster container.
+
+### Exposed Ports
+
+| Port | Purpose |
+|---|---|
+| 8000 | Honcho API |
+
+---
+
+## owui (Open WebUI)
+
+| Property | Value |
+|---|---|
+| IP | `10.51.0.10` |
+| Profile | `ai` |
+| Image | `ghcr.io/open-webui/open-webui:main` |
+| Restart | `always` |
+
+### Description
+
+Open WebUI provides a ChatGPT-like web interface for interacting with LLMs. Supports multiple backends, conversation history, and model switching.
+
+### Environment Variables
+
+| Variable | Description |
+|---|---|
+| `ENABLE_EVALUATION_ARENA_MODELS` | Disable evaluation arena (`false`) |
+
+### Volumes
+
+| Host Path | Container Path | Purpose |
+|---|---|---|
+| `~/owui` | `/app/backend/data` | Chat history, user data |
+
+### Exposed Ports
+
+| Host Port | Container Port |
+|---|---|
+| 3003 | 8080 |
 
 ---
 
@@ -419,6 +460,7 @@ llama serve -hf ggml-org/Ministral-3-3B-Reasoning-2512-GGUF:Q8_0 \
 | Property | Value |
 |---|---|
 | IP | `10.51.0.13` |
+| Profile | \u2014 |
 | Image | `portainer/portainer-ce:latest` |
 | Restart | `unless-stopped` |
 
@@ -446,12 +488,14 @@ Container management dashboard providing a web UI for managing Docker resources.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.6` |
+| Profile | `tools` |
 | Image | `hashicorp/vault:latest` |
 | Restart | `unless-stopped` |
+| Resources | 512MB RAM, 0.5 CPU |
 
 ### Description
 
-HashiCorp Vault for centralized secrets management. Uses file-based storage with a custom entrypoint script for initialization.
+HashiCorp Vault for centralized secrets management. Uses file-based storage with a custom entrypoint script for initialization and unsealing.
 
 ### Volumes
 
@@ -467,6 +511,10 @@ HashiCorp Vault for centralized secrets management. Uses file-based storage with
 |---|---|
 | 1234 | 1234 |
 
+### Entrypoint
+
+Custom entrypoint at `/vault/config/entrypoint.sh` (mounted from host).
+
 ---
 
 ## pgadmin
@@ -474,9 +522,10 @@ HashiCorp Vault for centralized secrets management. Uses file-based storage with
 | Property | Value |
 |---|---|
 | IP | `10.51.0.12` |
+| Profile | `tools` |
 | Image | `dpage/pgadmin4:latest` |
 | Restart | `unless-stopped` |
-| Depends on | `postgres` |
+| Depends on | `postgres` (condition: service_healthy) |
 
 ### Description
 

@@ -20,7 +20,7 @@ The stack uses three layers of configuration:
 ```text
 Layer 1: GitHub Environment (source of truth)
          ↓ (injected at deploy time)
-Layer 2: infra/.env + appsettings.json (runtime files)
+Layer 2: infra/.env (runtime file)
          ↓ (read by containers)
 Layer 3: Docker Compose + appsettings.json (applied configuration)
 ```
@@ -49,7 +49,7 @@ jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostr
 
 ### Format
 
-```
+```ini
 DIGGER_HOST_MOVIES_DIR=/mnt/ssd/transmission/downloads/movies
 JELLYFIN_MEDIA_DIR=/mnt/ssd/transmission/downloads/media
 JELLYFIN_SERVER_URL=https://jellyfin.example.com
@@ -63,6 +63,7 @@ TRANSMISSION_DOWNLOADS_DIR=/mnt/ssd/transmission/downloads
 TRANSMISSION_INCOMPLETE_DIR=/mnt/ssd/transmission/incomplete
 TRANSMISSION_USERNAME=transmission
 TRANSMISSION_PASSWORD=your-transmission-password
+OPENCODE_API_KEY=your-opencode-api-key
 # ... additional variables as configured
 ```
 
@@ -81,10 +82,10 @@ TRANSMISSION_PASSWORD=your-transmission-password
 
 | Variable | Type | Required | Default | Used By |
 |---|---|---|---|---|
-| `TRANSMISSION_USERNAME` | Variable | Yes | - | Transmission |
-| `TRANSMISSION_PASSWORD` | Secret | Yes | - | Transmission + Digger |
-| `POSTGRES_USER` | Variable | Yes | - | Postgres, n8n, Keycloak |
-| `POSTGRES_PASSWORD` | Secret | Yes | - | Postgres, n8n, Keycloak, pgAdmin |
+| `TRANSMISSION_USERNAME` | Variable | Yes | \u2014 | Transmission |
+| `TRANSMISSION_PASSWORD` | Secret | Yes | \u2014 | Transmission + Digger |
+| `POSTGRES_USER` | Variable | Yes | \u2014 | Postgres, n8n, Keycloak, Honcho |
+| `POSTGRES_PASSWORD` | Secret | Yes | \u2014 | Postgres, n8n, Keycloak, Honcho, pgAdmin |
 
 ### n8n Configuration
 
@@ -99,7 +100,7 @@ TRANSMISSION_PASSWORD=your-transmission-password
 |---|---|---|---|---|
 | `KC_BOOTSTRAP_ADMIN_USERNAME` | Variable | No | `admin` | Keycloak |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD` | Secret | No | `admin` | Keycloak |
-| `KC_HOSTNAME` | Variable | No | - | Keycloak |
+| `KC_HOSTNAME` | Variable | Yes | \u2014 | Keycloak |
 | `KC_PROXY_HEADERS` | Variable | No | `xforwarded` | Keycloak |
 | `KC_HTTP_ENABLED` | Variable | No | `false` | Keycloak |
 
@@ -107,10 +108,14 @@ TRANSMISSION_PASSWORD=your-transmission-password
 
 | Variable | Type | Required | Used By |
 |---|---|---|---|
+| `HERMES_API_KEY` | Secret | No | Hermes |
+| `HERMES_ALLOWED_USERS` | Variable | No | Hermes |
 | `HERMES_DASHBOARD_OIDC_ISSUER` | Variable | No | Hermes |
 | `HERMES_DASHBOARD_OIDC_CLIENT_ID` | Variable | No | Hermes |
 | `HERMES_DASHBOARD_PUBLIC_URL` | Variable | No | Hermes |
-| `OPENCODE_API_KEY` | Secret | No | Hermes |
+| `OPENCODE_API_KEY` | Secret | Yes | Hermes, Honcho |
+| `LLM_MODEL` | Variable | No | LLMster (default: `google/gemma-4-e2b`) |
+| `HONCHO_MEMORY_LIMIT` | Variable | No | Honcho (default: `2G`) |
 
 ### pgAdmin
 
@@ -244,10 +249,9 @@ Variables referenced in `infra/compose.yaml` with the `${VAR_NAME}` syntax must 
 - **jellyfin**: `${JELLYFIN_SERVER_URL}`, `${JELLYFIN_MEDIA_DIR}`
 - **n8n**: `${N8N_ENCRYPTION_KEY}`, `${TIME_ZONE}`, `${N8N_HOST}`, `${POSTGRES_USER}`, `${POSTGRES_PASSWORD}`
 - **npm**: `${TIME_ZONE}`
-- **homeassistant**: (none; uses fixed paths)
-- **hermes**: `${HERMES_DASHBOARD_OIDC_ISSUER}`, `${HERMES_DASHBOARD_OIDC_CLIENT_ID}`, `${HERMES_DASHBOARD_PUBLIC_URL}`, `${OPENCODE_API_KEY}`
+- **hermes**: `${HERMES_API_KEY}`, `${HERMES_ALLOWED_USERS}`, `${HERMES_DASHBOARD_OIDC_ISSUER}`, `${HERMES_DASHBOARD_OIDC_CLIENT_ID}`, `${HERMES_DASHBOARD_PUBLIC_URL}`, `${OPENCODE_API_KEY}`
 - **llmster**: `${LLM_MODEL}`
-- **honcho**: `${OPENCODE_API_KEY}`, `${OPENCODE_API_BASE_URL}`, `${HONCHO_MEMORY_LIMIT}`
+- **honcho**: `${POSTGRES_USER}`, `${POSTGRES_PASSWORD}`, `${OPENCODE_API_KEY}`, `${HONCHO_MEMORY_LIMIT}`
 - **transmission**: `${TRANSMISSION_USERNAME}`, `${TRANSMISSION_PASSWORD}`, `${TRANSMISSION_DOWNLOADS_DIR}`, `${TRANSMISSION_INCOMPLETE_DIR}`
 - **keycloak**: `${KC_HOSTNAME}`, `${POSTGRES_USER}`, `${POSTGRES_PASSWORD}`
 - **pgadmin**: `${PGADMIN_DEFAULT_EMAIL}`, `${PGADMIN_DEFAULT_PASSWORD}`
@@ -273,6 +277,24 @@ KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
 KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-false}
 ```
 
+LLMster also provides a default model:
+
+```yaml
+LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
+```
+
+### Compose Profiles
+
+Services are grouped into optional profiles to allow selective deployment:
+
+| Profile | Services |
+|---|---|
+| `ai` | hermes, honcho, llmster, keycloak, owui |
+| `media` | digger, transmission |
+| `tools` | vault, n8n, pgadmin |
+
+Services without a profile (homeassistant, jellyfin, npm, portainer, postgres) are always deployed with `up -d`.
+
 ## Dockerfile Configuration
 
 ### transmission (Dockerfile.transmission)
@@ -283,15 +305,23 @@ ENV TRANSMISSION_USER="transmission" \
     TRANSMISSION_ALLOWED="*"
 ```
 
-These are build-time defaults. Runtime values are set via environment variables from `compose.yaml`.
+These are build-time defaults. Runtime values are set via environment variables from `compose.yaml`. The custom entrypoint script rewrites the Transmission config at container start.
 
 ### llmster (Dockerfile.llmster)
 
-The image uses the configured model from `LLM_MODEL` and exposes the LM Studio-compatible runtime on port 4321.
+```dockerfile
+ENV LLM_MODEL="google/gemma-4-e2b"
+```
+
+Exposes the configured model through an LM Studio-compatible runtime on port 4321.
+
+### honcho (Dockerfile.honcho)
+
+Multi-stage Python build that installs dependencies and sets up the Honcho FastAPI service. The entrypoint script handles Postgres readiness, extension creation, and migration execution.
 
 ### digger (Dockerfile.digger)
 
-Build-time only. No runtime configuration through Dockerfile. Uses `appsettings.json` and environment overrides.
+Multi-stage .NET 10 build that compiles the worker and publishes it as a self-contained deployment. No runtime configuration through Dockerfile \u2014 uses `appsettings.json` and environment overrides.
 
 ## Secrets Management
 
@@ -301,6 +331,7 @@ Build-time only. No runtime configuration through Dockerfile. Uses `appsettings.
 2. **GitHub Environments as source of truth**: All secrets are defined in GitHub Environment settings
 3. **Injection at deploy time**: Secrets are written to `.env` and `appsettings.json` during deployment
 4. **Isolation**: Each environment has its own set of secrets, enabling different configurations for different machines
+5. **Vault as additional secrets layer**: HashiCorp Vault provides runtime-accessible secrets for containers on the bridge network
 
 ### What's a Secret vs Variable
 
@@ -317,10 +348,10 @@ In the home lab:
 The Transmission password follows a specific path:
 
 1. **GitHub Environment**: Stored as a secret named `TRANSMISSION_PASSWORD`
-2. **Workflow step "Redact configurations"**: Injects into `appsettings.json`
-3. **Workflow step "Create .env file"**: Writes to `infra/.env` as `TRANSMISSION_PASSWORD`
+2. **Workflow step \"Redact configurations\"**: Injects into `appsettings.json`
+3. **Workflow step \"Create .env file\"**: Writes to `infra/.env` as `TRANSMISSION_PASSWORD`
 4. **Compose**: Set as environment variable on the `transmission` container
-5. **Transmission daemon**: Reads `$TRANSMISSION_PASSWORD` from environment
+5. **Transmission entrypoint**: Reads `$TRANSMISSION_PASSWORD` from environment and writes to settings.json
 
 ### Adding a New Secret
 
@@ -335,7 +366,7 @@ The Transmission password follows a specific path:
 
 1. Update the value in GitHub Environment settings
 2. Trigger a new deployment
-3. The old values will be overwritten in the `.env` file and `appsettings.json`
+3. The old values will be overwritten in the `.env` file
 4. Running containers will need to be recreated (use `bring_down_first`)
 
 ## Configuration Flow (Deploy Time)
@@ -369,11 +400,12 @@ sequenceDiagram
 For local development without the deployment pipeline:
 
 ```sh
-# Copy and edit the environment file
-cp infra/.env.example infra/.env
-
-# Edit with your values
-nano infra/.env
+# Create and edit the environment file
+touch infra/.env
+# Add required variables
+echo "POSTGRES_USER=postgres" >> infra/.env
+echo "POSTGRES_PASSWORD=your-password" >> infra/.env
+# ... etc
 
 # Start manually
 docker compose --env-file infra/.env -f infra/compose.yaml up -d

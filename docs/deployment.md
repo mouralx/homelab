@@ -33,21 +33,32 @@ Only `workflow_dispatch` (manual trigger from GitHub UI or CLI).
 
 ### Runner
 
-`runs-on: self-hosted` - runs locally on the home lab machine.
+`runs-on: self-hosted` \u2014 runs locally on the home lab machine.
 
 ### Environment
 
-`environment: ${{ inputs.environment }}` - selected at trigger time, scopes variables and secrets.
+`environment: ${{ inputs.environment }}` \u2014 selected at trigger time, scopes variables and secrets.
 
 ## Workflow Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `environment` | Choice | `mouras-home-lab` | Target environment for deployment |
-| `bring_down_first` | Boolean | `false` | Whether to stop existing stack before deploying |
-| `update_images` | Boolean | `false` | Whether to pull latest Docker images (only when `bring_down_first` is true) |
+| Input | Type | Options | Default | Description |
+|---|---|---|---|---|
+| `environment` | Choice | `mouras-home-lab` | `mouras-home-lab` | Target environment for deployment |
+| `stack` | Choice | `Everything`, `AI Services`, `Media Services`, `Tools`, `Core Only` | `Everything` | Compose profile to deploy |
+| `bring_down_first` | Boolean | \u2014 | `false` | Whether to stop existing stack before deploying |
+| `update_images` | Boolean | \u2014 | `false` | Whether to pull latest Docker images (only when `bring_down_first` is true) |
 
 > **Note**: `update_images` only takes effect when `bring_down_first` is also `true`.
+
+### Profile Mappings
+
+| Workflow Option | Compose Profile |
+|---|---|
+| Everything | (all profiles) |
+| AI Services | `--profile ai` |
+| Media Services | `--profile media` |
+| Tools | `--profile tools` |
+| Core Only | (no profile flags \u2014 core services only) |
 
 ## Pipeline Steps
 
@@ -90,11 +101,9 @@ sh get-docker.sh
 Merges all GitHub Environment variables and secrets into `infra/.env`:
 
 ```sh
-# Variables (non-sensitive)
 jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' \
   <<< "$ENVIRONMENT_VARS" > infra/.env
 
-# Secrets (sensitive values appended)
 jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' \
   <<< "$ENVIRONMENT_SECRETS" >> infra/.env
 ```
@@ -107,18 +116,15 @@ jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostr
 Only runs if `bring_down_first` is `true`:
 
 ```sh
-docker compose -f infra/compose.yaml down
-docker ps -q | xargs -r docker kill
+docker compose -f infra/compose.yaml down --remove-orphans
 ```
-
-Kills all remaining containers as a safety measure.
 
 ### 6. Pull New Images (Conditional)
 
 Only runs if both `bring_down_first` AND `update_images` are `true`:
 
 ```sh
-docker compose -f infra/compose.yaml pull
+docker compose -f infra/compose.yaml pull ${{ steps.profiles.outputs.flags }}
 ```
 
 ### 7. Build Infrastructure
@@ -126,7 +132,7 @@ docker compose -f infra/compose.yaml pull
 Builds all images defined in the compose file (including the custom Dockerfiles for digger, transmission, honcho, and llmster):
 
 ```sh
-docker compose -f infra/compose.yaml build
+docker compose -f infra/compose.yaml build ${{ steps.profiles.outputs.flags }}
 ```
 
 ### 8. Instantiate Infrastructure
@@ -134,7 +140,7 @@ docker compose -f infra/compose.yaml build
 Starts all services in detached mode:
 
 ```sh
-docker compose -f infra/compose.yaml up -d
+docker compose -f infra/compose.yaml ${{ steps.profiles.outputs.flags }} up -d
 ```
 
 ### 9. Clean Docker Dangling Images
@@ -176,7 +182,7 @@ sudo ./svc.sh start
 - **Architecture**: x86_64 (AMD64)
 - **Dependencies**: Git, Docker, Docker Compose
 - **Disk**: At minimum 20GB for infrastructure + configured media storage
-- **RAM**: At minimum 8GB (16GB+ recommended for Hermes + Llama)
+- **RAM**: At minimum 8GB (16GB+ recommended for Hermes + LLMster)
 
 ### Verification
 
@@ -202,19 +208,23 @@ The following items must be configured in the GitHub Environment used by the wor
 | Name | Type | Description | Required |
 |---|---|---|---|
 | `DIGGER_HOST_MOVIES_DIR` | Variable | Host path for Digger movie downloads | Yes |
+| `HERMES_ALLOWED_USERS` | Variable | Comma-separated usernames allowed to access Hermes | No |
+| `HERMES_API_KEY` | Secret | API key for Hermes gateway auth | No |
 | `HERMES_DASHBOARD_OIDC_ISSUER` | Variable | OIDC issuer URL for Hermes auth | No |
 | `HERMES_DASHBOARD_OIDC_CLIENT_ID` | Variable | OIDC client ID for Hermes auth | No |
 | `HERMES_DASHBOARD_PUBLIC_URL` | Variable | Public URL for Hermes dashboard | No |
+| `HONCHO_MEMORY_LIMIT` | Variable | Honcho container memory limit | No (default: `2G`) |
 | `JELLYFIN_MEDIA_DIR` | Variable | Host path for Jellyfin media library | Yes |
 | `JELLYFIN_SERVER_URL` | Variable | Published Jellyfin server URL | Yes |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD` | Secret | Keycloak admin password | No (default: `admin`) |
 | `KC_BOOTSTRAP_ADMIN_USERNAME` | Variable | Keycloak admin username | No (default: `admin`) |
-| `KC_HOSTNAME` | Variable | Keycloak hostname | No |
+| `KC_HOSTNAME` | Variable | Keycloak hostname | Yes |
 | `KC_HTTP_ENABLED` | Variable | Enable HTTP for Keycloak | No (default: `false`) |
 | `KC_PROXY_HEADERS` | Variable | Proxy header mode | No (default: `xforwarded`) |
+| `LLM_MODEL` | Variable | LLMster model to load | No (default: `google/gemma-4-e2b`) |
 | `N8N_ENCRYPTION_KEY` | Secret | n8n encryption key | Yes |
 | `N8N_HOST` | Variable | n8n hostname | Yes |
-| `OPENCODE_API_KEY` | Secret | API key for Hermes | No |
+| `OPENCODE_API_KEY` | Secret | API key for Hermes and Honcho | Yes |
 | `PGADMIN_DEFAULT_EMAIL` | Variable | pgAdmin login email | Yes |
 | `PGADMIN_DEFAULT_PASSWORD` | Secret | pgAdmin login password | Yes |
 | `POSTGRES_PASSWORD` | Secret | Postgres superuser password | Yes |
@@ -279,7 +289,7 @@ ERROR: build failed: failed to solve: ... not found
 ```
 
 **Cause**: Missing source files or network issues when pulling base images.
-**Fix**: 
+**Fix**:
 - Ensure the repository checkout is complete
 - Check Docker Hub/GHCR availability
 - For custom images, verify Dockerfile paths
@@ -297,6 +307,7 @@ ERROR: build failed: failed to solve: ... not found
 | Digger | appsettings.json not found | Check volume mounts |
 | Transmission | Port already in use | `lsof -i :9091` |
 | Jellyfin | Media directory permissions | `ls -la /mnt/ssd/` |
+| Honcho | Postgres not ready or pgvector missing | Honcho logs, Postgres logs |
 
 ### Runner Disk Full
 

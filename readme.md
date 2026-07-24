@@ -1,6 +1,6 @@
 # 🏠 Home Lab
 
-This repository defines a self-hosted home-lab environment that combines media serving, automation, identity, networking, monitoring, and content-processing services on a single Docker host. The goal is not just to run containers, but to connect them so that the stack behaves like a cohesive system: users access services through a reverse proxy, automation tools run in the background, media is downloaded and consumed automatically, and operational tools help manage everything.
+This repository defines a self-hosted home-lab environment that combines media serving, automation, identity, networking, and content-processing services on a single Docker host. The goal is not just to run containers, but to connect them so that the stack behaves like a cohesive system: users access services through a reverse proxy, automation tools run in the background, media is downloaded and consumed automatically, and operational tools help manage everything.
 
 The most important idea is that the stack is a networked home platform, not just a list of individual apps. The services interact through shared volumes, internal Docker networking, and deployment automation.
 
@@ -30,7 +30,7 @@ This repository is best understood as a home automation and media platform with 
 - **Access layer**: reverse proxy, identity, and dashboard services
 - **Automation layer**: workflows, AI tooling, and background jobs
 - **Media layer**: torrenting, storage, and playback services
-- **Operations layer**: deployment automation, container management, and monitoring tools
+- **Operations layer**: secrets management, container management, and monitoring tools
 
 ### High-level architecture
 
@@ -43,6 +43,7 @@ flowchart LR
     NPM --> Keycloak[Keycloak]
     NPM --> Portainer[Portainer]
     NPM --> Hermes[Hermes]
+    NPM --> OWUI[Open WebUI]
 
     Digger[Digger Worker] --> Transmission[Transmission]
     Transmission --> Downloads[/Downloads volume/]
@@ -50,9 +51,11 @@ flowchart LR
 
     n8n --> Postgres[(Postgres)]
     Keycloak --> Postgres
+    Honcho[Honcho] --> Postgres
     pgAdmin[pgAdmin] --> Postgres
 
-    LLMster[LLMster] --> Hermes
+    Hermes --> LLMster[LLMster]
+    Honcho --> LLMster
 ```
 
 This diagram shows the main idea: the home lab is an ecosystem where user-facing services are exposed through a central proxy, while background workers and storage services support the media and automation workloads.
@@ -66,19 +69,25 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 ├── .github/
 │   └── workflows/
 │       └── publish-home-lab.yaml
+├── docs/
+│   ├── index.md
+│   ├── architecture.md
+│   ├── services.md
+│   ├── configuration.md
+│   ├── deployment.md
+│   ├── digger.md
+│   ├── operations.md
+│   └── scripts.md
 ├── infra/
 │   ├── compose.yaml
-│   ├── digger/
-│   │   └── Dockerfile
-│   └── transmission/
-│       └── Dockerfile
+│   ├── Dockerfile.digger
+│   ├── Dockerfile.honcho
+│   ├── Dockerfile.llmster
+│   └── Dockerfile.transmission
 ├── scripts/
-│   ├── externals/
-│   │   ├── deepwiki-open.sh
-│   │   ├── honcho.entrypoint.sh
-│   │   └── lmstudio.entrypoint.sh
-│   └── utils/
-│       └── copy-env-vars.sh
+│   ├── honcho.entrypoint.sh
+│   ├── lmstudio.entrypoint.sh
+│   └── transmission.entrypoint.sh
 └── src/
     └── Digger/
         ├── Digger.Data/
@@ -91,8 +100,9 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 ### What each area is responsible for
 
 - `.github/workflows/` contains the deployment logic for bringing the stack online on a self-hosted runner.
-- `infra/` defines the containers, networking, and startup configuration for every service.
-- `scripts/` contains utility automation, environment synchronization helpers, and the Honcho / LM Studio entrypoint scripts used by the container images.
+- `docs/` — comprehensive documentation covering architecture, services, configuration, deployment, and operations.
+- `infra/` defines the containers, networking, and startup configuration for every service, plus custom Dockerfiles for Digger, Honcho, LLMster, and Transmission.
+- `scripts/` contains entrypoint scripts used by custom container images.
 - `src/Digger/` contains the worker code that discovers and manages movie content.
 
 ---
@@ -113,6 +123,8 @@ flowchart TD
         n8n[Workflow Automation\nn8n]
         Hermes[AI Gateway\nHermes]
         LLMster[Local Model Runtime\nLLMster]
+        Honcho[Honcho API]
+        OWUI[Open WebUI]
     end
 
     subgraph Home
@@ -126,9 +138,10 @@ flowchart TD
     end
 
     subgraph Data
-        PG[(Postgres)]
+        PG[(Postgres 15 + pgvector)]
         DB[(SQLite)]
         Disk[/Shared Media Storage/]
+        Vault[Vault]
     end
 
     NPM --> Jellyfin
@@ -137,10 +150,12 @@ flowchart TD
     NPM --> Portainer
     NPM --> Hermes
     NPM --> Keycloak
+    NPM --> OWUI
 
     n8n --> PG
     Keycloak --> PG
     pgAdmin[pgAdmin] --> PG
+    Honcho --> PG
 
     Digger --> Transmission
     Digger --> DB
@@ -148,15 +163,17 @@ flowchart TD
     Jellyfin --> Disk
 
     Hermes --> LLMster
+    Honcho --> LLMster
 ```
 
 ### Relationship notes
 
 - `NPM` is the primary facade for the stack. It is the front door for many services.
-- `Keycloak` and `n8n` both rely on `Postgres` for persistence.
+- `Keycloak`, `n8n`, and `Honcho` all rely on `Postgres` for persistence.
 - `Jellyfin` consumes the media downloaded by `Transmission`.
 - `Digger` is the automation bridge between external movie discovery and local media storage.
-- `Hermes` and the local model runtime provide local AI capabilities that can be used by the broader stack.
+- `Hermes` and `Honcho` both use `LLMster` for local AI inference.
+- `Vault` provides centralized secrets management accessible by all services.
 
 ---
 
@@ -168,15 +185,23 @@ The compose definition uses a dedicated bridge network with static IPs so servic
 flowchart LR
     subgraph DockerNetwork[Docker Bridge Network 10.51.0.0/24]
         DiggerSvc[digger\n10.51.0.2]
-        TransmissionSvc[transmission\n10.51.0.15]
-        PostgresSvc[postgres\n10.51.0.14]
-        N8nSvc[n8n\n10.51.0.7]
+        VaultSvc[vault\n10.51.0.6]
+        HermesSvc[hermes\n10.51.0.17]
+        LLMsterSvc[llmster\n10.51.0.18]
+        n8nSvc[n8n\n10.51.0.7]
         JellyfinSvc[jellyfin\n10.51.0.5]
         NPMsvc[npm\n10.51.0.8]
+        PostgresSvc[postgres\n10.51.0.14]
+        TransmissionSvc[transmission\n10.51.0.15]
+        HonchoSvc[honcho\n10.51.0.19]
+        KeycloakSvc[keycloak\n10.51.0.16]
+        OWUISvc[owui\n10.51.0.10]
     end
 
     DiggerSvc --> TransmissionSvc
-    N8nSvc --> PostgresSvc
+    n8nSvc --> PostgresSvc
+    KeycloakSvc --> PostgresSvc
+    HonchoSvc --> PostgresSvc
     JellyfinSvc --> TransmissionSvc
 ```
 
@@ -189,6 +214,15 @@ The stack depends on both container-local and host-mounted storage:
 - `~/n8n` for workflow state
 - `~/jellyfin/config` and `~/jellyfin/cache` for media server metadata
 - `~/homeassistant/config` for automation configuration
+- `~/npm/data` and `~/npm/certs` for proxy config and SSL
+- `~/portainer/data` for container management state
+- `~/vault/config`, `~/vault/logs`, and `~/vault/file` for secrets management
+- `~/hermes` for AI gateway state
+- `~/keycloak` for identity provider data
+- `~/llmster` for model cache
+- `~/honcho` for Honcho API state
+- `~/owui` for Open WebUI data
+- `~/pgadmin/servers.json` for database admin config
 - `/mnt/ssd/transmission/downloads` and `/mnt/ssd/transmission/incomplete` for torrent content
 
 This separation is important because it keeps application state, media storage, and service configuration distinct.
@@ -237,8 +271,12 @@ The stack uses two important configuration layers:
 - `POSTGRES_PASSWORD`
 - `POSTGRES_USER`
 - `TRANSMISSION_PASSWORD`
-- `TRANSMISSION_USER` (optional)
-- additional values for optional services such as Keycloak and pgAdmin
+- `TRANSMISSION_USERNAME`
+- `TIME_ZONE`
+- Storage paths (`JELLYFIN_MEDIA_DIR`, `TRANSMISSION_DOWNLOADS_DIR`, `DIGGER_HOST_MOVIES_DIR`, etc.)
+- Authentication values (`KC_HOSTNAME`, `KC_BOOTSTRAP_ADMIN_USERNAME`, `KC_BOOTSTRAP_ADMIN_PASSWORD`)
+- AI credentials (`OPENCODE_API_KEY`, `HERMES_DASHBOARD_OIDC_*`)
+- Additional values for optional services
 
 ### Runtime settings used by the worker
 
@@ -318,6 +356,19 @@ This makes deployments repeatable and keeps sensitive runtime values outside the
 docker compose --env-file infra/.env -f infra/compose.yaml up -d
 ```
 
+### Start with specific profiles
+
+```sh
+# AI services only (hermes, honcho, llmster, keycloak, owui)
+docker compose --env-file infra/.env -f infra/compose.yaml --profile ai up -d
+
+# Media services only (digger, transmission)
+docker compose --env-file infra/.env -f infra/compose.yaml --profile media up -d
+
+# Tools (vault, n8n, pgadmin)
+docker compose --env-file infra/.env -f infra/compose.yaml --profile tools up -d
+```
+
 ### Check service status
 
 ```sh
@@ -362,8 +413,9 @@ Before making changes to storage, networking, or images, back up the most import
 - Home Assistant configuration
 - Jellyfin configuration, cache, and media
 - Portainer data
+- Vault data and configuration
 - Transmission downloads and incomplete folders
 - Digger SQLite data under `~/digger`
+- Hermes, Honcho, and Keycloak state directories
 
 A home lab is especially sensitive to storage and configuration drift, so keeping these backups current is important for resilience.
-
