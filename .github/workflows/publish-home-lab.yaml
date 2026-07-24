@@ -143,6 +143,6 @@ jobs:
       - name: Clean docker dangling images
         run: |
           bash -lc '
-            set -euo pacio
+            set -euo pipefail
             docker system prune -af
           '
