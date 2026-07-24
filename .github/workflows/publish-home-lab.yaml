@@ -93,7 +93,7 @@ jobs:
         id: profiles
         run: |
           case "${{ inputs.stack }}" in
-            "Everything")  echo "flags=--profile ai --profile media --profile tools" >> "$GITHUB_OUTPUT" ;;
+            "Everything")  echo "" >> "$GITHUB_OUTPUT" ;;
             "AI Services")   echo "flags=--profile ai" >> "$GITHUB_OUTPUT" ;;
             "Media Services") echo "flags=--profile media" >> "$GITHUB_OUTPUT" ;;
             "Tools") echo "flags=--profile tools" >> "$GITHUB_OUTPUT" ;;
