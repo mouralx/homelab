@@ -115,7 +115,7 @@ jobs:
         if: ${{ inputs.bring_down_first }}
         run: docker compose -f infra/compose.yaml down --remove-orphans
 
-      # Pull the latest Docker images for the application if the update_images input is true
+      # Pull the latest Docker images if the update_images input is true
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
         run: docker compose -f infra/compose.yaml pull ${{ steps.profiles.outputs.flags }}
@@ -128,7 +128,7 @@ jobs:
       - name: Deploy stack
         run: docker compose -f infra/compose.yaml ${{ steps.profiles.outputs.flags }} up -d
       
-      # Clean up any dangling Docker images to free up disk space on the runner
+      # Clean up any dangling Docker images
       - name: Clean docker dangling images
         run: |
           bash -lc '
