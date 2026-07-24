@@ -13,7 +13,8 @@ services:
       Logging__LogLevel__Microsoft_Hosting_Lifetime: Warning
       Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
     depends_on:
-      - transmission
+      transmission:
+        condition: service_healthy
     volumes:
       - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
       - ~/digger:/digger/data:rw
@@ -37,6 +38,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.18
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4321/v1/models || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 6
+      start_period: 120s
   vault:
     profiles:
       - tools
@@ -58,6 +65,12 @@ services:
         limits:
           memory: 512M
           cpus: "0.5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8200/v1/sys/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
   hermes:
     profiles:
       - ai
@@ -90,6 +103,11 @@ services:
         limits:
           memory: 4G
           cpus: "2.0"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8642/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   homeassistant:
     container_name: homeassistant
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -101,6 +119,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.4
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
   jellyfin:
     container_name: jellyfin
     image: jellyfin/jellyfin
@@ -114,6 +138,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.5
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8096/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   n8n:
     profiles:
       - tools
@@ -138,7 +168,8 @@ services:
       DB_POSTGRESDB_SCHEMA: public
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - 5678:5678
     volumes:
@@ -146,6 +177,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.7
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   npm:
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
@@ -162,6 +199,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:81/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
   owui:
     profiles:
       - ai
@@ -177,6 +220,12 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
   pgadmin:
     profiles:
       - tools
@@ -184,7 +233,8 @@ services:
     restart: unless-stopped
     container_name: pgadmin
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
@@ -193,6 +243,12 @@ services:
         ipv4_address: 10.51.0.12
     volumes:
       - ~/pgadmin/servers.json:/pgadmin4/servers.json
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:latest
@@ -205,6 +261,12 @@ services:
         ipv4_address: 10.51.0.13
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
   postgres:
     container_name: postgres
     restart: unless-stopped
@@ -219,6 +281,12 @@ services:
         ipv4_address: 10.51.0.14
     volumes:
       - ~/postgres/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -q || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   honcho:
     profiles:
       - ai
@@ -228,7 +296,8 @@ services:
     container_name: honcho
     restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -272,6 +341,12 @@ services:
         limits:
           memory: ${HONCHO_MEMORY_LIMIT:-2G}
           cpus: "1.0"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
   transmission:
     profiles:
       - media
@@ -289,6 +364,12 @@ services:
     volumes:
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
       - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9091/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
   keycloak:
     profiles:
       - ai
@@ -313,6 +394,15 @@ services:
       - ~/keycloak:/opt/keycloak/data
     ports:
       - 8080:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/realms/master || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 networks:
   default:
     driver: bridge
