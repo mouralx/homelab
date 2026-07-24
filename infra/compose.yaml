@@ -1,5 +1,7 @@
 services:
   digger:
+    profiles:
+      - media
     build:
       context: ../src/Digger
       dockerfile: ../../infra/Dockerfile.digger
@@ -19,6 +21,8 @@ services:
       default:
         ipv4_address: 10.51.0.2
   llmster:
+    profiles:
+      - ai
     build:
       context: ..
       dockerfile: infra/Dockerfile.llmster
@@ -34,6 +38,8 @@ services:
       default:
         ipv4_address: 10.51.0.18
   vault:
+    profiles:
+      - tools
     container_name: vault
     entrypoint: /vault/config/entrypoint.sh
     image: hashicorp/vault:latest
@@ -53,6 +59,8 @@ services:
           memory: 512M
           cpus: "0.5"
   hermes:
+    profiles:
+      - ai
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -107,6 +115,8 @@ services:
       default:
         ipv4_address: 10.51.0.5
   n8n:
+    profiles:
+      - tools
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
     restart: unless-stopped
@@ -153,6 +163,8 @@ services:
       default:
         ipv4_address: 10.51.0.8
   owui:
+    profiles:
+      - ai
     image: ghcr.io/open-webui/open-webui:main
     container_name: owui
     environment:
@@ -166,6 +178,8 @@ services:
       default:
         ipv4_address: 10.51.0.10
   pgadmin:
+    profiles:
+      - tools
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
@@ -206,6 +220,8 @@ services:
     volumes:
       - ~/postgres/data:/var/lib/postgresql/data
   honcho:
+    profiles:
+      - ai
     build:
       context: ..
       dockerfile: infra/Dockerfile.honcho
@@ -257,6 +273,8 @@ services:
           memory: ${HONCHO_MEMORY_LIMIT:-2G}
           cpus: "1.0"
   transmission:
+    profiles:
+      - media
     build:
       context: ..
       dockerfile: infra/Dockerfile.transmission
@@ -272,6 +290,8 @@ services:
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
       - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
   keycloak:
+    profiles:
+      - ai
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     command: start-dev
