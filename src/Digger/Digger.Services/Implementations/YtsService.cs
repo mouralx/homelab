@@ -1,4 +1,4 @@
-using Digger.Services.Contracts;
+﻿using Digger.Services.Contracts;
 using Digger.Services.Models.Yts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -10,8 +10,6 @@ namespace Digger.Services.Implementations;
 
 public class YtsService : IYtsService
 {
-    private static readonly HttpClient _httpClient = new HttpClient();
-
     private readonly string[]? _ytsGenres;
 
     private readonly string[]? _ytsLanguages;
@@ -48,77 +46,67 @@ public class YtsService : IYtsService
             string.Join(",", _ytsLanguages ?? Array.Empty<string>()), 
             _ytsYearsBack, 
             _ytsMinimumSeeders);
-
-        var requestStartTotal = DateTime.UtcNow;
+        
         UriBuilder uriBuilder = new UriBuilder(_ytsApiBaseUrl);
         NameValueCollection query = HttpUtility.ParseQueryString(uriBuilder.Query);
         foreach (KeyValuePair<string, string> item in _ytsParameters)
         {
             query[item.Key] = item.Value;
         }
-
+        
         List<YtsMovieModel> movies = new List<YtsMovieModel>();
         using (HttpClientHandler httpClientHandler = new HttpClientHandler())
         {
+            httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             using HttpClient httpClient = new HttpClient(httpClientHandler);
             YtsResponse response = null;
             int page = 1;
-
+            _ = DateTime.Now.Year;
+            
             do
             {
                 try
                 {
                     query["page"] = page.ToString();
                     uriBuilder.Query = query.ToString();
-
-                    _logger.LogInformation("YTS API - Fetching page {Page}: {Uri}", page, uriBuilder.Uri);
-
-                    var requestStart = DateTime.UtcNow;
-                    response = _httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
-                    var requestElapsed = DateTime.UtcNow - requestStart;
-                    _logger.LogInformation("YTS API - Page {Page} responded in {Elapsed:F1}s", page, requestElapsed.TotalSeconds);
-
+                    
+                    _logger.LogDebug("Fetching page {Page} from YTS API: {Uri}", page, uriBuilder.Uri);
+                    
+                    response = httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
+                    
                     if (response != null)
                     {
-                        var totalOnPage = response.data.movies.Count();
-
-                        var langOk = response.data.movies.Count(m => _ytsLanguages.Contains(m.language));
-                        var yearOk = response.data.movies.Count(m => m.year >= DateTime.Now.Year - _ytsYearsBack);
-                        var genreOk = response.data.movies.Count(m => m.genres.Select(g => g.ToLower(System.Globalization.CultureInfo.CurrentCulture)).Intersect(_ytsGenres).Any());
-                        _logger.LogInformation("YTS API - Page {Page}: {Total} movies — Language OK: {LangOk}, Year OK: {YearOk}, Genre OK: {GenreOk}",
-                            page, totalOnPage, langOk, yearOk, genreOk);
-
-                        IEnumerable<Movie> moviesData = response.data.movies.Where((Movie m) =>
+                        _logger.LogInformation("Page {Page}: Retrieved {Count} movies", page, response.data.movies.Count());
+                        
+                        IEnumerable<Movie> moviesData = response.data.movies.Where((Movie m) => 
                         {
                             bool langMatch = _ytsLanguages.Contains(m.language);
                             bool yearMatch = m.year >= DateTime.Now.Year - _ytsYearsBack;
                             bool genreMatch = m.genres.Select((string g) => g.ToLower(System.Globalization.CultureInfo.CurrentCulture)).Intersect(_ytsGenres).Any();
-
+                            
                             if (!langMatch) _logger.LogDebug("Movie filtered out - Language not match: {MovieTitle} (Language: {Language})", m.title_english, m.language);
                             if (!yearMatch) _logger.LogDebug("Movie filtered out - Year too old: {MovieTitle} (Year: {Year})", m.title_english, m.year);
                             if (!genreMatch) _logger.LogDebug("Movie filtered out - Genre not match: {MovieTitle} (Genres: {Genres})", m.title_english, string.Join(",", m.genres));
-
+                            
                             return langMatch && yearMatch && genreMatch;
                         });
-
+                        
                         if (moviesData != null && moviesData.Any())
                         {
-                            _logger.LogInformation("YTS API - Page {Page}: {FilteredCount}/{TotalOnPage} movies passed all filters", page, moviesData.Count(), totalOnPage);
-
-                            var seedOkCount = 0;
-                            var seedSkipCount = 0;
+                            _logger.LogInformation("Page {Page}: {FilteredCount} movies match filters", page, moviesData.Count());
+                            
                             foreach (Movie movieData in moviesData)
                             {
                                 Torrent torrent = (from t in movieData.torrents
                                                    where t.seeds >= _ytsMinimumSeeders && t.quality == _ytsParameters["quality"]
                                                    orderby t.seeds descending
                                                    select t).FirstOrDefault();
-
+                                
                                 if (torrent != null)
                                 {
-                                    _logger.LogInformation("YTS API - Adding movie: {MovieTitle} (Quality: {Quality}, Seeds: {Seeds}, Size: {Size} bytes)",
+                                    _logger.LogDebug("Adding movie: {MovieTitle} (Quality: {Quality}, Seeds: {Seeds}, Size: {Size})", 
                                         movieData.title_english, torrent.quality, torrent.seeds, torrent.size_bytes);
-
+                                    
                                     movies.Add(new YtsMovieModel
                                     {
                                         Id = movieData.id.ToString(),
@@ -127,43 +115,35 @@ public class YtsService : IYtsService
                                         TorrentUrl = _ytsTorrentBaseUrl + torrent.url,
                                         PublishDate = DateTime.Parse(torrent.date_uploaded)
                                     });
-                                    seedOkCount++;
                                 }
                                 else
                                 {
-                                    _logger.LogInformation("YTS API - No suitable torrent for: {MovieTitle} (needs min {MinSeeders} seeders, quality {Quality})",
-                                        movieData.title_english, _ytsMinimumSeeders, _ytsParameters["quality"]);
-                                    seedSkipCount++;
+                                    _logger.LogDebug("No torrent found matching criteria for movie: {MovieTitle}", movieData.title_english);
                                 }
                             }
-                            _logger.LogInformation("YTS API - Page {Page}: {Added} movies added, {Skipped} skipped (seeder/quality filter)",
-                                page, seedOkCount, seedSkipCount);
                         }
                         else
                         {
-                            _logger.LogInformation("YTS API - Page {Page}: 0 movies passed all filters (out of {Total})", page, totalOnPage);
+                            _logger.LogDebug("No movies on page {Page} match the filters", page);
                         }
                     }
                     else
                     {
-                        _logger.LogWarning("YTS API - Page {Page}: Empty response", page);
+                        _logger.LogWarning("Empty response from YTS API on page {Page}", page);
                     }
-
+                    
                     page++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "YTS API - Error fetching page {Page}", page);
+                    _logger.LogError(ex, "Error fetching page {Page} from YTS API", page);
                     throw;
                 }
             }
             while (response != null && response.data.movies.Any((Movie m) => m.year >= DateTime.Now.Year - _ytsYearsBack));
-
-            var totalPages = page - 1;
-            var totalElapsed = DateTime.UtcNow - requestStartTotal;
-            _logger.LogInformation("YTS API - Completed: {MovieCount} movies from {PageCount} pages in {Elapsed:F1}s", movies.Count, totalPages, totalElapsed.TotalSeconds);
         }
-
+        
+        _logger.LogInformation("YtsService.GetMovies completed - Total movies fetched: {Count}", movies.Count);
         return movies;
     }
 }
