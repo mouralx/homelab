@@ -19,7 +19,7 @@ builder.Services.AddDbContext<DiggerContext>(delegate (DbContextOptionsBuilder o
 {
     var connectionString = builder.Configuration.GetConnectionString("DiggerContext");
     logger.LogInformation("Using database connection string: {ConnectionString}", connectionString);
-    options.UseSqlite(connectionString);
+    options.UseNpgsql(connectionString);
 }, 
 ServiceLifetime.Singleton);
 

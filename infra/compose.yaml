@@ -18,12 +18,14 @@ services:
       Logging__Level__Microsoft: Warning
       Logging__LogLevel__Microsoft_Hosting_Lifetime: Information
       Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
+      ConnectionStrings__DiggerContext: "Host=postgres;Port=5432;Database=postgres;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
     depends_on:
       transmission:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     volumes:
       - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
-      - ~/digger:/digger/data:rw
     networks:
       default:
         ipv4_address: 10.51.0.2
