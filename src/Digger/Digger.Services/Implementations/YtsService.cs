@@ -10,6 +10,8 @@ namespace Digger.Services.Implementations;
 
 public class YtsService : IYtsService
 {
+    private static readonly HttpClient _httpClient = new HttpClient();
+
     private readonly string[]? _ytsGenres;
 
     private readonly string[]? _ytsLanguages;
@@ -57,11 +59,9 @@ public class YtsService : IYtsService
         List<YtsMovieModel> movies = new List<YtsMovieModel>();
         using (HttpClientHandler httpClientHandler = new HttpClientHandler())
         {
-            httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             using HttpClient httpClient = new HttpClient(httpClientHandler);
             YtsResponse response = null;
             int page = 1;
-            _ = DateTime.Now.Year;
             
             do
             {
@@ -72,7 +72,7 @@ public class YtsService : IYtsService
                     
                     _logger.LogDebug("Fetching page {Page} from YTS API: {Uri}", page, uriBuilder.Uri);
                     
-                    response = httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
+                    response = _httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
                     
                     if (response != null)
                     {

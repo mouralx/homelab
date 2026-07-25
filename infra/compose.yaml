@@ -7,6 +7,12 @@ services:
       dockerfile: ../../infra/Dockerfile.digger
     container_name: digger
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f Digger.Worker || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     environment:
       Logging__Level__Default: Warning
       Logging__Level__Microsoft: Warning

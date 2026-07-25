@@ -1,15 +1,18 @@
 using Digger.Data.Common.Enums;
 using Digger.Data.Context;
+using Microsoft.Extensions.Configuration;
 
 public class Cleaner : BackgroundService
 {
     private readonly ILogger<Cleaner> _logger;
     private readonly DiggerContext _dbContext;
+    private readonly TimeSpan _interval;
 
-    public Cleaner(ILogger<Cleaner> logger, DiggerContext dbContext)
+    public Cleaner(ILogger<Cleaner> logger, DiggerContext dbContext, IConfiguration configuration)
     {
         _logger = logger;
         _dbContext = dbContext;
+        _interval = TimeSpan.FromMinutes(configuration.GetRequiredSection("CleanerInterval").Get<int>());
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -47,7 +50,7 @@ public class Cleaner : BackgroundService
             {
                 _logger.LogError(ex, "An error occurred while cleaning rolled out movies");
             }
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            await Task.Delay(_interval, stoppingToken);
         }
     }
 }
