@@ -14,9 +14,9 @@ services:
       retries: 3
       start_period: 30s
     environment:
-      Logging__Level__Default: Warning
+      Logging__Level__Default: Information
       Logging__Level__Microsoft: Warning
-      Logging__LogLevel__Microsoft_Hosting_Lifetime: Warning
+      Logging__LogLevel__Microsoft_Hosting_Lifetime: Information
       Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
     depends_on:
       transmission:
