@@ -25,26 +25,30 @@ public class Cleaner : BackgroundService
 
                 var rolledOutMovies = _dbContext.Movies.Where(m => m.LastKnownStatus == MovieStatus.RolledOut).Select(m => new DirectoryInfo(m.Path).Name).ToList();
 
-                _logger.LogInformation("Found {Count} rolled out movies", rolledOutMovies.Count);
+                _logger.LogInformation("Found {Count} rolled out movies in database", rolledOutMovies.Count);
 
                 var movieDirectories = Directory.GetDirectories("/downloads/movies").Select(d => new DirectoryInfo(d).Name).ToList();
 
-                _logger.LogInformation("Found {Count} movie directories", movieDirectories.Count);
+                _logger.LogInformation("Found {Count} movie directories on disk", movieDirectories.Count);
 
-                rolledOutMovies.Intersect(movieDirectories).ToList().ForEach(m =>
+                var toDelete = rolledOutMovies.Intersect(movieDirectories).ToList();
+                _logger.LogInformation("Found {Count} rolled out movies that still exist on disk — proceeding to delete", toDelete.Count);
+
+                toDelete.ForEach(m =>
                 {
-                    _logger.LogInformation("Rolling out movie: {Movie}", m);
+                    _logger.LogInformation("Cleaning up rolled out movie: {Movie}", m);
 
                     var path = Path.Combine("/downloads/movies", m);
 
-                    _logger.LogInformation("Deleting rolled out movie: {Path}", path);
+                    _logger.LogInformation("Deleting directory: {Path}", path);
                     
                     Directory.Delete(path, true);
 
-                    _logger.LogInformation("Rolled out movie deleted: {Path}", path);
+                    _logger.LogInformation("Successfully deleted: {Path}", path);
                 });
 
-                _logger.LogInformation("Cleaner finished at: {Time}", DateTimeOffset.Now);
+                _logger.LogInformation("Cleaner finished at: {Time} — Deleted {Deleted}/{RolledOut} stale directories", 
+                    DateTimeOffset.Now, toDelete.Count, rolledOutMovies.Count);
             }
             catch (Exception ex)
             {

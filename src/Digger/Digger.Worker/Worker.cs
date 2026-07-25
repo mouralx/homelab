@@ -42,34 +42,39 @@ public class Worker : BackgroundService
         _logger.LogInformation("Configuration - StopTime: {StopTime}ms, MaxEnqueuedTorrents: {MaxEnqueuedTorrents}, MaxEnqueuedRetries: {MaxEnqueuedRetries}, MaxAllocatedSpace: {MaxAllocatedSpace} bytes", 
             _stopTime.TotalMilliseconds, _maxEnqueuedTorrents, _maxEnqueuedRetries, _maxAllocatedSpace);
 
+        int cycleNumber = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
+            cycleNumber++;
+            var cycleStart = DateTime.UtcNow;
             try
             {
-                _logger.LogInformation("Starting movie discovery cycle...");
-                
+                _logger.LogInformation("=== Digger Cycle #{Cycle} starting ===", cycleNumber);
+
                 _logger.LogInformation("Step 1: Digging for new movies...");
                 GetNewMovies();
-                
+
                 _logger.LogInformation("Step 2: Skipping oldest movies...");
                 SkipOldestMovies();
-                
+
                 _logger.LogInformation("Step 3: Rolling out old movies and starting new downloads...");
                 CleanAndSyncMovies();
-                
+
                 _logger.LogInformation("Step 4: Retrying failed movies...");
                 RetryFailedMovies();
-                
-                _logger.LogInformation("Finished search cycle. Next cycle in {StopTime}ms", _stopTime.TotalMilliseconds);
+
+                var cycleElapsed = DateTime.UtcNow - cycleStart;
+                _logger.LogInformation("=== Cycle #{Cycle} completed in {Elapsed:F1}s ===", cycleNumber, cycleElapsed.TotalSeconds);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred during worker cycle");
+                var cycleElapsed = DateTime.UtcNow - cycleStart;
+                _logger.LogError(ex, "Error occurred during worker cycle #{Cycle} after {Elapsed:F1}s", cycleNumber, cycleElapsed.TotalSeconds);
             }
-            
+
             await Task.Delay(_stopTime, stoppingToken);
         }
-        
+
         _logger.LogInformation("Worker service stopping...");
     }
 
@@ -105,6 +110,11 @@ public class Worker : BackgroundService
 
                 var moviesToKeep = allNotEnqueued.Take(splitIndex + 1).ToList();
                 var moviesToSkip = allNotEnqueued.Except(moviesToKeep).ToList();
+
+                var keptSize = moviesToKeep.Sum(m => m.Size);
+                var skippedSize = moviesToSkip.Sum(m => m.Size);
+                _logger.LogInformation("SkipOldestMovies - Keeping {KeepCount} movies ({KeepSize} bytes), skipping {SkipCount} movies ({SkipSize} bytes)",
+                    moviesToKeep.Count, keptSize, moviesToSkip.Count, skippedSize);
 
                 _logger.LogInformation("Skipping {Count} oldest movies to free up space", moviesToSkip.Count);
                 moviesToSkip.ForEach(delegate (Digger.Data.Entities.Movie m)
@@ -189,6 +199,12 @@ public class Worker : BackgroundService
             long currentAllocatedSpace = _data.Movies.Where((Digger.Data.Entities.Movie m) => (int)m.LastKnownStatus == 11 || (int)m.LastKnownStatus == 1 || (int)m.LastKnownStatus == 2 || (int)m.LastKnownStatus == 3 || (int)m.LastKnownStatus == 4 || (int)m.LastKnownStatus == 8).Sum((Digger.Data.Entities.Movie m) => m.Size);
             _logger.LogInformation("Current allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
 
+            var completeCount = _data.Movies.Count(m => (int)m.LastKnownStatus == 11);
+            var enqueuedCount = _data.Movies.Count(m => (int)m.LastKnownStatus == 8);
+            var downloadingCount = _data.Movies.Count(m => (int)m.LastKnownStatus == 4);
+            _logger.LogInformation("DB Status snapshot - Complete: {Complete}, Enqueued: {Enqueued}, Downloading: {Downloading}",
+                completeCount, enqueuedCount, downloadingCount);
+
             List<Digger.Data.Entities.Movie> moviesToEnqueue = (from m in _data.Movies
                                                        where (int)m.LastKnownStatus == 7
                                                        orderby m.PublishDate
@@ -197,7 +213,7 @@ public class Worker : BackgroundService
             _logger.LogInformation("Found {Count} movies ready to download", moviesToEnqueue.Count);
 
             long spaceAllocationNeeded = moviesToEnqueue.Select((Digger.Data.Entities.Movie m) => m.Size).Sum();
-            _logger.LogInformation("Space needed for new downloads: {SpaceNeeded} bytes", spaceAllocationNeeded);
+            _logger.LogInformation("Space needed for new downloads: {SpaceNeeded} bytes, Available: {Available} bytes", spaceAllocationNeeded, _maxAllocatedSpace - currentAllocatedSpace);
 
             if (spaceAllocationNeeded > _maxAllocatedSpace - currentAllocatedSpace)
             {
@@ -208,6 +224,9 @@ public class Worker : BackgroundService
                     .Where(m => (int)m.LastKnownStatus == 11)
                     .OrderBy(m => m.Timestamp)
                     .ToList();
+
+                _logger.LogInformation("Rollout candidate pool: {Count} completed movies, total {Size} bytes",
+                    allCompleteMovies.Count, allCompleteMovies.Sum(m => m.Size));
 
                 long runningSum = 0;
                 int splitIndex = allCompleteMovies.Count - 1;
@@ -222,13 +241,13 @@ public class Worker : BackgroundService
                 }
 
                 var takenMoviesList = allCompleteMovies.Take(splitIndex + 1).ToList();
-                _logger.LogInformation("Rolling out {Count} oldest movies to free up space", takenMoviesList.Count);
+                _logger.LogInformation("Rolling out {Count} oldest movies ({Size} bytes) to free up space", takenMoviesList.Count, takenMoviesList.Sum(m => m.Size));
 
                 takenMoviesList.ForEach(delegate (Digger.Data.Entities.Movie m)
                 {
                     try
                     {
-                        _logger.LogInformation("Rolling out movie: {MovieName} at {Path}", m.Name, m.Path);
+                        _logger.LogInformation("Rolling out movie: {MovieName} at {Path} ({Size} bytes)", m.Name, m.Path, m.Size);
                         m.LastKnownStatus = MovieStatus.RolledOut;
                         Directory.Delete(m.Path, recursive: true);
                         _logger.LogInformation("Successfully deleted movie directory: {Path}", m.Path);
@@ -241,8 +260,14 @@ public class Worker : BackgroundService
                 _data.Movies.UpdateRange(takenMoviesList);
                 _data.SaveChanges();
             }
+            else
+            {
+                _logger.LogInformation("Enough space available for new downloads without rolling out.");
+            }
 
             _logger.LogInformation("Enqueueing {Count} movies for download...", moviesToEnqueue.Count);
+            var enqueueSuccessCount = 0;
+            var enqueueFailCount = 0;
             moviesToEnqueue.ForEach(delegate (Digger.Data.Entities.Movie m)
             {
                 try
@@ -250,18 +275,21 @@ public class Worker : BackgroundService
                     _logger.LogInformation("Starting download for movie: {MovieName} (Size: {Size} bytes)", m.Name, m.Size);
                     _transmissionService.Download(m.TorrentUrl, m.Path);
                     m.LastKnownStatus = MovieStatus.Enqueued;
+                    enqueueSuccessCount++;
                     _logger.LogInformation("Successfully enqueued movie: {MovieName}", m.Name);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to enqueue movie: {MovieName}. Marking as failed.", m.Name);
                     m.LastKnownStatus = MovieStatus.Failed;
+                    enqueueFailCount++;
                 }
             });
 
             _data.Movies.UpdateRange(moviesToEnqueue);
             _data.SaveChanges();
 
+            _logger.LogInformation("Enqueue results - Success: {Success}, Failed: {Fail}", enqueueSuccessCount, enqueueFailCount);
             _logger.LogInformation("CleanAndSyncMovies operation completed");
         }
         catch (Exception ex)
@@ -288,7 +316,7 @@ public class Worker : BackgroundService
                 var existingMovie = _data.Movies.FirstOrDefault(m => m.Id == movieId);
                 if (existingMovie == null)
                 {
-                    _logger.LogDebug("Adding new movie: {MovieName} (Size: {Size} bytes, Published: {PublishDate})", 
+                    _logger.LogInformation("Adding new movie: {MovieName} (Size: {Size} bytes, Published: {PublishDate})", 
                         movie.Name, movie.Size, movie.PublishDate);
 
                     var newMovie = new Digger.Data.Entities.Movie
@@ -308,7 +336,8 @@ public class Worker : BackgroundService
                 }
                 else
                 {
-                    _logger.LogDebug("Movie already exists in database: {MovieName}", movie.Name);
+                    _logger.LogInformation("Movie already exists in database, skipping: {MovieName} (Status: {Status})", 
+                        movie.Name, existingMovie.LastKnownStatus);
                     skippedCount++;
                 }
             }
@@ -316,11 +345,11 @@ public class Worker : BackgroundService
             if (addedCount > 0 || skippedCount > 0)
             {
                 _data.SaveChanges();
-                _logger.LogInformation("GetNewMovies completed - Added: {AddedCount}, Skipped: {SkippedCount}", addedCount, skippedCount);
+                _logger.LogInformation("GetNewMovies completed - Added: {AddedCount}, Skipped (duplicates): {SkippedCount}", addedCount, skippedCount);
             }
             else
             {
-                _logger.LogInformation("No new movies found");
+                _logger.LogInformation("No new movies found to add");
             }
         }
         catch (Exception ex)
@@ -336,11 +365,11 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("Checking for failed movies to retry...");
             var failedMovies = _data.Movies.Where(m => (int)m.LastKnownStatus == 9).ToList();
-            _logger.LogInformation("Found {Count} failed movies", failedMovies.Count);
+            _logger.LogInformation("Found {Count} failed movies pending retry", failedMovies.Count);
 
             foreach (var movie in failedMovies)
             {
-                _logger.LogDebug("Resetting failed movie for retry: {MovieName} (Attempts: {Attempts})", 
+                _logger.LogInformation("Resetting failed movie for retry: {MovieName} (Attempts: {Attempts})", 
                     movie.Name, movie.DownloadAttempt);
                 movie.LastKnownStatus = MovieStatus.NotEnqueued;
             }
@@ -349,6 +378,7 @@ public class Worker : BackgroundService
             {
                 _data.Movies.UpdateRange(failedMovies);
                 _data.SaveChanges();
+                _logger.LogInformation("RetryFailedMovies - Reset {Count} movies to NotEnqueued for re-processing", failedMovies.Count);
             }
         }
         catch (Exception ex)
