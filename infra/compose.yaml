@@ -6,20 +6,13 @@ services:
       dockerfile: ../../infra/Dockerfile.digger
     container_name: digger
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep -f Digger.Worker || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
     environment:
       Logging__Level__Default: Information
       Logging__Level__Microsoft: Warning
       Logging__LogLevel__Microsoft_Hosting_Lifetime: Information
       Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
     depends_on:
-      transmission:
-        condition: service_healthy
+      - transmission
     volumes:
       - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
       - ~/digger:/digger/data:rw
@@ -46,12 +39,6 @@ services:
         limits:
           memory: 512M
           cpus: "0.5"
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8200/v1/sys/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 15s
 
   hermes:
     image: nousresearch/hermes-agent:latest
@@ -83,11 +70,6 @@ services:
         limits:
           memory: 4G
           cpus: "2.0"
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8642/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   homeassistant:
     container_name: homeassistant
@@ -100,12 +82,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.4
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   jellyfin:
     container_name: jellyfin
@@ -120,12 +96,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.5
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8096/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:next
@@ -149,8 +119,7 @@ services:
       DB_POSTGRESDB_SCHEMA: public
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     ports:
       - "5678:5678"
     volumes:
@@ -158,12 +127,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.7
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   npm:
     container_name: npm
@@ -181,20 +144,13 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.8
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:81/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
   
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
@@ -203,12 +159,6 @@ services:
         ipv4_address: 10.51.0.12
     volumes:
       - ~/pgadmin/servers.json:/pgadmin4/servers.json
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
   portainer:
     container_name: portainer
@@ -222,12 +172,6 @@ services:
         ipv4_address: 10.51.0.13
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
   postgres:
     container_name: postgres
@@ -243,12 +187,6 @@ services:
         ipv4_address: 10.51.0.14
     volumes:
       - ~/postgres/data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -q || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   honcho:
     build:
@@ -257,8 +195,7 @@ services:
     container_name: honcho
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -302,12 +239,6 @@ services:
         limits:
           memory: ${HONCHO_MEMORY_LIMIT:-2G}
           cpus: "1.0"
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   transmission:
     build:
@@ -324,17 +255,13 @@ services:
     volumes:
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
       - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9091/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     command: start-dev
+    depends_on:
+      - postgres
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
@@ -353,15 +280,6 @@ services:
       - ~/keycloak:/opt/keycloak/data
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/realms/master || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
 networks:
   default:
