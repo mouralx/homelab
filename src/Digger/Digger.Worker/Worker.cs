@@ -207,7 +207,7 @@ public class Worker : BackgroundService
 
             List<Digger.Data.Entities.Movie> moviesToEnqueue = (from m in _data.Movies
                                                        where (int)m.LastKnownStatus == 7
-                                                       orderby m.PublishDate
+                                                       orderby m.PublishDate descending
                                                        select m).Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount()).ToList();
 
             _logger.LogInformation("Found {Count} movies ready to download", moviesToEnqueue.Count);
