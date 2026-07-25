@@ -19,6 +19,8 @@ public class TransmissionService : ITransmissionService
 
     private readonly string? _transmissionPassword;
 
+    private ITransmissionClient? _cachedClient;
+
     public TransmissionService(IConfiguration configuration, ILogger<TransmissionService> logger)
     {
         _transmissionUrl = configuration.GetRequiredSection("Transmission:ServerUrl").Value;
@@ -30,25 +32,17 @@ public class TransmissionService : ITransmissionService
 
     private ITransmissionClient GetTransmissionClient()
     {
-        try
-        {
-            _logger.LogDebug("Creating Transmission client for URL: {TransmissionUrl}, UseAuth: {UseAuth}", 
-                _transmissionUrl, _transmissionUseAuth);
-            
-            if (_transmissionUseAuth)
-            {
-                _logger.LogDebug("Using authenticated connection with username: {Username}", _transmissionUser);
-                return new Client(_transmissionUrl, null, _transmissionUser, _transmissionPassword);
-            }
-            
-            _logger.LogDebug("Using unauthenticated connection");
-            return new Client(_transmissionUrl);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating Transmission client");
-            throw;
-        }
+        if (_cachedClient != null)
+            return _cachedClient;
+
+        _logger.LogDebug("Creating Transmission client for URL: {TransmissionUrl}, UseAuth: {UseAuth}", 
+            _transmissionUrl, _transmissionUseAuth);
+
+        _cachedClient = _transmissionUseAuth
+            ? new Client(_transmissionUrl, null, _transmissionUser, _transmissionPassword)
+            : new Client(_transmissionUrl);
+
+        return _cachedClient;
     }
 
     public void Download(string fileName, string downloadDirectory)
