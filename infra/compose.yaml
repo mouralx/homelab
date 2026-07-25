@@ -1,7 +1,5 @@
 services:
   digger:
-    profiles:
-      - media
     build:
       context: ../src/Digger
       dockerfile: ../../infra/Dockerfile.digger
@@ -27,34 +25,6 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.2
-
-  llmster:
-    profiles:
-      - ai
-    build:
-      context: ..
-      dockerfile: infra/Dockerfile.llmster
-    container_name: llmster
-    restart: unless-stopped
-    environment:
-      LLM_MODEL: ${LLM_MODEL:-google/gemma-4-e2b}
-    volumes:
-      - ~/llmster:/root/.lmstudio/models
-    ports:
-      - "4321:4321"
-    networks:
-      default:
-        ipv4_address: 10.51.0.18
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4321/v1/models || exit 1"]
-      interval: 30s
-      timeout: 15s
-      retries: 6
-      start_period: 120s
-
-  vault:
-    profiles:
-      - tools
     container_name: vault
     entrypoint: /vault/config/entrypoint.sh
     image: hashicorp/vault:latest
@@ -81,8 +51,6 @@ services:
       start_period: 15s
 
   hermes:
-    profiles:
-      - ai
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -157,8 +125,6 @@ services:
       start_period: 30s
 
   n8n:
-    profiles:
-      - tools
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
     restart: unless-stopped
@@ -218,32 +184,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-
-  owui:
-    profiles:
-      - ai
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: owui
-    environment:
-      ENABLE_EVALUATION_ARENA_MODELS: "false"
-    ports:
-      - "3003:8080"
-    volumes:
-      - ~/owui:/app/backend/data
-    restart: always
-    networks:
-      default:
-        ipv4_address: 10.51.0.10
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
+  
   pgadmin:
-    profiles:
-      - tools
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
@@ -306,8 +248,6 @@ services:
       start_period: 30s
 
   honcho:
-    profiles:
-      - ai
     build:
       context: ..
       dockerfile: infra/Dockerfile.honcho
@@ -367,8 +307,6 @@ services:
       start_period: 60s
 
   transmission:
-    profiles:
-      - media
     build:
       context: ..
       dockerfile: infra/Dockerfile.transmission
@@ -391,8 +329,6 @@ services:
       start_period: 15s
 
   keycloak:
-    profiles:
-      - ai
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     command: start-dev
