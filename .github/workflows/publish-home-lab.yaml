@@ -9,17 +9,6 @@ on:
         options:
           - mouras-home-lab
         default: mouras-home-lab
-      stack:
-        description: 'Select the compose profile to deploy:'
-        required: true
-        type: choice
-        options:
-          - Everything
-          - AI Services
-          - Media Services
-          - Tools
-          - Core Only
-        default: Everything
       bring_down_first:
         description: 'Bring down infrastructure down.'
         required: true
@@ -88,17 +77,6 @@ jobs:
             jq -r "to_entries[] | select(.key != \"GITHUB_TOKEN\") | \"\(.key)=\(.value | tostring)\"" <<< "$ENVIRONMENT_SECRETS" >> infra/.env
             cat infra/.env
           '
-      
-      - name: Resolve compose profiles
-        id: profiles
-        run: |
-          case "${{ inputs.stack }}" in
-            "Everything")  echo "" >> "$GITHUB_OUTPUT" ;;
-            "AI Services")   echo "flags=--profile ai" >> "$GITHUB_OUTPUT" ;;
-            "Media Services") echo "flags=--profile media" >> "$GITHUB_OUTPUT" ;;
-            "Tools") echo "flags=--profile tools" >> "$GITHUB_OUTPUT" ;;
-            "Core Only") echo "flags=" >> "$GITHUB_OUTPUT" ;;
-          esac
 
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first }}
@@ -106,13 +84,13 @@ jobs:
 
       - name: Pull new images
         if: ${{ inputs.bring_down_first && inputs.update_images }}
-        run: docker compose -f infra/compose.yaml pull ${{ steps.profiles.outputs.flags }}
+        run: docker compose -f infra/compose.yaml pull
 
       - name: Build stack
-        run: docker compose -f infra/compose.yaml build ${{ steps.profiles.outputs.flags }}
+        run: docker compose -f infra/compose.yaml build
 
       - name: Deploy stack
-        run: docker compose -f infra/compose.yaml ${{ steps.profiles.outputs.flags }} up -d
+        run: docker compose -f infra/compose.yaml up -d
       
       - name: Clean docker dangling images
         run: |
