@@ -18,7 +18,7 @@ services:
       Logging__Level__Microsoft: Warning
       Logging__LogLevel__Microsoft_Hosting_Lifetime: Information
       Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
-      ConnectionStrings__DiggerContext: "Host=postgres;Port=5432;Database=postgres;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__DiggerContext: "Host=postgres;Port=5432;Database=digger;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
     depends_on:
       transmission:
         condition: service_healthy
