@@ -1,4 +1,4 @@
-﻿using Digger.Services.Contracts;
+using Digger.Services.Contracts;
 using Digger.Services.Models.Yts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -10,6 +10,8 @@ namespace Digger.Services.Implementations;
 
 public class YtsService : IYtsService
 {
+    private static readonly HttpClient _httpClient = new HttpClient();
+
     private readonly string[]? _ytsGenres;
 
     private readonly string[]? _ytsLanguages;
@@ -46,103 +48,97 @@ public class YtsService : IYtsService
             string.Join(",", _ytsLanguages ?? Array.Empty<string>()), 
             _ytsYearsBack, 
             _ytsMinimumSeeders);
-        
+
         UriBuilder uriBuilder = new UriBuilder(_ytsApiBaseUrl);
         NameValueCollection query = HttpUtility.ParseQueryString(uriBuilder.Query);
         foreach (KeyValuePair<string, string> item in _ytsParameters)
         {
             query[item.Key] = item.Value;
         }
-        
+
         List<YtsMovieModel> movies = new List<YtsMovieModel>();
-        using (HttpClientHandler httpClientHandler = new HttpClientHandler())
+        YtsResponse response = null;
+        int page = 1;
+
+        do
         {
-            httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-            using HttpClient httpClient = new HttpClient(httpClientHandler);
-            YtsResponse response = null;
-            int page = 1;
-            _ = DateTime.Now.Year;
-            
-            do
+            try
             {
-                try
+                query["page"] = page.ToString();
+                uriBuilder.Query = query.ToString();
+
+                _logger.LogDebug("Fetching page {Page} from YTS API: {Uri}", page, uriBuilder.Uri);
+
+                response = _httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
+
+                if (response != null)
                 {
-                    query["page"] = page.ToString();
-                    uriBuilder.Query = query.ToString();
-                    
-                    _logger.LogDebug("Fetching page {Page} from YTS API: {Uri}", page, uriBuilder.Uri);
-                    
-                    response = httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
-                    
-                    if (response != null)
+                    _logger.LogInformation("Page {Page}: Retrieved {Count} movies", page, response.data.movies.Count());
+
+                    IEnumerable<Movie> moviesData = response.data.movies.Where((Movie m) =>
                     {
-                        _logger.LogInformation("Page {Page}: Retrieved {Count} movies", page, response.data.movies.Count());
-                        
-                        IEnumerable<Movie> moviesData = response.data.movies.Where((Movie m) => 
+                        bool langMatch = _ytsLanguages.Contains(m.language);
+                        bool yearMatch = m.year >= DateTime.Now.Year - _ytsYearsBack;
+                        bool genreMatch = m.genres.Select((string g) => g.ToLower(System.Globalization.CultureInfo.CurrentCulture)).Intersect(_ytsGenres).Any();
+
+                        if (!langMatch) _logger.LogDebug("Movie filtered out - Language not match: {MovieTitle} (Language: {Language})", m.title_english, m.language);
+                        if (!yearMatch) _logger.LogDebug("Movie filtered out - Year too old: {MovieTitle} (Year: {Year})", m.title_english, m.year);
+                        if (!genreMatch) _logger.LogDebug("Movie filtered out - Genre not match: {MovieTitle} (Genres: {Genres})", m.title_english, string.Join(",", m.genres));
+
+                        return langMatch && yearMatch && genreMatch;
+                    });
+
+                    if (moviesData != null && moviesData.Any())
+                    {
+                        _logger.LogInformation("Page {Page}: {FilteredCount} movies match filters", page, moviesData.Count());
+
+                        foreach (Movie movieData in moviesData)
                         {
-                            bool langMatch = _ytsLanguages.Contains(m.language);
-                            bool yearMatch = m.year >= DateTime.Now.Year - _ytsYearsBack;
-                            bool genreMatch = m.genres.Select((string g) => g.ToLower(System.Globalization.CultureInfo.CurrentCulture)).Intersect(_ytsGenres).Any();
-                            
-                            if (!langMatch) _logger.LogDebug("Movie filtered out - Language not match: {MovieTitle} (Language: {Language})", m.title_english, m.language);
-                            if (!yearMatch) _logger.LogDebug("Movie filtered out - Year too old: {MovieTitle} (Year: {Year})", m.title_english, m.year);
-                            if (!genreMatch) _logger.LogDebug("Movie filtered out - Genre not match: {MovieTitle} (Genres: {Genres})", m.title_english, string.Join(",", m.genres));
-                            
-                            return langMatch && yearMatch && genreMatch;
-                        });
-                        
-                        if (moviesData != null && moviesData.Any())
-                        {
-                            _logger.LogInformation("Page {Page}: {FilteredCount} movies match filters", page, moviesData.Count());
-                            
-                            foreach (Movie movieData in moviesData)
+                            Torrent torrent = (from t in movieData.torrents
+                                               where t.seeds >= _ytsMinimumSeeders && t.quality == _ytsParameters["quality"]
+                                               orderby t.seeds descending
+                                               select t).FirstOrDefault();
+
+                            if (torrent != null)
                             {
-                                Torrent torrent = (from t in movieData.torrents
-                                                   where t.seeds >= _ytsMinimumSeeders && t.quality == _ytsParameters["quality"]
-                                                   orderby t.seeds descending
-                                                   select t).FirstOrDefault();
-                                
-                                if (torrent != null)
+                                _logger.LogDebug("Adding movie: {MovieTitle} (Quality: {Quality}, Seeds: {Seeds}, Size: {Size})", 
+                                    movieData.title_english, torrent.quality, torrent.seeds, torrent.size_bytes);
+
+                                movies.Add(new YtsMovieModel
                                 {
-                                    _logger.LogDebug("Adding movie: {MovieTitle} (Quality: {Quality}, Seeds: {Seeds}, Size: {Size})", 
-                                        movieData.title_english, torrent.quality, torrent.seeds, torrent.size_bytes);
-                                    
-                                    movies.Add(new YtsMovieModel
-                                    {
-                                        Id = movieData.id.ToString(),
-                                        Name = movieData.title_english,
-                                        Size = torrent.size_bytes,
-                                        TorrentUrl = _ytsTorrentBaseUrl + torrent.url,
-                                        PublishDate = DateTime.Parse(torrent.date_uploaded)
-                                    });
-                                }
-                                else
-                                {
-                                    _logger.LogDebug("No torrent found matching criteria for movie: {MovieTitle}", movieData.title_english);
-                                }
+                                    Id = movieData.id.ToString(),
+                                    Name = movieData.title_english,
+                                    Size = torrent.size_bytes,
+                                    TorrentUrl = _ytsTorrentBaseUrl + torrent.url,
+                                    PublishDate = DateTime.Parse(torrent.date_uploaded)
+                                });
                             }
-                        }
-                        else
-                        {
-                            _logger.LogDebug("No movies on page {Page} match the filters", page);
+                            else
+                            {
+                                _logger.LogDebug("No torrent found matching criteria for movie: {MovieTitle}", movieData.title_english);
+                            }
                         }
                     }
                     else
                     {
-                        _logger.LogWarning("Empty response from YTS API on page {Page}", page);
+                        _logger.LogDebug("No movies on page {Page} match the filters", page);
                     }
-                    
-                    page++;
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "Error fetching page {Page} from YTS API", page);
-                    throw;
+                    _logger.LogWarning("Empty response from YTS API on page {Page}", page);
                 }
+
+                page++;
             }
-            while (response != null && response.data.movies.Any((Movie m) => m.year >= DateTime.Now.Year - _ytsYearsBack));
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching page {Page} from YTS API", page);
+                throw;
+            }
         }
-        
+        while (response != null && response.data.movies.Any((Movie m) => m.year >= DateTime.Now.Year - _ytsYearsBack));
+
         _logger.LogInformation("YtsService.GetMovies completed - Total movies fetched: {Count}", movies.Count);
         return movies;
     }
