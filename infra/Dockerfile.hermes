@@ -1,0 +1,11 @@
+FROM nousresearch/hermes-agent:latest
+
+# Install PortAudio and numpy for voice mode support
+RUN apt-get update -yq && \
+    apt-get install -yq --no-install-recommends \
+        libportaudio2 \
+        python3-numpy \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install sounddevice into the Hermes venv
+RUN /opt/hermes/.venv/bin/python3 -m pip install sounddevice --no-cache-dir
