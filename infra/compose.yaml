@@ -38,7 +38,9 @@ services:
           memory: 512M
           cpus: "0.5"
   hermes:
-    image: nousresearch/hermes-agent:latest
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.hermes
     container_name: hermes
     restart: unless-stopped
     command: gateway
