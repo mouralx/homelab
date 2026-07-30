@@ -98,7 +98,7 @@ public class Worker : BackgroundService
                 while (query.Take(rowsToTake).Sum((Digger.Data.Entities.Movie m) => m.Size) < _maxAllocatedSpace);
                 
                 List<Digger.Data.Entities.Movie> downloableMovies = query.Take(rowsToTake).ToList();
-                List<Digger.Data.Entities.Movie> moviesToSkip = _data.Movies.Where((Digger.Data.Entities.Movie m) => !downloableMovies.Contains(m)).ToList();
+                List<Digger.Data.Entities.Movie> moviesToSkip = query.ToList().Where((Digger.Data.Entities.Movie m) => !downloableMovies.Contains(m)).ToList();
                 
                 _logger.LogInformation("Skipping {Count} oldest movies to free up space", moviesToSkip.Count);
                 moviesToSkip.ForEach(delegate (Digger.Data.Entities.Movie m)
@@ -324,7 +324,7 @@ public class Worker : BackgroundService
         try
         {
             _logger.LogInformation("Checking for failed movies to retry...");
-            var failedMovies = _data.Movies.Where(m => (int)m.LastKnownStatus == 12).ToList();
+            var failedMovies = _data.Movies.Where(m => m.LastKnownStatus == MovieStatus.Failed).ToList();
             _logger.LogInformation("Found {Count} failed movies", failedMovies.Count);
             
             foreach (var movie in failedMovies)
