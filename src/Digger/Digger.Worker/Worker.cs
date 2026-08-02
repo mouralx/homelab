@@ -79,28 +79,34 @@ public class Worker : BackgroundService
         {
             using var scope = _scopeFactory.CreateScope();
             var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
-            IQueryable<Digger.Data.Entities.Movie> query = from m in _data.Movies
-                                                  where (int)m.LastKnownStatus == 7
-                                                  orderby m.PublishDate descending
-                                                  select m;
-            var totalSize = query.Sum((Digger.Data.Entities.Movie m) => m.Size);
+            var allMovies = await _data.Movies
+                .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
+                .OrderByDescending(m => m.PublishDate)
+                .ToListAsync();
+            
+            var totalSize = allMovies.Sum(m => m.Size);
             _logger.LogInformation("SkipOldestMovies - Total ready-to-download size: {TotalSize} bytes, Max allowed: {MaxAllocatedSpace} bytes", 
                 totalSize, _maxAllocatedSpace);
             
             if (totalSize > _maxAllocatedSpace)
             {
-                _logger.LogWarning("Allocated space exceeded by {Excess} bytes. Marking oldest movies as skipped.", 
+                _logger.LogWarning("Allocated space exceeded by {Excess} bytes. Marking oldest movies as skipped.",
                     totalSize - _maxAllocatedSpace);
                 
-                int rowsToTake = 1;
-                do
+                long runningSum = 0;
+                int rowsToKeep = 0;
+                foreach (var movie in allMovies)
                 {
-                    rowsToTake++;
+                    runningSum += movie.Size;
+                    rowsToKeep++;
+                    if (runningSum >= _maxAllocatedSpace)
+                    {
+                        break;
+                    }
                 }
-                while (query.Take(rowsToTake).Sum((Digger.Data.Entities.Movie m) => m.Size) < _maxAllocatedSpace);
                 
-                List<Digger.Data.Entities.Movie> downloableMovies = query.Take(rowsToTake).ToList();
-                List<Digger.Data.Entities.Movie> moviesToSkip = query.ToList().Where((Digger.Data.Entities.Movie m) => !downloableMovies.Contains(m)).ToList();
+                var moviesToKeep = allMovies.Take(rowsToKeep).ToList();
+                var moviesToSkip = allMovies.Where(m => !moviesToKeep.Contains(m)).ToList();
                 
                 _logger.LogInformation("Skipping {Count} oldest movies to free up space", moviesToSkip.Count);
                 moviesToSkip.ForEach(delegate (Digger.Data.Entities.Movie m)
