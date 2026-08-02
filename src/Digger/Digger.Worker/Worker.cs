@@ -1,3 +1,4 @@
+using System.IO;
 using Digger.Data.Common.Enums;
 using Digger.Data.Context;
 using Digger.Services.Contracts;
@@ -23,6 +24,14 @@ public class Worker : BackgroundService
 
     private readonly long _maxAllocatedSpace;
 
+    private readonly long _diskSpaceSafetyMarginBytes;
+
+    private readonly bool _cleanIncompleteBeforeDownload;
+
+    private readonly string _downloadDirectory;
+
+    private readonly string _incompleteDirectory;
+
     public Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
@@ -34,6 +43,18 @@ public class Worker : BackgroundService
         _maxEnqueuedTorrents = configuration.GetRequiredSection("MaxEnqueuedTorrents").Get<int>();
         _maxEnqueuedRetries = configuration.GetRequiredSection("MaxEnqueuedRetries").Get<int>();
         _maxAllocatedSpace = configuration.GetRequiredSection("MaxAllocatedSpace").Get<long>();
+        
+        // New: disk space safety margin (default 50GB)
+        var safetyMarginGb = configuration.GetValue<int>("DiskSpaceSafetyMarginGb", 50);
+        _diskSpaceSafetyMarginBytes = safetyMarginGb * 1024L * 1024L * 1024L;
+        
+        // New: proactive incomplete cleanup
+        _cleanIncompleteBeforeDownload = configuration.GetValue<bool>("CleanIncompleteBeforeDownload", true);
+        _downloadDirectory = configuration.GetValue<string>("DownloadDirectory") "/downloads/movies";
+        _incompleteDirectory = configuration.GetSection("Transmission:IncompleteDir").Value "/incomplete";
+        
+        _logger.LogInformation("Worker initialized - SafetyMargin: {SafetyMarginGb}GB, CleanIncomplete: {CleanIncomplete}", 
+            safetyMarginGb, _cleanIncompleteBeforeDownload);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -76,6 +97,81 @@ public class Worker : BackgroundService
         }
         
         _logger.LogInformation("Worker service stopping...");
+    }
+
+    /// <summary>
+    /// Checks actual filesystem free space on the download volume.
+    /// Returns true if there is enough space for the requested amount.
+    /// </summary>
+    private bool HasEnoughDiskSpace(long requestedBytes)
+    {
+        try
+        {
+            var driveInfo = new DriveInfo(_downloadDirectory);
+            var freeBytes = driveInfo.AvailableFreeSpace;
+            var requiredBytes = requestedBytes + _diskSpaceSafetyMarginBytes;
+            
+            _logger.LogInformation("Disk space check - Free: {FreeGb:F2}GB, Requested: {RequestedGb:F2}GB, Safety margin: {SafetyMarginGb}GB, Total needed: {TotalNeededGb:F2}GB",
+                freeBytes / (1024.0 * 1024.0 * 1024.0),
+                requestedBytes / (1024.0 * 1024.0 * 1024.0),
+                _diskSpaceSafetyMarginBytes / (1024.0 * 1024.0 * 1024.0),
+                requiredBytes / (1024.0 * 1024.0 * 1024.0));
+            
+            if (freeBytes < requiredBytes)
+            {
+                _logger.LogWarning("Insufficient disk space! Free: {FreeGb:F2}GB, Need: {TotalNeededGb:F2}GB (requested + safety margin)",
+                    freeBytes / (1024.0 * 1024.0 * 1024.0),
+                    requiredBytes / (1024.0 * 1024.0 * 1024.0));
+                return false;
+            }
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking disk space on {Directory}. Assuming insufficient space.", _downloadDirectory);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Proactively cleans the incomplete downloads directory to free space.
+    /// </summary>
+    private void CleanIncompleteDirectory()
+    {
+        if (!_cleanIncompleteBeforeDownload)
+            return;
+
+        try
+        {
+            if (!Directory.Exists(_incompleteDirectory))
+            {
+                _logger.LogDebug("Incomplete directory does not exist: {IncompleteDir}", _incompleteDirectory);
+                return;
+            }
+
+            var files = Directory.GetFiles(_incompleteDirectory);
+            if (files.Length == 0)
+            {
+                _logger.LogDebug("Incomplete directory is already empty");
+                return;
+            }
+
+            long totalSize = 0;
+            foreach (var file in files)
+            {
+                var fileInfo = new FileInfo(file);
+                totalSize += fileInfo.Length;
+                File.Delete(file);
+            }
+
+            _logger.LogInformation("Cleaned incomplete directory - Deleted {Count} files, freed {SizeMb:F2}MB",
+                files.Length, totalSize / (1024.0 * 1024.0));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning incomplete directory: {IncompleteDir}", _incompleteDirectory);
+        }
     }
 
     private async Task SkipOldestMoviesAsync(CancellationToken cancellationToken)
@@ -195,7 +291,7 @@ public class Worker : BackgroundService
             
             if (currentDownloads >= _maxEnqueuedTorrents)
             {
-                _logger.LogInformation("Max enqueu\u200ced torrents reached. Skipping new torrent enqueueing.");
+                _logger.LogInformation("Max enqueued torrents reached. Skipping new torrent enqueueing.");
                 await _data.SaveChangesAsync(cancellationToken);
                 return;
             }
@@ -253,6 +349,38 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.RolledOut;
                 });
                 _data.Movies.UpdateRange(moviesToRollOut);
+            }
+            
+            // NEW: Check actual filesystem space before enqueueing
+            if (moviesToEnqueue.Count > 0)
+            {
+                var totalToDownload = moviesToEnqueue.Sum(m => m.Size);
+                
+                if (!HasEnoughDiskSpace(totalToDownload))
+                {
+                    _logger.LogWarning("Filesystem check failed. Skipping enqueue of {Count} movies to prevent 'no space' errors.", 
+                        moviesToEnqueue.Count);
+                    
+                    // NEW: Try cleaning incomplete directory to recover space
+                    if (_cleanIncompleteBeforeDownload)
+                    {
+                        _logger.LogInformation("Attempting to recover space by cleaning incomplete directory...");
+                        CleanIncompleteDirectory();
+                        
+                        // Re-check after cleanup
+                        if (!HasEnoughDiskSpace(totalToDownload))
+                        {
+                            _logger.LogWarning("Still insufficient disk space after incomplete cleanup. Aborting enqueue.");
+                            await _data.SaveChangesAsync(cancellationToken);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        await _data.SaveChangesAsync(cancellationToken);
+                        return;
+                    }
+                }
             }
             
             _logger.LogInformation("Enqueueing {Count} movies for download...", moviesToEnqueue.Count);
