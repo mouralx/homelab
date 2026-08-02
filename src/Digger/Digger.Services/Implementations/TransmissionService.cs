@@ -75,8 +75,8 @@ public class TransmissionService : ITransmissionService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting torrent status");
-            throw;
+            _logger.LogWarning(ex, "Transmission unreachable - returning default status");
+            return MovieStatus.Failed;
         }
     }
 
@@ -84,14 +84,14 @@ public class TransmissionService : ITransmissionService
     {
         try
         {
-            var count = _client.TorrentGet(TorrentFields.ALL_FIELDS).Torrents.Count();
+            var count = _client.TorrentGet(TorrentFields.ALL_FIELDS)?.Torrents?.Count() ?? 0;
             _logger.LogDebug("Current active downloads count: {Count}", count);
             return count;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting downloads count");
-            throw;
+            _logger.LogWarning(ex, "Transmission unreachable - returning 0 downloads");
+            return 0;
         }
     }
 
@@ -130,8 +130,8 @@ public class TransmissionService : ITransmissionService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cleaning torrents by status");
-            throw;
+            _logger.LogWarning(ex, "Transmission unreachable - skipping torrent cleanup");
+            return Array.Empty<string>();
         }
     }
 
@@ -153,8 +153,8 @@ public class TransmissionService : ITransmissionService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting torrent paths");
-            throw;
+            _logger.LogWarning(ex, "Transmission unreachable - returning empty paths");
+            return Array.Empty<string>();
         }
     }
 }
