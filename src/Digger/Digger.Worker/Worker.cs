@@ -50,8 +50,8 @@ public class Worker : BackgroundService
         
         // New: proactive incomplete cleanup
         _cleanIncompleteBeforeDownload = configuration.GetValue<bool>("CleanIncompleteBeforeDownload", true);
-        _downloadDirectory = configuration.GetValue<string>("DownloadDirectory") "/downloads/movies";
-        _incompleteDirectory = configuration.GetSection("Transmission:IncompleteDir").Value "/incomplete";
+        _downloadDirectory = configuration.GetValue<string>("DownloadDirectory") ?? "/downloads/movies";
+        _incompleteDirectory = configuration.GetSection("Transmission:IncompleteDir").Value ?? "/incomplete";
         
         _logger.LogInformation("Worker initialized - SafetyMargin: {SafetyMarginGb}GB, CleanIncomplete: {CleanIncomplete}", 
             safetyMarginGb, _cleanIncompleteBeforeDownload);
