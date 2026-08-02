@@ -18,10 +18,9 @@ logger.LogInformation("Configuring database context...");
 builder.Services.AddDbContext<DiggerContext>(delegate (DbContextOptionsBuilder options)
 {
     var connectionString = builder.Configuration.GetConnectionString("DiggerContext");
-    logger.LogInformation("Using database connection string: {ConnectionString}", connectionString);
     options.UseSqlite(connectionString);
 }, 
-ServiceLifetime.Singleton);
+ServiceLifetime.Scoped);
 
 logger.LogInformation("Registering Yts service");
 builder.Services.AddSingleton<IYtsService, YtsService>();

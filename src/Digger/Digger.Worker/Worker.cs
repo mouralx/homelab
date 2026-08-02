@@ -5,7 +5,7 @@ using Digger.Services.Models.Yts;
 
 public class Worker : BackgroundService
 {
-    private readonly DiggerContext _data;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     private readonly ILogger<Worker> _logger;
 
@@ -23,9 +23,9 @@ public class Worker : BackgroundService
 
     private readonly long _maxAllocatedSpace;
 
-    public Worker(DiggerContext diggerContext, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
+    public Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
     {
-        _data = diggerContext;
+        _scopeFactory = scopeFactory;
         _logger = logger;
         _ytsService = ytsService;
         _transmissionService = transmissionService;
@@ -77,6 +77,8 @@ public class Worker : BackgroundService
     {
         try
         {
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             IQueryable<Digger.Data.Entities.Movie> query = from m in _data.Movies
                                                   where (int)m.LastKnownStatus == 7
                                                   orderby m.PublishDate descending
@@ -126,6 +128,8 @@ public class Worker : BackgroundService
         try
         {
             _logger.LogInformation("Starting CleanAndSyncMovies operation...");
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             
             string[] downloadedDirectories = _transmissionService.CleanByStatuses(MovieStatus.Seeding, MovieStatus.PendingSeed);
             _logger.LogInformation("Found {Count} completed/seeding torrents", downloadedDirectories.Length);
@@ -265,6 +269,8 @@ public class Worker : BackgroundService
         try
         {
             _logger.LogInformation("Fetching movies from YTS API...");
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             var newMovies = _ytsService.GetMovies();
             _logger.LogInformation("Fetched {Count} movies from YTS", newMovies.Count);
             
@@ -324,6 +330,8 @@ public class Worker : BackgroundService
         try
         {
             _logger.LogInformation("Checking for failed movies to retry...");
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             var failedMovies = _data.Movies.Where(m => m.LastKnownStatus == MovieStatus.Failed).ToList();
             _logger.LogInformation("Found {Count} failed movies", failedMovies.Count);
             
