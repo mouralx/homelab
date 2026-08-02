@@ -49,18 +49,23 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Starting movie discovery cycle...");
                 
                 _logger.LogInformation("Step 1: Digging for new movies...");
-                await GetNewMoviesAsync();
+                await GetNewMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Step 2: Skipping oldest movies...");
-                await SkipOldestMoviesAsync();
+                await SkipOldestMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Step 3: Rolling out old movies and starting new downloads...");
-                await CleanAndSyncMoviesAsync();
+                await CleanAndSyncMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Step 4: Retrying failed movies...");
-                await RetryFailedMoviesAsync();
+                await RetryFailedMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Finished search cycle. Next cycle in {StopTime}ms", _stopTime.TotalMilliseconds);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Worker service stopping due to cancellation request.");
+                break;
             }
             catch (Exception ex)
             {
@@ -73,7 +78,7 @@ public class Worker : BackgroundService
         _logger.LogInformation("Worker service stopping...");
     }
 
-    private async Task SkipOldestMoviesAsync()
+    private async Task SkipOldestMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -83,7 +88,7 @@ public class Worker : BackgroundService
             var allMovies = await _data.Movies
                 .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
                 .OrderByDescending(m => m.PublishDate)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
             
             var totalSize = allMovies.Sum(m => m.Size);
             _logger.LogInformation("SkipOldestMovies - Total ready-to-download size: {TotalSize} bytes, Max allowed: {MaxAllocatedSpace} bytes", 
@@ -116,12 +121,16 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.Skipped;
                 });
                 _data.Movies.UpdateRange(moviesToSkip);
-                await _data.SaveChangesAsync();
+                await _data.SaveChangesAsync(cancellationToken);
             }
             else
             {
                 _logger.LogInformation("Allocated space is within limits. No movies need to be skipped.");
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -130,7 +139,7 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task CleanAndSyncMoviesAsync()
+    private async Task CleanAndSyncMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -181,7 +190,7 @@ public class Worker : BackgroundService
                 _data.Movies.UpdateRange(moviesToUpdate2);
             }
             
-            await _data.SaveChangesAsync();
+            await _data.SaveChangesAsync(cancellationToken);
             
             int currentDownloads = _transmissionService.DownloadsCount();
             _logger.LogInformation("Current active downloads: {CurrentDownloads}/{MaxDownloads}", currentDownloads, _maxEnqueuedTorrents);
@@ -207,7 +216,7 @@ public class Worker : BackgroundService
                 .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
                 .OrderBy(m => m.PublishDate)
                 .Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount())
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
             
             _logger.LogInformation("Found {Count} movies ready to download", moviesToEnqueue.Count);
             
@@ -222,7 +231,7 @@ public class Worker : BackgroundService
                 var completedMovies = await _data.Movies
                     .Where(m => m.LastKnownStatus == MovieStatus.Complete)
                     .OrderBy(m => m.Timestamp)
-                    .ToListAsync();
+                    .ToListAsync(cancellationToken);
                 
                 long runningSum = 0;
                 var moviesToRollOut = new List<Digger.Data.Entities.Movie>();
@@ -244,7 +253,7 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.RolledOut;
                 });
                 _data.Movies.UpdateRange(moviesToRollOut);
-                await _data.SaveChangesAsync();
+                await _data.SaveChangesAsync(cancellationToken);
             }
             
             _logger.LogInformation("Enqueueing {Count} movies for download...", moviesToEnqueue.Count);
@@ -265,9 +274,13 @@ public class Worker : BackgroundService
             });
             
             _data.Movies.UpdateRange(moviesToEnqueue);
-            await _data.SaveChangesAsync();
+            await _data.SaveChangesAsync(cancellationToken);
             
             _logger.LogInformation("CleanAndSyncMovies operation completed");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -276,7 +289,7 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task GetNewMoviesAsync()
+    private async Task GetNewMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -292,6 +305,8 @@ public class Worker : BackgroundService
             
             foreach (var movie in newMovies)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 var movieId = long.Parse(movie.Id);
                 var existingMovie = _data.Movies.FirstOrDefault(m => m.Id == movieId);
                 if (existingMovie == null)
@@ -323,13 +338,17 @@ public class Worker : BackgroundService
             
             if (addedCount > 0 || skippedCount > 0)
             {
-                await _data.SaveChangesAsync();
+                await _data.SaveChangesAsync(cancellationToken);
                 _logger.LogInformation("GetNewMovies completed - Added: {AddedCount}, Skipped: {SkippedCount}", addedCount, skippedCount);
             }
             else
             {
                 _logger.LogInformation("No new movies found");
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -338,7 +357,7 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task RetryFailedMoviesAsync()
+    private async Task RetryFailedMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -361,8 +380,12 @@ public class Worker : BackgroundService
             if (failedMovies.Count > 0)
             {
                 _data.Movies.UpdateRange(failedMovies);
-                await _data.SaveChangesAsync();
+                await _data.SaveChangesAsync(cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
