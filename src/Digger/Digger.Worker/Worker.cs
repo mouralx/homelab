@@ -190,14 +190,13 @@ public class Worker : BackgroundService
                 _data.Movies.UpdateRange(moviesToUpdate2);
             }
             
-            await _data.SaveChangesAsync(cancellationToken);
-            
             int currentDownloads = _transmissionService.DownloadsCount();
             _logger.LogInformation("Current active downloads: {CurrentDownloads}/{MaxDownloads}", currentDownloads, _maxEnqueuedTorrents);
             
             if (currentDownloads >= _maxEnqueuedTorrents)
             {
                 _logger.LogInformation("Max enqueu­ed torrents reached. Skipping new torrent enqueueing.");
+                await _data.SaveChangesAsync(cancellationToken);
                 return;
             }
             
@@ -254,7 +253,6 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.RolledOut;
                 });
                 _data.Movies.UpdateRange(moviesToRollOut);
-                await _data.SaveChangesAsync(cancellationToken);
             }
             
             _logger.LogInformation("Enqueueing {Count} movies for download...", moviesToEnqueue.Count);
@@ -274,7 +272,6 @@ public class Worker : BackgroundService
                 }
             });
             
-            _data.Movies.UpdateRange(moviesToEnqueue);
             await _data.SaveChangesAsync(cancellationToken);
             
             _logger.LogInformation("CleanAndSyncMovies operation completed");
