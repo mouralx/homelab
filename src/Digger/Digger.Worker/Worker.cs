@@ -361,6 +361,61 @@ public class Worker : BackgroundService
                 _logger.LogInformation("After rollout - Allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
             }
             
+            // Secondary trigger: force rollout when disk is critically low,
+            // even if the logical allocation budget has room
+            try
+            {
+                var driveInfo = new DriveInfo(_downloadDirectory);
+                var freeGb = driveInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
+                _logger.LogInformation("Disk space check for rollout trigger - Free: {FreeGb:F2}GB", freeGb);
+                
+                if (freeGb < 10)
+                {
+                    _logger.LogWarning("Disk critically low ({FreeGb:F2}GB free). Forcing rollout of oldest completed movies...", freeGb);
+                    
+                    var completedMoviesToRoll = await _data.Movies
+                        .Where(m => m.LastKnownStatus == MovieStatus.Complete)
+                        .OrderBy(m => m.Timestamp)
+                        .ToListAsync(cancellationToken);
+                    
+                    if (completedMoviesToRoll.Count > 0)
+                    {
+                        // Roll out half of completed movies to free meaningful space
+                        var countToRoll = Math.Max(1, completedMoviesToRoll.Count / 2);
+                        var forcedRollOut = completedMoviesToRoll.Take(countToRoll).ToList();
+                        
+                        _logger.LogWarning("Force rolling out {Count} oldest completed movies to recover disk space", forcedRollOut.Count);
+                        
+                        forcedRollOut.ForEach(m =>
+                        {
+                            _logger.LogInformation("Force marking for cleanup: {MovieName}", m.Name);
+                            m.LastKnownStatus = MovieStatus.RolledOut;
+                        });
+                        _data.Movies.UpdateRange(forcedRollOut);
+                        
+                        // Recalculate after forced rollout
+                        currentAllocatedSpace = _data.Movies.Where(m => 
+                            m.LastKnownStatus == MovieStatus.Complete ||
+                            m.LastKnownStatus == MovieStatus.Stopped ||
+                            m.LastKnownStatus == MovieStatus.PendingCheck ||
+                            m.LastKnownStatus == MovieStatus.Checking ||
+                            m.LastKnownStatus == MovieStatus.PendingDownload ||
+                            m.LastKnownStatus == MovieStatus.Downloading ||
+                            m.LastKnownStatus == MovieStatus.Enqueued)
+                            .Sum(m => m.Size);
+                        _logger.LogInformation("After forced rollout - Allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No completed movies available for forced rollout");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking disk space for forced rollout");
+            }
+            
             // NEW: Check actual filesystem space before enqueueing
             if (moviesToEnqueue.Count > 0)
             {
