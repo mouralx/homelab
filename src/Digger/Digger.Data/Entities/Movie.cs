@@ -20,7 +20,7 @@ public class Movie
     [Required]
     public DateTime? Timestamp { get; set; }
 
-    public int DownloadAttempt { get; set; } = 1;
+    public int DownloadAttempt { get; set; } = 0;
 
     public MovieStatus LastKnownStatus { get; set; }
 
