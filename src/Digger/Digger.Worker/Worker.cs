@@ -192,17 +192,26 @@ public class Worker : BackgroundService
                 return;
             }
             
-            long currentAllocatedSpace = _data.Movies.Where((Digger.Data.Entities.Movie m) => (int)m.LastKnownStatus == 11 || (int)m.LastKnownStatus == 1 || (int)m.LastKnownStatus == 2 || (int)m.LastKnownStatus == 3 || (int)m.LastKnownStatus == 4 || (int)m.LastKnownStatus == 8).Sum((Digger.Data.Entities.Movie m) => m.Size);
+            long currentAllocatedSpace = _data.Movies.Where(m => 
+                m.LastKnownStatus == MovieStatus.Complete ||
+                m.LastKnownStatus == MovieStatus.Stopped ||
+                m.LastKnownStatus == MovieStatus.PendingCheck ||
+                m.LastKnownStatus == MovieStatus.Checking ||
+                m.LastKnownStatus == MovieStatus.PendingDownload ||
+                m.LastKnownStatus == MovieStatus.Downloading ||
+                m.LastKnownStatus == MovieStatus.Enqueued)
+                .Sum(m => m.Size);
             _logger.LogInformation("Current allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
             
-            List<Digger.Data.Entities.Movie> moviesToEnqueue = (from m in _data.Movies
-                                                       where (int)m.LastKnownStatus == 7
-                                                       orderby m.PublishDate
-                                                       select m).Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount()).ToList();
+            var moviesToEnqueue = await _data.Movies
+                .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
+                .OrderBy(m => m.PublishDate)
+                .Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount())
+                .ToListAsync();
             
             _logger.LogInformation("Found {Count} movies ready to download", moviesToEnqueue.Count);
             
-            long spaceAllocationNeeded = moviesToEnqueue.Select((Digger.Data.Entities.Movie m) => m.Size).Sum();
+            long spaceAllocationNeeded = moviesToEnqueue.Sum(m => m.Size);
             _logger.LogInformation("Space needed for new downloads: {SpaceNeeded} bytes", spaceAllocationNeeded);
             
             if (spaceAllocationNeeded > _maxAllocatedSpace - currentAllocatedSpace)
@@ -210,22 +219,26 @@ public class Worker : BackgroundService
                 _logger.LogWarning("Insufficient space. Need {SpaceNeeded} but only {AvailableSpace} available. Rolling out oldest completed movies...", 
                     spaceAllocationNeeded, _maxAllocatedSpace - currentAllocatedSpace);
                 
-                int take = 1;
-                IQueryable<Digger.Data.Entities.Movie> takenMovies = null;
-                do
+                var completedMovies = await _data.Movies
+                    .Where(m => m.LastKnownStatus == MovieStatus.Complete)
+                    .OrderBy(m => m.Timestamp)
+                    .ToListAsync();
+                
+                long runningSum = 0;
+                var moviesToRollOut = new List<Digger.Data.Entities.Movie>();
+                foreach (var movie in completedMovies)
                 {
-                    takenMovies = (from m in _data.Movies
-                                   where (int)m.LastKnownStatus == 11
-                                   orderby m.Timestamp
-                                   select m).Take(take);
-                    take++;
+                    moviesToRollOut.Add(movie);
+                    runningSum += movie.Size;
+                    if (runningSum >= spaceAllocationNeeded)
+                    {
+                        break;
+                    }
                 }
-                while (takenMovies.Sum((Digger.Data.Entities.Movie m) => m.Size) < spaceAllocationNeeded);
                 
-                List<Digger.Data.Entities.Movie> takenMoviesList = takenMovies.ToList();
-                _logger.LogInformation("Rolling out {Count} oldest movies to free up space", takenMoviesList.Count);
+                _logger.LogInformation("Rolling out {Count} oldest movies to free up space", moviesToRollOut.Count);
                 
-                takenMoviesList.ForEach(delegate (Digger.Data.Entities.Movie m)
+                moviesToRollOut.ForEach(delegate (Digger.Data.Entities.Movie m)
                 {
                     try
                     {
@@ -239,7 +252,7 @@ public class Worker : BackgroundService
                         _logger.LogError(ex, "Failed to delete movie directory: {Path}", m.Path);
                     }
                 });
-                _data.Movies.UpdateRange(takenMoviesList);
+                _data.Movies.UpdateRange(moviesToRollOut);
                 await _data.SaveChangesAsync();
             }
             
@@ -303,7 +316,7 @@ public class Worker : BackgroundService
                         TorrentUrl = movie.TorrentUrl,
                         PublishDate = movie.PublishDate,
                         Path = Path.Combine("/downloads/movies", movie.Name.Replace(" ", "_")),
-                        LastKnownStatus = Digger.Data.Common.Enums.MovieStatus.NotEnqueued,
+                        LastKnownStatus = MovieStatus.NotEnqueued,
                         Timestamp = DateTime.UtcNow
                     };
                     
