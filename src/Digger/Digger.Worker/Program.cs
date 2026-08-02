@@ -5,6 +5,7 @@ using HealthChecks.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DiggerContext");
 
 var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger("Program");
 logger.LogInformation("Digger Worker initializing...");
@@ -18,7 +19,6 @@ logger.LogInformation("Cleaner service registered");
 logger.LogInformation("Configuring database context...");
 builder.Services.AddDbContext<DiggerContext>(delegate (DbContextOptionsBuilder options)
 {
-    var connectionString = builder.Configuration.GetConnectionString("DiggerContext");
     options.UseSqlite(connectionString);
 }, 
 ServiceLifetime.Scoped);
