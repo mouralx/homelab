@@ -225,17 +225,8 @@ public class Worker : BackgroundService
                 
                 takenMoviesList.ForEach(delegate (Digger.Data.Entities.Movie m)
                 {
-                    try
-                    {
-                        _logger.LogInformation("Rolling out movie: {MovieName} at {Path}", m.Name, m.Path);
-                        m.LastKnownStatus = MovieStatus.RolledOut;
-                        Directory.Delete(m.Path, recursive: true);
-                        _logger.LogInformation("Successfully deleted movie directory: {Path}", m.Path);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to delete movie directory: {Path}", m.Path);
-                    }
+                    _logger.LogInformation("Marking movie for cleanup: {MovieName}", m.Name);
+                    m.LastKnownStatus = MovieStatus.RolledOut;
                 });
                 _data.Movies.UpdateRange(takenMoviesList);
                 _data.SaveChanges();
