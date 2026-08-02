@@ -87,7 +87,7 @@ public class Worker : BackgroundService
             
             if (totalSize > _maxAllocatedSpace)
             {
-                _logger.LogWarning("Allocated space exceeded by {Excess} bytes. Marking oldest movies as skipped.", 
+                _logger.LogWarning("Allocated space exceeded by {Excess} bytes. Marking oldest movies as skipped.",
                     totalSize - _maxAllocatedSpace);
                 
                 int rowsToTake = 1;
@@ -332,6 +332,7 @@ public class Worker : BackgroundService
                 _logger.LogDebug("Resetting failed movie for retry: {MovieName} (Attempts: {Attempts})", 
                     movie.Name, movie.DownloadAttempt);
                 movie.LastKnownStatus = MovieStatus.NotEnqueued;
+                movie.DownloadAttempt = 0;
             }
             
             if (failedMovies.Count > 0)
