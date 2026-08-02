@@ -73,13 +73,10 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Step 1: Digging for new movies...");
                 await GetNewMoviesAsync(stoppingToken);
                 
-                _logger.LogInformation("Step 2: Skipping oldest movies...");
-                await SkipOldestMoviesAsync(stoppingToken);
-                
-                _logger.LogInformation("Step 3: Rolling out old movies and starting new downloads...");
+                _logger.LogInformation("Step 2: Rolling out old movies and starting new downloads...");
                 await CleanAndSyncMoviesAsync(stoppingToken);
                 
-                _logger.LogInformation("Step 4: Retrying failed movies...");
+                _logger.LogInformation("Step 3: Retrying failed movies...");
                 await RetryFailedMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Finished search cycle. Next cycle in {StopTime}ms", _stopTime.TotalMilliseconds);
@@ -350,6 +347,18 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.RolledOut;
                 });
                 _data.Movies.UpdateRange(moviesToRollOut);
+                
+                // Recalculate after rolling out to get accurate space check
+                currentAllocatedSpace = _data.Movies.Where(m => 
+                    m.LastKnownStatus == MovieStatus.Complete ||
+                    m.LastKnownStatus == MovieStatus.Stopped ||
+                    m.LastKnownStatus == MovieStatus.PendingCheck ||
+                    m.LastKnownStatus == MovieStatus.Checking ||
+                    m.LastKnownStatus == MovieStatus.PendingDownload ||
+                    m.LastKnownStatus == MovieStatus.Downloading ||
+                    m.LastKnownStatus == MovieStatus.Enqueued)
+                    .Sum(m => m.Size);
+                _logger.LogInformation("After rollout - Allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
             }
             
             // NEW: Check actual filesystem space before enqueueing
