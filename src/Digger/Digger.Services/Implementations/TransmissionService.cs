@@ -9,45 +9,30 @@ namespace Digger.Services.Implementations;
 
 public class TransmissionService : ITransmissionService
 {
-    private readonly string? _transmissionUrl;
-
-    private readonly bool _transmissionUseAuth;
-
+    private readonly ITransmissionClient _client;
     private readonly ILogger<TransmissionService> _logger;
-
-    private readonly string? _transmissionUser;
-
-    private readonly string? _transmissionPassword;
 
     public TransmissionService(IConfiguration configuration, ILogger<TransmissionService> logger)
     {
-        _transmissionUrl = configuration.GetRequiredSection("Transmission:ServerUrl").Value;
-        _transmissionUseAuth = bool.Parse(configuration.GetRequiredSection("Transmission:UseAuth").Value);
-        _transmissionUser = configuration.GetSection("Transmission:User").Value;
-        _transmissionPassword = configuration.GetSection("Transmission:Password").Value;
         _logger = logger;
-    }
-
-    private ITransmissionClient GetTransmissionClient()
-    {
-        try
+        
+        var transmissionUrl = configuration.GetRequiredSection("Transmission:ServerUrl").Value;
+        var transmissionUseAuth = bool.Parse(configuration.GetRequiredSection("Transmission:UseAuth").Value);
+        
+        _logger.LogDebug("Creating Transmission client for URL: {TransmissionUrl}, UseAuth: {UseAuth}", 
+            transmissionUrl, transmissionUseAuth);
+        
+        if (transmissionUseAuth)
         {
-            _logger.LogDebug("Creating Transmission client for URL: {TransmissionUrl}, UseAuth: {UseAuth}", 
-                _transmissionUrl, _transmissionUseAuth);
-            
-            if (_transmissionUseAuth)
-            {
-                _logger.LogDebug("Using authenticated connection with username: {Username}", _transmissionUser);
-                return new Client(_transmissionUrl, null, _transmissionUser, _transmissionPassword);
-            }
-            
-            _logger.LogDebug("Using unauthenticated connection");
-            return new Client(_transmissionUrl);
+            var user = configuration.GetSection("Transmission:User").Value;
+            var password = configuration.GetSection("Transmission:Password").Value;
+            _logger.LogDebug("Using authenticated connection with username: {Username}", user);
+            _client = new Client(transmissionUrl, null, user, password);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error creating Transmission client");
-            throw;
+            _logger.LogDebug("Using unauthenticated connection");
+            _client = new Client(transmissionUrl);
         }
     }
 
@@ -64,7 +49,7 @@ public class TransmissionService : ITransmissionService
                 DownloadDirectory = downloadDirectory
             };
             
-            GetTransmissionClient().TorrentAdd(newTorrent);
+            _client.TorrentAdd(newTorrent);
             _logger.LogInformation("Torrent successfully added to Transmission");
         }
         catch (Exception ex)
@@ -80,8 +65,7 @@ public class TransmissionService : ITransmissionService
         {
             _logger.LogDebug("Getting torrent status for directory: {DownloadDirectory}", downloadDirectory);
             
-            var client = GetTransmissionClient();
-            var torrents = client.TorrentGet(TorrentFields.ALL_FIELDS);
+            var torrents = _client.TorrentGet(TorrentFields.ALL_FIELDS);
             var torrent = torrents?.Torrents?.Where((TorrentInfo t) => t.DownloadDir == downloadDirectory)?.FirstOrDefault();
             
             var status = (MovieStatus)(torrent?.Status ?? 7);
@@ -100,8 +84,7 @@ public class TransmissionService : ITransmissionService
     {
         try
         {
-            var client = GetTransmissionClient();
-            var count = client.TorrentGet(TorrentFields.ALL_FIELDS).Torrents.Count();
+            var count = _client.TorrentGet(TorrentFields.ALL_FIELDS).Torrents.Count();
             _logger.LogDebug("Current active downloads count: {Count}", count);
             return count;
         }
@@ -119,9 +102,8 @@ public class TransmissionService : ITransmissionService
             _logger.LogInformation("Cleaning torrents by statuses: {Statuses}", 
                 string.Join(", ", statuses.Select(s => $"{s}({(int)s})")));
             
-            ITransmissionClient client = GetTransmissionClient();
             int[] convertedStatuses = statuses.Select((MovieStatus s) => (int)s).ToArray();
-            IEnumerable<TorrentInfo> torrentInfos = client.TorrentGet(TorrentFields.ALL_FIELDS)?.Torrents?.Where((TorrentInfo t) => convertedStatuses.Contains(t.Status));
+            IEnumerable<TorrentInfo> torrentInfos = _client.TorrentGet(TorrentFields.ALL_FIELDS)?.Torrents?.Where((TorrentInfo t) => convertedStatuses.Contains(t.Status));
             
             if (torrentInfos != null && torrentInfos.Any())
             {
@@ -134,7 +116,7 @@ public class TransmissionService : ITransmissionService
                 {
                     _logger.LogInformation("Removing {Count} torrents from Transmission. IDs: {TorrentIds}", 
                         ids.Count(), string.Join(", ", ids));
-                    client.TorrentRemove(ids.ToArray());
+                    _client.TorrentRemove(ids.ToArray());
                 }
                 
                 var directories = source.ToArray();
@@ -159,8 +141,7 @@ public class TransmissionService : ITransmissionService
         {
             _logger.LogDebug("Getting all torrent download paths...");
             
-            var client = GetTransmissionClient();
-            var paths = client.TorrentGet(TorrentFields.ALL_FIELDS)?.Torrents?.Select((TorrentInfo t) => t.DownloadDir)?.ToArray() ?? Array.Empty<string>();
+            var paths = _client.TorrentGet(TorrentFields.ALL_FIELDS)?.Torrents?.Select((TorrentInfo t) => t.DownloadDir)?.ToArray() ?? Array.Empty<string>();
             
             _logger.LogInformation("Found {Count} torrent paths", paths.Length);
             if (paths.Length > 0)
