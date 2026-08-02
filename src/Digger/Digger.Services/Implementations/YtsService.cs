@@ -1,4 +1,4 @@
-﻿using Digger.Services.Contracts;
+using Digger.Services.Contracts;
 using Digger.Services.Models.Yts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -38,7 +38,7 @@ public class YtsService : IYtsService
         _logger = logger;
     }
 
-    public ICollection<YtsMovieModel> GetMovies()
+    public async Task<ICollection<YtsMovieModel>> GetMoviesAsync()
     {
         _logger.LogInformation("YtsService.GetMovies - Starting API request");
         _logger.LogInformation("Configuration - Genres: {Genres}, Languages: {Languages}, Years Back: {YearsBack}, Min Seeders: {MinSeeders}", 
@@ -72,7 +72,7 @@ public class YtsService : IYtsService
                     
                     _logger.LogDebug("Fetching page {Page} from YTS API: {Uri}", page, uriBuilder.Uri);
                     
-                    response = httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
+                    response = await httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri);
                     
                     if (response != null)
                     {
