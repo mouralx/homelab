@@ -195,7 +195,7 @@ public class Worker : BackgroundService
             int currentDownloads = _transmissionService.DownloadsCount();
             _logger.LogInformation("Current active downloads: {CurrentDownloads}/{MaxDownloads}", currentDownloads, _maxEnqueuedTorrents);
             
-            if (_transmissionService.DownloadsCount() >= _maxEnqueuedTorrents)
+            if (currentDownloads >= _maxEnqueuedTorrents)
             {
                 _logger.LogInformation("Max enqueu­ed torrents reached. Skipping new torrent enqueueing.");
                 return;
@@ -212,10 +212,11 @@ public class Worker : BackgroundService
                 .Sum(m => m.Size);
             _logger.LogInformation("Current allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
             
+            int slotsAvailable = _maxEnqueuedTorrents - currentDownloads;
             var moviesToEnqueue = await _data.Movies
                 .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
                 .OrderBy(m => m.PublishDate)
-                .Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount())
+                .Take(slotsAvailable)
                 .ToListAsync(cancellationToken);
             
             _logger.LogInformation("Found {Count} movies ready to download", moviesToEnqueue.Count);
