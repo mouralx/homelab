@@ -1,4 +1,4 @@
-﻿using Digger.Data.Common.Enums;
+using Digger.Data.Common.Enums;
 
 namespace Digger.Services.Contracts;
 
@@ -8,7 +8,7 @@ public interface ITransmissionService
 
     MovieStatus GetStatus(string downloadDirectory);
 
-    string[] ClenByStatuses(params MovieStatus[] statuses);
+    string[] CleanByStatuses(params MovieStatus[] statuses);
 
     int DownloadsCount();
 

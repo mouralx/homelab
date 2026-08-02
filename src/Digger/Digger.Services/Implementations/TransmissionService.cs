@@ -1,4 +1,4 @@
-﻿using Digger.Data.Common.Enums;
+using Digger.Data.Common.Enums;
 using Digger.Services.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -112,7 +112,7 @@ public class TransmissionService : ITransmissionService
         }
     }
 
-    public string[] ClenByStatuses(params MovieStatus[] statuses)
+    public string[] CleanByStatuses(params MovieStatus[] statuses)
     {
         try
         {
@@ -132,13 +132,13 @@ public class TransmissionService : ITransmissionService
                 
                 if (ids?.Any() ?? false)
                 {
-                    _logger.LogInformation("Removing {Count} torrents from Transmission. IDs: {TorrentIds}", 
+                    _logger.LogInformation("Removing {Count} torrents from Transmission. IDs: {TorrentIds}",
                         ids.Count(), string.Join(", ", ids));
                     client.TorrentRemove(ids.ToArray());
                 }
                 
                 var directories = source.ToArray();
-                _logger.LogInformation("Cleaned torrent directories: {Directories}", 
+                _logger.LogInformation("Cleaned torrent directories: {Directories}",
                     string.Join(", ", directories));
                 return directories;
             }
