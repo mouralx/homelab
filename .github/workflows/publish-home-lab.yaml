@@ -1,5 +1,8 @@
 name: Home Lab Deployment
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -21,9 +24,9 @@ on:
         default: false
 jobs:
   deploy:
-    name: "Deploy to: ${{ inputs.environment }}"
+    name: "Deploy to: ${{ inputs.environment || 'mouras-home-lab' }}"
     runs-on: self-hosted
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment || 'mouras-home-lab' }}
     defaults:
       run:
         shell: bash
@@ -79,11 +82,11 @@ jobs:
           '
 
       - name: Bring current infrastructure down
-        if: ${{ inputs.bring_down_first }}
+        if: ${{ inputs.bring_down_first == true }}
         run: docker compose -f infra/compose.yaml down --remove-orphans
 
       - name: Pull new images
-        if: ${{ inputs.bring_down_first && inputs.update_images }}
+        if: ${{ inputs.bring_down_first == true && inputs.update_images == true }}
         run: docker compose -f infra/compose.yaml pull
 
       - name: Build stack
