@@ -5,7 +5,7 @@ using Digger.Services.Models.Yts;
 
 public class Worker : BackgroundService
 {
-    private readonly DiggerContext _data;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     private readonly ILogger<Worker> _logger;
 
@@ -23,9 +23,9 @@ public class Worker : BackgroundService
 
     private readonly long _maxAllocatedSpace;
 
-    public Worker(DiggerContext diggerContext, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
+    public Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
     {
-        _data = diggerContext;
+        _scopeFactory = scopeFactory;
         _logger = logger;
         _ytsService = ytsService;
         _transmissionService = transmissionService;
@@ -49,18 +49,23 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Starting movie discovery cycle...");
                 
                 _logger.LogInformation("Step 1: Digging for new movies...");
-                GetNewMovies();
+                await GetNewMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Step 2: Skipping oldest movies...");
-                SkipOldestMovies();
+                await SkipOldestMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Step 3: Rolling out old movies and starting new downloads...");
-                CleanAndSyncMovies();
+                await CleanAndSyncMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Step 4: Retrying failed movies...");
-                RetryFailedMovies();
+                await RetryFailedMoviesAsync(stoppingToken);
                 
                 _logger.LogInformation("Finished search cycle. Next cycle in {StopTime}ms", _stopTime.TotalMilliseconds);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Worker service stopping due to cancellation request.");
+                break;
             }
             catch (Exception ex)
             {
@@ -73,32 +78,41 @@ public class Worker : BackgroundService
         _logger.LogInformation("Worker service stopping...");
     }
 
-    private void SkipOldestMovies()
+    private async Task SkipOldestMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
-            IQueryable<Digger.Data.Entities.Movie> query = from m in _data.Movies
-                                                  where (int)m.LastKnownStatus == 7
-                                                  orderby m.PublishDate descending
-                                                  select m;
-            var totalSize = query.Sum((Digger.Data.Entities.Movie m) => m.Size);
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
+            
+            var allMovies = await _data.Movies
+                .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
+                .OrderByDescending(m => m.PublishDate)
+                .ToListAsync(cancellationToken);
+            
+            var totalSize = allMovies.Sum(m => m.Size);
             _logger.LogInformation("SkipOldestMovies - Total ready-to-download size: {TotalSize} bytes, Max allowed: {MaxAllocatedSpace} bytes", 
                 totalSize, _maxAllocatedSpace);
             
             if (totalSize > _maxAllocatedSpace)
             {
-                _logger.LogWarning("Allocated space exceeded by {Excess} bytes. Marking oldest movies as skipped.", 
+                _logger.LogWarning("Allocated space exceeded by {Excess} bytes. Marking oldest movies as skipped.",
                     totalSize - _maxAllocatedSpace);
                 
-                int rowsToTake = 1;
-                do
+                long runningSum = 0;
+                int rowsToKeep = 0;
+                foreach (var movie in allMovies)
                 {
-                    rowsToTake++;
+                    runningSum += movie.Size;
+                    rowsToKeep++;
+                    if (runningSum >= _maxAllocatedSpace)
+                    {
+                        break;
+                    }
                 }
-                while (query.Take(rowsToTake).Sum((Digger.Data.Entities.Movie m) => m.Size) < _maxAllocatedSpace);
                 
-                List<Digger.Data.Entities.Movie> downloableMovies = query.Take(rowsToTake).ToList();
-                List<Digger.Data.Entities.Movie> moviesToSkip = query.ToList().Where((Digger.Data.Entities.Movie m) => !downloableMovies.Contains(m)).ToList();
+                var moviesToKeep = allMovies.Take(rowsToKeep).ToList();
+                var moviesToSkip = allMovies.Where(m => !moviesToKeep.Contains(m)).ToList();
                 
                 _logger.LogInformation("Skipping {Count} oldest movies to free up space", moviesToSkip.Count);
                 moviesToSkip.ForEach(delegate (Digger.Data.Entities.Movie m)
@@ -107,12 +121,16 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.Skipped;
                 });
                 _data.Movies.UpdateRange(moviesToSkip);
-                _data.SaveChanges();
+                await _data.SaveChangesAsync(cancellationToken);
             }
             else
             {
                 _logger.LogInformation("Allocated space is within limits. No movies need to be skipped.");
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -121,16 +139,19 @@ public class Worker : BackgroundService
         }
     }
 
-    private void CleanAndSyncMovies()
+    private async Task CleanAndSyncMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Starting CleanAndSyncMovies operation...");
             
-            string[] downloadedDirectories = _transmissionService.ClenByStatuses(MovieStatus.Seeding, MovieStatus.PendingSeed);
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
+            
+            string[] downloadedDirectories = _transmissionService.CleanByStatuses(MovieStatus.Seeding, MovieStatus.PendingSeed);
             _logger.LogInformation("Found {Count} completed/seeding torrents", downloadedDirectories.Length);
             
-            string[] stoppedDirectories = _transmissionService.ClenByStatuses(default(MovieStatus));
+            string[] stoppedDirectories = _transmissionService.CleanByStatuses(default(MovieStatus));
             _logger.LogInformation("Found {Count} stopped torrents", stoppedDirectories.Length);
             
             if (downloadedDirectories.Length != 0)
@@ -169,28 +190,37 @@ public class Worker : BackgroundService
                 _data.Movies.UpdateRange(moviesToUpdate2);
             }
             
-            _data.SaveChanges();
-            
             int currentDownloads = _transmissionService.DownloadsCount();
             _logger.LogInformation("Current active downloads: {CurrentDownloads}/{MaxDownloads}", currentDownloads, _maxEnqueuedTorrents);
             
-            if (_transmissionService.DownloadsCount() >= _maxEnqueuedTorrents)
+            if (currentDownloads >= _maxEnqueuedTorrents)
             {
-                _logger.LogInformation("Max enqueu­ed torrents reached. Skipping new torrent enqueueing.");
+                _logger.LogInformation("Max enqueu\u200ced torrents reached. Skipping new torrent enqueueing.");
+                await _data.SaveChangesAsync(cancellationToken);
                 return;
             }
             
-            long currentAllocatedSpace = _data.Movies.Where((Digger.Data.Entities.Movie m) => (int)m.LastKnownStatus == 11 || (int)m.LastKnownStatus == 1 || (int)m.LastKnownStatus == 2 || (int)m.LastKnownStatus == 3 || (int)m.LastKnownStatus == 4 || (int)m.LastKnownStatus == 8).Sum((Digger.Data.Entities.Movie m) => m.Size);
+            long currentAllocatedSpace = _data.Movies.Where(m => 
+                m.LastKnownStatus == MovieStatus.Complete ||
+                m.LastKnownStatus == MovieStatus.Stopped ||
+                m.LastKnownStatus == MovieStatus.PendingCheck ||
+                m.LastKnownStatus == MovieStatus.Checking ||
+                m.LastKnownStatus == MovieStatus.PendingDownload ||
+                m.LastKnownStatus == MovieStatus.Downloading ||
+                m.LastKnownStatus == MovieStatus.Enqueued)
+                .Sum(m => m.Size);
             _logger.LogInformation("Current allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
             
-            List<Digger.Data.Entities.Movie> moviesToEnqueue = (from m in _data.Movies
-                                                       where (int)m.LastKnownStatus == 7
-                                                       orderby m.PublishDate
-                                                       select m).Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount()).ToList();
+            int slotsAvailable = _maxEnqueuedTorrents - currentDownloads;
+            var moviesToEnqueue = await _data.Movies
+                .Where(m => m.LastKnownStatus == MovieStatus.NotEnqueued)
+                .OrderBy(m => m.PublishDate)
+                .Take(slotsAvailable)
+                .ToListAsync(cancellationToken);
             
             _logger.LogInformation("Found {Count} movies ready to download", moviesToEnqueue.Count);
             
-            long spaceAllocationNeeded = moviesToEnqueue.Select((Digger.Data.Entities.Movie m) => m.Size).Sum();
+            long spaceAllocationNeeded = moviesToEnqueue.Sum(m => m.Size);
             _logger.LogInformation("Space needed for new downloads: {SpaceNeeded} bytes", spaceAllocationNeeded);
             
             if (spaceAllocationNeeded > _maxAllocatedSpace - currentAllocatedSpace)
@@ -198,37 +228,31 @@ public class Worker : BackgroundService
                 _logger.LogWarning("Insufficient space. Need {SpaceNeeded} but only {AvailableSpace} available. Rolling out oldest completed movies...", 
                     spaceAllocationNeeded, _maxAllocatedSpace - currentAllocatedSpace);
                 
-                int take = 1;
-                IQueryable<Digger.Data.Entities.Movie> takenMovies = null;
-                do
+                var completedMovies = await _data.Movies
+                    .Where(m => m.LastKnownStatus == MovieStatus.Complete)
+                    .OrderBy(m => m.Timestamp)
+                    .ToListAsync(cancellationToken);
+                
+                long runningSum = 0;
+                var moviesToRollOut = new List<Digger.Data.Entities.Movie>();
+                foreach (var movie in completedMovies)
                 {
-                    takenMovies = (from m in _data.Movies
-                                   where (int)m.LastKnownStatus == 11
-                                   orderby m.Timestamp
-                                   select m).Take(take);
-                    take++;
+                    moviesToRollOut.Add(movie);
+                    runningSum += movie.Size;
+                    if (runningSum >= spaceAllocationNeeded)
+                    {
+                        break;
+                    }
                 }
-                while (takenMovies.Sum((Digger.Data.Entities.Movie m) => m.Size) < spaceAllocationNeeded);
                 
-                List<Digger.Data.Entities.Movie> takenMoviesList = takenMovies.ToList();
-                _logger.LogInformation("Rolling out {Count} oldest movies to free up space", takenMoviesList.Count);
+                _logger.LogInformation("Rolling out {Count} oldest movies to free up space", moviesToRollOut.Count);
                 
-                takenMoviesList.ForEach(delegate (Digger.Data.Entities.Movie m)
+                moviesToRollOut.ForEach(delegate (Digger.Data.Entities.Movie m)
                 {
-                    try
-                    {
-                        _logger.LogInformation("Rolling out movie: {MovieName} at {Path}", m.Name, m.Path);
-                        m.LastKnownStatus = MovieStatus.RolledOut;
-                        Directory.Delete(m.Path, recursive: true);
-                        _logger.LogInformation("Successfully deleted movie directory: {Path}", m.Path);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to delete movie directory: {Path}", m.Path);
-                    }
+                    _logger.LogInformation("Marking movie for cleanup: {MovieName}", m.Name);
+                    m.LastKnownStatus = MovieStatus.RolledOut;
                 });
-                _data.Movies.UpdateRange(takenMoviesList);
-                _data.SaveChanges();
+                _data.Movies.UpdateRange(moviesToRollOut);
             }
             
             _logger.LogInformation("Enqueueing {Count} movies for download...", moviesToEnqueue.Count);
@@ -248,10 +272,13 @@ public class Worker : BackgroundService
                 }
             });
             
-            _data.Movies.UpdateRange(moviesToEnqueue);
-            _data.SaveChanges();
+            await _data.SaveChangesAsync(cancellationToken);
             
             _logger.LogInformation("CleanAndSyncMovies operation completed");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -260,19 +287,24 @@ public class Worker : BackgroundService
         }
     }
 
-    private void GetNewMovies()
+    private async Task GetNewMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Fetching movies from YTS API...");
-            var newMovies = _ytsService.GetMovies();
+            var newMovies = await _ytsService.GetMoviesAsync();
             _logger.LogInformation("Fetched {Count} movies from YTS", newMovies.Count);
+            
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             
             var addedCount = 0;
             var skippedCount = 0;
             
             foreach (var movie in newMovies)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 var movieId = long.Parse(movie.Id);
                 var existingMovie = _data.Movies.FirstOrDefault(m => m.Id == movieId);
                 if (existingMovie == null)
@@ -288,7 +320,7 @@ public class Worker : BackgroundService
                         TorrentUrl = movie.TorrentUrl,
                         PublishDate = movie.PublishDate,
                         Path = Path.Combine("/downloads/movies", movie.Name.Replace(" ", "_")),
-                        LastKnownStatus = Digger.Data.Common.Enums.MovieStatus.NotEnqueued,
+                        LastKnownStatus = MovieStatus.NotEnqueued,
                         Timestamp = DateTime.UtcNow
                     };
                     
@@ -304,13 +336,17 @@ public class Worker : BackgroundService
             
             if (addedCount > 0 || skippedCount > 0)
             {
-                _data.SaveChanges();
+                await _data.SaveChangesAsync(cancellationToken);
                 _logger.LogInformation("GetNewMovies completed - Added: {AddedCount}, Skipped: {SkippedCount}", addedCount, skippedCount);
             }
             else
             {
                 _logger.LogInformation("No new movies found");
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -319,11 +355,15 @@ public class Worker : BackgroundService
         }
     }
 
-    private void RetryFailedMovies()
+    private async Task RetryFailedMoviesAsync(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Checking for failed movies to retry...");
+            
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
+            
             var failedMovies = _data.Movies.Where(m => m.LastKnownStatus == MovieStatus.Failed).ToList();
             _logger.LogInformation("Found {Count} failed movies", failedMovies.Count);
             
@@ -332,13 +372,18 @@ public class Worker : BackgroundService
                 _logger.LogDebug("Resetting failed movie for retry: {MovieName} (Attempts: {Attempts})", 
                     movie.Name, movie.DownloadAttempt);
                 movie.LastKnownStatus = MovieStatus.NotEnqueued;
+                movie.DownloadAttempt = 0;
             }
             
             if (failedMovies.Count > 0)
             {
                 _data.Movies.UpdateRange(failedMovies);
-                _data.SaveChanges();
+                await _data.SaveChangesAsync(cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

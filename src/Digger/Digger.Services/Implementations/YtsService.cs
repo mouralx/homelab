@@ -24,6 +24,8 @@ public class YtsService : IYtsService
 
     private readonly string? _ytsTorrentBaseUrl;
 
+    private readonly bool _skipSslValidation;
+
     private readonly ILogger<YtsService> _logger;
 
     public YtsService(ILogger<YtsService> logger, IConfiguration configuration)
@@ -35,10 +37,11 @@ public class YtsService : IYtsService
         _ytsApiBaseUrl = configuration.GetRequiredSection("Yts:ApiUrl").Get<string>();
         _ytsMinimumSeeders = configuration.GetRequiredSection("Yts:MinimumSeeders").Get<int>();
         _ytsTorrentBaseUrl = configuration.GetRequiredSection("Yts:TorrentBaseUrl").Get<string>();
+        _skipSslValidation = configuration.GetValue<bool>("Yts:SkipSslValidation");
         _logger = logger;
     }
 
-    public ICollection<YtsMovieModel> GetMovies()
+    public async Task<ICollection<YtsMovieModel>> GetMoviesAsync()
     {
         _logger.LogInformation("YtsService.GetMovies - Starting API request");
         _logger.LogInformation("Configuration - Genres: {Genres}, Languages: {Languages}, Years Back: {YearsBack}, Min Seeders: {MinSeeders}", 
@@ -57,7 +60,11 @@ public class YtsService : IYtsService
         List<YtsMovieModel> movies = new List<YtsMovieModel>();
         using (HttpClientHandler httpClientHandler = new HttpClientHandler())
         {
-            httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            if (_skipSslValidation)
+            {
+                _logger.LogWarning("SSL certificate validation is disabled. This should only be used in development.");
+                httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            }
             using HttpClient httpClient = new HttpClient(httpClientHandler);
             YtsResponse response = null;
             int page = 1;
@@ -72,7 +79,7 @@ public class YtsService : IYtsService
                     
                     _logger.LogDebug("Fetching page {Page} from YTS API: {Uri}", page, uriBuilder.Uri);
                     
-                    response = httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri).GetAwaiter().GetResult();
+                    response = await httpClient.GetFromJsonAsync<YtsResponse>(uriBuilder.Uri);
                     
                     if (response != null)
                     {

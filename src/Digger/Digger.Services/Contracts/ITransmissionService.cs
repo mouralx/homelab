@@ -8,7 +8,7 @@ public interface ITransmissionService
 
     MovieStatus GetStatus(string downloadDirectory);
 
-    string[] ClenByStatuses(params MovieStatus[] statuses);
+    string[] CleanByStatuses(params MovieStatus[] statuses);
 
     int DownloadsCount();
 

@@ -4,5 +4,5 @@ namespace Digger.Services.Contracts;
 
 public interface IYtsService
 {
-    ICollection<YtsMovieModel> GetMovies();
+    Task<ICollection<YtsMovieModel>> GetMoviesAsync();
 }
