@@ -127,10 +127,10 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("Starting CleanAndSyncMovies operation...");
             
-            string[] downloadedDirectories = _transmissionService.ClenByStatuses(MovieStatus.Seeding, MovieStatus.PendingSeed);
+            string[] downloadedDirectories = _transmissionService.CleanByStatuses(MovieStatus.Seeding, MovieStatus.PendingSeed);
             _logger.LogInformation("Found {Count} completed/seeding torrents", downloadedDirectories.Length);
             
-            string[] stoppedDirectories = _transmissionService.ClenByStatuses(default(MovieStatus));
+            string[] stoppedDirectories = _transmissionService.CleanByStatuses(default(MovieStatus));
             _logger.LogInformation("Found {Count} stopped torrents", stoppedDirectories.Length);
             
             if (downloadedDirectories.Length != 0)

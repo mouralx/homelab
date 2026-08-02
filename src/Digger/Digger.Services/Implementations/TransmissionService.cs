@@ -112,7 +112,7 @@ public class TransmissionService : ITransmissionService
         }
     }
 
-    public string[] ClenByStatuses(params MovieStatus[] statuses)
+    public string[] CleanByStatuses(params MovieStatus[] statuses)
     {
         try
         {
