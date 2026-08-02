@@ -1,6 +1,7 @@
 using Digger.Data.Context;
 using Digger.Services.Contracts;
 using Digger.Services.Implementations;
+using HealthChecks.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
@@ -15,9 +16,9 @@ builder.Services.AddHostedService<Cleaner>();
 logger.LogInformation("Cleaner service registered");
 
 logger.LogInformation("Configuring database context...");
+var connectionString = builder.Configuration.GetConnectionString("DiggerContext");
 builder.Services.AddDbContext<DiggerContext>(delegate (DbContextOptionsBuilder options)
 {
-    var connectionString = builder.Configuration.GetConnectionString("DiggerContext");
     options.UseSqlite(connectionString);
 }, 
 ServiceLifetime.Scoped);
@@ -27,6 +28,10 @@ builder.Services.AddSingleton<IYtsService, YtsService>();
 
 logger.LogInformation("Registering Transmission service");
 builder.Services.AddSingleton<ITransmissionService, TransmissionService>();
+
+logger.LogInformation("Configuring health checks");
+builder.Services.AddHealthChecks()
+    .AddSqlite(connectionString, name: "sqlite", tags: ["db"]);
 
 logger.LogInformation("Building host...");
 IHost host = builder.Build();
