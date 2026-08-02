@@ -190,11 +190,11 @@ public class Worker : BackgroundService
                 return;
             }
             
-            long currentAllocatedSpace = _data.Movies.Where((Digger.Data.Entities.Movie m) => (int)m.LastKnownStatus == 11 || (int)m.LastKnownStatus == 1 || (int)m.LastKnownStatus == 2 || (int)m.LastKnownStatus == 3 || (int)m.LastKnownStatus == 4 || (int)m.LastKnownStatus == 8).Sum((Digger.Data.Entities.Movie m) => m.Size);
+            long currentAllocatedSpace = _data.Movies.Where((Digger.Data.Entities.Movie m) => m.LastKnownStatus == MovieStatus.Complete || m.LastKnownStatus == MovieStatus.Stopped || m.LastKnownStatus == MovieStatus.PendingCheck || m.LastKnownStatus == MovieStatus.Checking || m.LastKnownStatus == MovieStatus.PendingDownload || m.LastKnownStatus == MovieStatus.Downloading || m.LastKnownStatus == MovieStatus.Enqueued).Sum((Digger.Data.Entities.Movie m) => m.Size);
             _logger.LogInformation("Current allocated space: {CurrentSpace} bytes / {MaxSpace} bytes", currentAllocatedSpace, _maxAllocatedSpace);
             
             List<Digger.Data.Entities.Movie> moviesToEnqueue = (from m in _data.Movies
-                                                       where (int)m.LastKnownStatus == 7
+                                                       where m.LastKnownStatus == MovieStatus.NotEnqueued
                                                        orderby m.PublishDate
                                                        select m).Take(_maxEnqueuedTorrents - _transmissionService.DownloadsCount()).ToList();
             
@@ -213,7 +213,7 @@ public class Worker : BackgroundService
                 do
                 {
                     takenMovies = (from m in _data.Movies
-                                   where (int)m.LastKnownStatus == 11
+                                   where m.LastKnownStatus == MovieStatus.Complete
                                    orderby m.Timestamp
                                    select m).Take(take);
                     take++;
