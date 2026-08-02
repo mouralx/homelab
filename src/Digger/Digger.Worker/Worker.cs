@@ -5,7 +5,7 @@ using Digger.Services.Models.Yts;
 
 public class Worker : BackgroundService
 {
-    private readonly DiggerContext _data;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     private readonly ILogger<Worker> _logger;
 
@@ -23,9 +23,9 @@ public class Worker : BackgroundService
 
     private readonly long _maxAllocatedSpace;
 
-    public Worker(DiggerContext diggerContext, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
+    public Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger, IYtsService ytsService, ITransmissionService transmissionService, IConfiguration configuration)
     {
-        _data = diggerContext;
+        _scopeFactory = scopeFactory;
         _logger = logger;
         _ytsService = ytsService;
         _transmissionService = transmissionService;
@@ -49,16 +49,16 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Starting movie discovery cycle...");
                 
                 _logger.LogInformation("Step 1: Digging for new movies...");
-                GetNewMovies();
+                await GetNewMoviesAsync();
                 
                 _logger.LogInformation("Step 2: Skipping oldest movies...");
-                SkipOldestMovies();
+                await SkipOldestMoviesAsync();
                 
                 _logger.LogInformation("Step 3: Rolling out old movies and starting new downloads...");
-                CleanAndSyncMovies();
+                await CleanAndSyncMoviesAsync();
                 
                 _logger.LogInformation("Step 4: Retrying failed movies...");
-                RetryFailedMovies();
+                await RetryFailedMoviesAsync();
                 
                 _logger.LogInformation("Finished search cycle. Next cycle in {StopTime}ms", _stopTime.TotalMilliseconds);
             }
@@ -73,10 +73,13 @@ public class Worker : BackgroundService
         _logger.LogInformation("Worker service stopping...");
     }
 
-    private void SkipOldestMovies()
+    private async Task SkipOldestMoviesAsync()
     {
         try
         {
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
+            
             IQueryable<Digger.Data.Entities.Movie> query = from m in _data.Movies
                                                   where (int)m.LastKnownStatus == 7
                                                   orderby m.PublishDate descending
@@ -107,7 +110,7 @@ public class Worker : BackgroundService
                     m.LastKnownStatus = MovieStatus.Skipped;
                 });
                 _data.Movies.UpdateRange(moviesToSkip);
-                _data.SaveChanges();
+                await _data.SaveChangesAsync();
             }
             else
             {
@@ -121,11 +124,14 @@ public class Worker : BackgroundService
         }
     }
 
-    private void CleanAndSyncMovies()
+    private async Task CleanAndSyncMoviesAsync()
     {
         try
         {
             _logger.LogInformation("Starting CleanAndSyncMovies operation...");
+            
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             
             string[] downloadedDirectories = _transmissionService.CleanByStatuses(MovieStatus.Seeding, MovieStatus.PendingSeed);
             _logger.LogInformation("Found {Count} completed/seeding torrents", downloadedDirectories.Length);
@@ -169,7 +175,7 @@ public class Worker : BackgroundService
                 _data.Movies.UpdateRange(moviesToUpdate2);
             }
             
-            _data.SaveChanges();
+            await _data.SaveChangesAsync();
             
             int currentDownloads = _transmissionService.DownloadsCount();
             _logger.LogInformation("Current active downloads: {CurrentDownloads}/{MaxDownloads}", currentDownloads, _maxEnqueuedTorrents);
@@ -228,7 +234,7 @@ public class Worker : BackgroundService
                     }
                 });
                 _data.Movies.UpdateRange(takenMoviesList);
-                _data.SaveChanges();
+                await _data.SaveChangesAsync();
             }
             
             _logger.LogInformation("Enqueueing {Count} movies for download...", moviesToEnqueue.Count);
@@ -249,7 +255,7 @@ public class Worker : BackgroundService
             });
             
             _data.Movies.UpdateRange(moviesToEnqueue);
-            _data.SaveChanges();
+            await _data.SaveChangesAsync();
             
             _logger.LogInformation("CleanAndSyncMovies operation completed");
         }
@@ -260,13 +266,16 @@ public class Worker : BackgroundService
         }
     }
 
-    private void GetNewMovies()
+    private async Task GetNewMoviesAsync()
     {
         try
         {
             _logger.LogInformation("Fetching movies from YTS API...");
-            var newMovies = _ytsService.GetMovies();
+            var newMovies = await _ytsService.GetMoviesAsync();
             _logger.LogInformation("Fetched {Count} movies from YTS", newMovies.Count);
+            
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
             
             var addedCount = 0;
             var skippedCount = 0;
@@ -304,7 +313,7 @@ public class Worker : BackgroundService
             
             if (addedCount > 0 || skippedCount > 0)
             {
-                _data.SaveChanges();
+                await _data.SaveChangesAsync();
                 _logger.LogInformation("GetNewMovies completed - Added: {AddedCount}, Skipped: {SkippedCount}", addedCount, skippedCount);
             }
             else
@@ -319,11 +328,15 @@ public class Worker : BackgroundService
         }
     }
 
-    private void RetryFailedMovies()
+    private async Task RetryFailedMoviesAsync()
     {
         try
         {
             _logger.LogInformation("Checking for failed movies to retry...");
+            
+            using var scope = _scopeFactory.CreateScope();
+            var _data = scope.ServiceProvider.GetRequiredService<DiggerContext>();
+            
             var failedMovies = _data.Movies.Where(m => m.LastKnownStatus == MovieStatus.Failed).ToList();
             _logger.LogInformation("Found {Count} failed movies", failedMovies.Count);
             
@@ -338,7 +351,7 @@ public class Worker : BackgroundService
             if (failedMovies.Count > 0)
             {
                 _data.Movies.UpdateRange(failedMovies);
-                _data.SaveChanges();
+                await _data.SaveChangesAsync();
             }
         }
         catch (Exception ex)

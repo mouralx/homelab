@@ -4,12 +4,12 @@ using Digger.Data.Context;
 public class Cleaner : BackgroundService
 {
     private readonly ILogger<Cleaner> _logger;
-    private readonly DiggerContext _dbContext;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public Cleaner(ILogger<Cleaner> logger, DiggerContext dbContext)
+    public Cleaner(ILogger<Cleaner> logger, IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
-        _dbContext = dbContext;
+        _scopeFactory = scopeFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -20,7 +20,10 @@ public class Cleaner : BackgroundService
             {
                 _logger.LogInformation("Cleaner running at: {Time}", DateTimeOffset.Now);
 
-                var rolledOutMovies = _dbContext.Movies.Where(m => m.LastKnownStatus == MovieStatus.RolledOut).Select(m => new DirectoryInfo(m.Path).Name).ToList();
+                using var scope = _scopeFactory.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<DiggerContext>();
+
+                var rolledOutMovies = dbContext.Movies.Where(m => m.LastKnownStatus == MovieStatus.RolledOut).Select(m => new DirectoryInfo(m.Path).Name).ToList();
 
                 _logger.LogInformation("Found {Count} rolled out movies", rolledOutMovies.Count);
 
