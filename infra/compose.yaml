@@ -1,23 +1,23 @@
 services:
-  digger:
-    build:
-      context: ../src/Digger
-      dockerfile: ../../infra/Dockerfile.digger
-    container_name: digger
-    restart: unless-stopped
-    environment:
-      Logging__Level__Default: Information
-      Logging__Level__Microsoft: Warning
-      Logging__LogLevel__Microsoft_Hosting_Lifetime: Information
-      Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
-    depends_on:
-      - transmission
-    volumes:
-      - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
-      - ~/digger:/digger/data:rw
-    networks:
-      default:
-        ipv4_address: 10.51.0.2
+  # digger:
+  #   build:
+  #     context: ../src/Digger
+  #     dockerfile: ../../infra/Dockerfile.digger
+  #   container_name: digger
+  #   restart: unless-stopped
+  #   environment:
+  #     Logging__Level__Default: Information
+  #     Logging__Level__Microsoft: Warning
+  #     Logging__LogLevel__Microsoft_Hosting_Lifetime: Information
+  #     Logging__LogLevel__Microsoft__EntityFrameworkCore__Database__Command: Warning
+  #   depends_on:
+  #     - transmission
+  #   volumes:
+  #     - ${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw
+  #     - ~/digger:/digger/data:rw
+  #   networks:
+  #     default:
+  #       ipv4_address: 10.51.0.2
   vault:
     container_name: vault
     entrypoint: /vault/config/entrypoint.sh
@@ -51,10 +51,6 @@ services:
     volumes:
       - ~/hermes:/opt/data
     environment:
-#      API_SERVER_ENABLED: "${HERMES_API_SERVVER_ENABLED:-false}"
-#      API_SERVER_HOST: "0.0.0.0"
-#      API_SERVER_PORT: "8642"
-#      API_SERVER_KEY: "${HERMES_API_KEY}"
       GATEWAY_ALLOWED_USERS: "${HERMES_ALLOWED_USERS}"
       HERMES_DASHBOARD: "1"
       HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER}
@@ -78,19 +74,19 @@ services:
     networks:
       default:
         ipv4_address: 10.51.0.4
-  jellyfin:
-    container_name: jellyfin
-    image: jellyfin/jellyfin
-    restart: unless-stopped
-    volumes:
-      - ~/jellyfin/config:/config
-      - ~/jellyfin/cache:/cache
-      - ${JELLYFIN_MEDIA_DIR}:/media
-    environment:
-      - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
-    networks:
-      default:
-        ipv4_address: 10.51.0.5
+  # jellyfin:
+  #   container_name: jellyfin
+  #   image: jellyfin/jellyfin
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ~/jellyfin/config:/config
+  #     - ~/jellyfin/cache:/cache
+  #     - ${JELLYFIN_MEDIA_DIR}:/media
+  #   environment:
+  #     - JELLYFIN_PublishedServerUrl=${JELLYFIN_SERVER_URL}
+  #   networks:
+  #     default:
+  #       ipv4_address: 10.51.0.5
   n8n:
     image: docker.n8n.io/n8nio/n8n:next
     container_name: n8n
@@ -228,21 +224,21 @@ services:
         limits:
           memory: ${HONCHO_MEMORY_LIMIT:-2G}
           cpus: "1.0"
-  transmission:
-    build:
-      context: ..
-      dockerfile: infra/Dockerfile.transmission
-    container_name: transmission
-    restart: unless-stopped
-    networks:
-      default:
-        ipv4_address: 10.51.0.15
-    environment:
-      TRANSMISSION_USER: ${TRANSMISSION_USERNAME}
-      TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
-    volumes:
-      - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
-      - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
+  # transmission:
+  #   build:
+  #     context: ..
+  #     dockerfile: infra/Dockerfile.transmission
+  #   container_name: transmission
+  #   restart: unless-stopped
+  #   networks:
+  #     default:
+  #       ipv4_address: 10.51.0.15
+  #   environment:
+  #     TRANSMISSION_USER: ${TRANSMISSION_USERNAME}
+  #     TRANSMISSION_PASSWORD: ${TRANSMISSION_PASSWORD}
+  #   volumes:
+  #     - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
+  #     - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
