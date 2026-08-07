@@ -224,6 +224,17 @@ services:
         limits:
           memory: ${HONCHO_MEMORY_LIMIT:-2G}
           cpus: "1.0"
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ~/ollama:/root/.ollama
+    networks:
+      default:
+        ipv4_address: 10.51.0.20
   # transmission:
   #   build:
   #     context: ..
