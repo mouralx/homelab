@@ -7,4 +7,4 @@ fi
 installer="$(mktemp)"
 trap 'rm -f "$installer"' EXIT
 curl -fsSL https://get.docker.com -o "$installer"
-"$SUDO" sh "$installer"
+sh "$installer"
