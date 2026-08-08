@@ -474,7 +474,7 @@ docker compose -f infra/compose.yaml up -d <service-name>
 
 ```sh
 # Backup first!
-./scripts/backup.sh
+./infra/scripts/backup.sh
 
 # Bring everything down
 docker compose --env-file infra/.env -f infra/compose.yaml down

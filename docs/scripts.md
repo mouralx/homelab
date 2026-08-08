@@ -1,6 +1,6 @@
 # Utility Scripts
 
-Reference documentation for the entrypoint scripts in `scripts/`.
+Reference documentation for the entrypoint scripts in `infra/scripts/`.
 
 ## Contents
 
@@ -14,7 +14,7 @@ Reference documentation for the entrypoint scripts in `scripts/`.
 
 **Purpose**: Starts the Honcho container, waits for Postgres to become available, creates the required PostgreSQL extensions, runs Alembic migrations, and launches the Honcho app.
 
-**Location**: `scripts/honcho.entrypoint.sh`
+**Location**: `infra/scripts/honcho.entrypoint.sh`
 
 **Runtime behavior**:
 
@@ -41,7 +41,7 @@ Reference documentation for the entrypoint scripts in `scripts/`.
 
 **Purpose**: Installs LM Studio if needed, downloads the configured model, loads it, and starts the LM Studio server on port 4321.
 
-**Location**: `scripts/lmstudio.entrypoint.sh`
+**Location**: `infra/scripts/lmstudio.entrypoint.sh`
 
 **Runtime behavior**:
 
@@ -60,7 +60,7 @@ Reference documentation for the entrypoint scripts in `scripts/`.
 
 **Purpose**: Applies runtime configuration values (username, password, directories) to the Transmission daemon before starting it.
 
-**Location**: `scripts/transmission.entrypoint.sh`
+**Location**: `infra/scripts/transmission.entrypoint.sh`
 
 **Runtime behavior**:
 

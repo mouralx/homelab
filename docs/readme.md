@@ -41,11 +41,11 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 │   ├── dockerfile.digger           # Digger worker build
 │   ├── dockerfile.honcho           # Honcho API image
 │   ├── dockerfile.llmster          # Local LLM runtime image
-│   └── dockerfile.transmission     # Custom Transmission image
-├── scripts/
-│   ├── honcho.entrypoint.sh        # Honcho container startup
-│   ├── lmstudio.entrypoint.sh      # LM Studio model loader
-│   └── transmission.entrypoint.sh  # Transmission config injector
+│   ├── dockerfile.transmission     # Custom Transmission image
+│   └── scripts/
+│       ├── honcho.entrypoint.sh    # Honcho container startup
+│       ├── lmstudio.entrypoint.sh  # LM Studio model loader
+│       └── transmission.entrypoint.sh # Transmission config injector
 ├── src/
 │   └── Digger/                     # .NET 10 worker solution
 │       ├── Digger.slnx

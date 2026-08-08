@@ -6,5 +6,5 @@ ENV TRANSMISSION_USER="transmission"
 ENV TRANSMISSION_PASSWORD="transmission" 
 ENV TRANSMISSION_ALLOWED="*"
 
-COPY scripts/transmission.entrypoint.sh /transmission.entrypoint.sh
+COPY infra/scripts/transmission.entrypoint.sh /transmission.entrypoint.sh
 ENTRYPOINT [ "sh", "/transmission.entrypoint.sh" ]

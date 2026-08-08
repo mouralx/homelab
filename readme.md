@@ -83,11 +83,11 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 │   ├── dockerfile.digger
 │   ├── dockerfile.honcho
 │   ├── dockerfile.llmster
-│   └── dockerfile.transmission
-├── scripts/
-│   ├── honcho.entrypoint.sh
-│   ├── lmstudio.entrypoint.sh
-│   └── transmission.entrypoint.sh
+│   ├── dockerfile.transmission
+│   └── scripts/
+│       ├── honcho.entrypoint.sh
+│       ├── lmstudio.entrypoint.sh
+│       └── transmission.entrypoint.sh
 └── src/
     └── Digger/
         ├── Digger.Data/
@@ -102,7 +102,7 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 - `.github/workflows/` contains the deployment logic for bringing the stack online on a self-hosted runner.
 - `docs/` — comprehensive documentation covering architecture, services, configuration, deployment, and operations.
 - `infra/` defines the containers, networking, and startup configuration for every service, plus custom Dockerfiles for Digger, Honcho, LLMster, and Transmission.
-- `scripts/` contains entrypoint scripts used by custom container images.
+- `infra/scripts/` contains entrypoint scripts used by custom container images.
 - `src/Digger/` contains the worker code that discovers and manages movie content.
 
 ---
