@@ -65,10 +65,10 @@ The stack runs 15 containers on a dedicated Docker bridge network (`10.51.0.0/24
 |---|---|---|---|
 | digger | 10.51.0.2 | media | Automated movie discovery & download management |
 | transmission | 10.51.0.15 | media | Torrent client |
-| hermes | 10.51.0.17 | ai | AI agent gateway |
-| llmster | 10.51.0.18 | ai | Local model runtime |
-| honcho | 10.51.0.19 | ai | Honcho API service |
-| keycloak | 10.51.0.16 | ai | Identity and access management |
+| hermes | 10.51.0.17 | agentic | AI agent gateway |
+| llmster | 10.51.0.18 | agentic | Local model runtime |
+| honcho | 10.51.0.19 | agentic | Honcho API service |
+| keycloak | 10.51.0.16 | identity | Identity and access management |
 | owui | 10.51.0.10 | ai | Open WebUI |
 | vault | 10.51.0.6 | tools | Secrets management |
 | n8n | 10.51.0.7 | tools | Workflow automation |
@@ -82,7 +82,7 @@ The stack runs 15 containers on a dedicated Docker bridge network (`10.51.0.0/24
 ## Key Concepts
 
 - **Single-host deployment**: All services run on one machine, orchestrated by Docker Compose
-- **Compose profiles**: Services are grouped into `ai`, `media`, and `tools` profiles for selective deployment
+- **Compose profiles**: Services are grouped into focused `agentic`, `media`, `automation`, `identity`, `data`, `home`, `security`, and `monitoring` profiles; npm and postgres provide shared infrastructure
 - **Static IP networking**: Services communicate over a dedicated bridge network with predictable addresses
 - **Environment-driven configuration**: Runtime values are injected via `.env` file at deploy time
 - **Secrets management**: Sensitive values are stored in GitHub Environments, never committed to the repo

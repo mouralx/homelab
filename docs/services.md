@@ -103,7 +103,7 @@ HTTP GET to `http://localhost:9091/` every 30s, start period 15s.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.5` |
-| Profile | \u2014 |
+| Profile | `media` |
 | Image | `jellyfin/jellyfin` |
 | Restart | `unless-stopped` |
 
@@ -132,7 +132,7 @@ Open-source media server that organizes, streams, and transcodes media content. 
 | Property | Value |
 |---|---|
 | IP | `10.51.0.7` |
-| Profile | `tools` |
+| Profile | `automation` |
 | Image | `docker.n8n.io/n8nio/n8n:next` |
 | Restart | `unless-stopped` |
 | Depends on | `postgres` (condition: service_healthy) |
@@ -207,7 +207,7 @@ Web-based Nginx reverse proxy manager with built-in TLS termination, Let's Encry
 | Property | Value |
 |---|---|
 | IP | `10.51.0.16` |
-| Profile | `ai` |
+| Profile | `identity` |
 | Image | `quay.io/keycloak/keycloak:latest` |
 | Restart | `unless-stopped` |
 | Depends on | `postgres` (condition: service_healthy) |
@@ -284,7 +284,7 @@ The server creates a default `postgres` database. Services create their own data
 | Property | Value |
 |---|---|
 | IP | `10.51.0.4` |
-| Profile | \u2014 |
+| Profile | `home` |
 | Image | `ghcr.io/home-assistant/home-assistant:stable` |
 | Restart | `unless-stopped` |
 
@@ -307,7 +307,7 @@ Open-source home automation platform. Can be integrated with n8n for complex aut
 | Property | Value |
 |---|---|
 | IP | `10.51.0.17` |
-| Profile | `ai` |
+| Profile | `agentic` |
 | Image | `nousresearch/hermes-agent:latest` |
 | Restart | `unless-stopped` |
 | Resources | 4GB RAM, 2 CPU cores |
@@ -348,7 +348,7 @@ AI agent gateway by Nous Research. Routes inference requests to local LLM backen
 | Property | Value |
 |---|---|
 | IP | `10.51.0.18` |
-| Profile | `ai` |
+| Profile | `agentic` |
 | Image | Custom build (see `Dockerfile.llmster`) |
 | Restart | `unless-stopped` |
 
@@ -385,7 +385,7 @@ HTTP GET to `http://localhost:4321/v1/models` every 30s, start period 120s.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.19` |
-| Profile | `ai` |
+| Profile | `agentic` |
 | Image | Custom build (see `Dockerfile.honcho`) |
 | Restart | `unless-stopped` |
 | Depends on | `postgres` (condition: service_healthy) |
@@ -427,7 +427,7 @@ Honcho uses OpenCode (Go and Zen) as its LLM provider, configured to use `deepse
 | Property | Value |
 |---|---|
 | IP | `10.51.0.10` |
-| Profile | `ai` |
+| Profile | `agentic` |
 | Image | `ghcr.io/open-webui/open-webui:main` |
 | Restart | `always` |
 
@@ -460,7 +460,7 @@ Open WebUI provides a ChatGPT-like web interface for interacting with LLMs. Supp
 | Property | Value |
 |---|---|
 | IP | `10.51.0.13` |
-| Profile | \u2014 |
+| Profile | `monitoring` |
 | Image | `portainer/portainer-ce:latest` |
 | Restart | `unless-stopped` |
 
@@ -488,7 +488,7 @@ Container management dashboard providing a web UI for managing Docker resources.
 | Property | Value |
 |---|---|
 | IP | `10.51.0.6` |
-| Profile | `tools` |
+| Profile | `security` |
 | Image | `hashicorp/vault:latest` |
 | Restart | `unless-stopped` |
 | Resources | 512MB RAM, 0.5 CPU |
@@ -522,7 +522,7 @@ Custom entrypoint at `/vault/config/entrypoint.sh` (mounted from host).
 | Property | Value |
 |---|---|
 | IP | `10.51.0.12` |
-| Profile | `tools` |
+| Profile | `data` |
 | Image | `dpage/pgadmin4:latest` |
 | Restart | `unless-stopped` |
 | Depends on | `postgres` (condition: service_healthy) |

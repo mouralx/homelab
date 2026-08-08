@@ -44,7 +44,7 @@ Only `workflow_dispatch` (manual trigger from GitHub UI or CLI).
 | Input | Type | Options | Default | Description |
 |---|---|---|---|---|
 | `environment` | Choice | `mouras-home-lab` | `mouras-home-lab` | Target environment for deployment |
-| `stack` | Choice | `Everything`, `AI Services`, `Media Services`, `Tools`, `Core Only` | `Everything` | Compose profile to deploy |
+| `stack` | Choice | `Everything`, `Agentic`, `Media`, `Automation`, `Identity`, `Data`, `Home`, `Security`, `Monitoring`, `Core Only` | `Everything` | Compose profile to deploy |
 | `bring_down_first` | Boolean | \u2014 | `false` | Whether to stop existing stack before deploying |
 | `update_images` | Boolean | \u2014 | `false` | Whether to pull latest Docker images (only when `bring_down_first` is true) |
 
@@ -55,10 +55,15 @@ Only `workflow_dispatch` (manual trigger from GitHub UI or CLI).
 | Workflow Option | Compose Profile |
 |---|---|
 | Everything | (all profiles) |
-| AI Services | `--profile ai` |
-| Media Services | `--profile media` |
-| Tools | `--profile tools` |
-| Core Only | (no profile flags \u2014 core services only) |
+| Agentic | `--profile agentic` |
+| Media | `--profile media` |
+| Automation | `--profile automation` |
+| Identity | `--profile identity` |
+| Data | `--profile data` |
+| Home | `--profile home` |
+| Security | `--profile security` |
+| Monitoring | `--profile monitoring` |
+| Core Only | (no profile flags \u2014 npm and postgres only) |
 
 ## Pipeline Steps
 

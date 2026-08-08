@@ -289,11 +289,17 @@ Services are grouped into optional profiles to allow selective deployment:
 
 | Profile | Services |
 |---|---|
-| `ai` | hermes, honcho, llmster, keycloak, owui |
-| `media` | digger, transmission |
-| `tools` | vault, n8n, pgadmin |
+| `all` | All services, including shared infrastructure |
+| `agentic` | hermes, honcho, ollama |
+| `automation` | n8n |
+| `data` | pgadmin |
+| `home` | homeassistant |
+| `identity` | keycloak |
+| `media` | digger, jellyfin, transmission |
+| `monitoring` | portainer |
+| `security` | vault |
 
-Services without a profile (homeassistant, jellyfin, npm, portainer, postgres) are always deployed with `up -d`.
+Services without a profile (npm and postgres) are always deployed with `up -d` and provide shared infrastructure for optional services.
 
 ## Dockerfile Configuration
 
