@@ -38,10 +38,10 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 │       └── publish-home-lab.yaml   # Deployment pipeline
 ├── infra/
 │   ├── compose.yaml                # Docker Compose stack (15 services)
-│   ├── Dockerfile.digger           # Digger worker build
-│   ├── Dockerfile.honcho           # Honcho API image
-│   ├── Dockerfile.llmster          # Local LLM runtime image
-│   └── Dockerfile.transmission     # Custom Transmission image
+│   ├── dockerfile.digger           # Digger worker build
+│   ├── dockerfile.honcho           # Honcho API image
+│   ├── dockerfile.llmster          # Local LLM runtime image
+│   └── dockerfile.transmission     # Custom Transmission image
 ├── scripts/
 │   ├── honcho.entrypoint.sh        # Honcho container startup
 │   ├── lmstudio.entrypoint.sh      # LM Studio model loader

@@ -93,7 +93,7 @@ Registered in `Program.cs` as singletons:
 
 ### Build Process
 
-The `Dockerfile.digger` uses a multi-stage build:
+The `dockerfile.digger` uses a multi-stage build:
 
 1. **SDK stage**: `mcr.microsoft.com/dotnet/sdk:10.0`
 2. Copies entire source tree
@@ -488,7 +488,7 @@ All configuration lives in `src/Digger/Digger.Worker/appsettings.json`.
 
 ### Build Artifact
 
-The Digger is built as part of the Docker Compose stack. The `Dockerfile.digger` compiles the .NET 10 worker into a self-contained deployment.
+The Digger is built as part of the Docker Compose stack. The `dockerfile.digger` compiles the .NET 10 worker into a self-contained deployment.
 
 ### Runtime Secret Injection
 

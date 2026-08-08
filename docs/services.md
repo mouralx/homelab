@@ -28,7 +28,7 @@ Complete documentation for all 15 Docker services in the home lab stack.
 |---|---|
 | IP | `10.51.0.2` |
 | Profile | `media` |
-| Image | Custom build (see `Dockerfile.digger`) |
+| Image | Custom build (see `dockerfile.digger`) |
 | Restart | `unless-stopped` |
 | Depends on | `transmission` (condition: service_healthy) |
 | Volumes | `${DIGGER_HOST_MOVIES_DIR}:/downloads/movies:rw`, `~/digger:/digger/data:rw` |
@@ -63,7 +63,7 @@ Uses `appsettings.json` for runtime configuration, with Transmission credentials
 |---|---|
 | IP | `10.51.0.15` |
 | Profile | `media` |
-| Image | Custom build (see `Dockerfile.transmission`) |
+| Image | Custom build (see `dockerfile.transmission`) |
 | Restart | `unless-stopped` |
 
 ### Description
@@ -349,7 +349,7 @@ AI agent gateway by Nous Research. Routes inference requests to local LLM backen
 |---|---|
 | IP | `10.51.0.18` |
 | Profile | `agentic` |
-| Image | Custom build (see `Dockerfile.llmster`) |
+| Image | Custom build (see `dockerfile.llmster`) |
 | Restart | `unless-stopped` |
 
 ### Description
@@ -386,7 +386,7 @@ HTTP GET to `http://localhost:4321/v1/models` every 30s, start period 120s.
 |---|---|
 | IP | `10.51.0.19` |
 | Profile | `agentic` |
-| Image | Custom build (see `Dockerfile.honcho`) |
+| Image | Custom build (see `dockerfile.honcho`) |
 | Restart | `unless-stopped` |
 | Depends on | `postgres` (condition: service_healthy) |
 | Resources | 2GB RAM (configurable), 1 CPU |

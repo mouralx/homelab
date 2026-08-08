@@ -3,7 +3,7 @@ services:
     profiles: [all, media]
     build:
       context: ../src/Digger
-      dockerfile: ../../infra/Dockerfile.digger
+      dockerfile: ../../infra/dockerfile.digger
     container_name: digger
     restart: unless-stopped
     environment:
@@ -185,7 +185,7 @@ services:
     profiles: [all, agentic]
     build:
       context: ..
-      dockerfile: infra/Dockerfile.honcho
+      dockerfile: infra/dockerfile.honcho
     container_name: honcho
     restart: unless-stopped
     depends_on:
@@ -249,7 +249,7 @@ services:
     profiles: [all, media]
     build:
       context: ..
-      dockerfile: infra/Dockerfile.transmission
+      dockerfile: infra/dockerfile.transmission
     container_name: transmission
     restart: unless-stopped
     networks:

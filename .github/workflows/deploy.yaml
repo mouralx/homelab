@@ -1,8 +1,5 @@
-name: Home Lab Deployment
+name: Deployment Workflow
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       dry_run:

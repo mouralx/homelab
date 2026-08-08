@@ -303,7 +303,7 @@ Services without a profile (npm and postgres) are always deployed with `up -d` a
 
 ## Dockerfile Configuration
 
-### transmission (Dockerfile.transmission)
+### transmission (dockerfile.transmission)
 
 ```dockerfile
 ENV TRANSMISSION_USER="transmission" \
@@ -313,7 +313,7 @@ ENV TRANSMISSION_USER="transmission" \
 
 These are build-time defaults. Runtime values are set via environment variables from `compose.yaml`. The custom entrypoint script rewrites the Transmission config at container start.
 
-### llmster (Dockerfile.llmster)
+### llmster (dockerfile.llmster)
 
 ```dockerfile
 ENV LLM_MODEL="google/gemma-4-e2b"
@@ -321,11 +321,11 @@ ENV LLM_MODEL="google/gemma-4-e2b"
 
 Exposes the configured model through an LM Studio-compatible runtime on port 4321.
 
-### honcho (Dockerfile.honcho)
+### honcho (dockerfile.honcho)
 
 Multi-stage Python build that installs dependencies and sets up the Honcho FastAPI service. The entrypoint script handles Postgres readiness, extension creation, and migration execution.
 
-### digger (Dockerfile.digger)
+### digger (dockerfile.digger)
 
 Multi-stage .NET 10 build that compiles the worker and publishes it as a self-contained deployment. No runtime configuration through Dockerfile \u2014 uses `appsettings.json` and environment overrides.
 
