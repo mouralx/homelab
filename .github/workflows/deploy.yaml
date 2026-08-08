@@ -47,8 +47,6 @@ jobs:
           TRANSMISSION_USERNAME: ${{ vars.TRANSMISSION_USERNAME }}
           TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
         run: bash .github/workflows/scripts/redact-digger-config.sh
-      - name: Set up container runtime
-        run: bash .github/workflows/scripts/install-container-runtime.sh
       - name: Create .env file from selected environment
         env:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
