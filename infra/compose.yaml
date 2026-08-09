@@ -20,7 +20,7 @@ services:
       default:
         ipv4_address: 10.51.0.2
   vault:
-    profiles: [all, security]
+    profiles: [all, security, agentic]
     container_name: vault
     entrypoint: /vault/config/entrypoint.sh
     image: hashicorp/vault:latest
@@ -124,6 +124,7 @@ services:
       default:
         ipv4_address: 10.51.0.7
   npm:
+    profiles: [agentic]
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
@@ -168,6 +169,7 @@ services:
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   postgres:
+    profiles: [agentic]
     container_name: postgres
     restart: unless-stopped
     image: pgvector/pgvector:pg15
@@ -262,7 +264,7 @@ services:
       - ${TRANSMISSION_DOWNLOADS_DIR}:/downloads:rw
       - ${TRANSMISSION_INCOMPLETE_DIR}:/incomplete:rw
   keycloak:
-    profiles: [all, identity]
+    profiles: [all, agentic]
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     command: start-dev
