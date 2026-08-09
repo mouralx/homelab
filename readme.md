@@ -359,14 +359,14 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d
 ### Start with specific profiles
 
 ```sh
-# AI services only (hermes, honcho, llmster, keycloak, owui)
-docker compose --env-file infra/.env -f infra/compose.yaml --profile ai up -d
+# Agentic services only (hermes, honcho, and ollama)
+docker compose --env-file infra/.env -f infra/compose.yaml --profile agentic up -d
 
 # Media services only (digger, transmission)
 docker compose --env-file infra/.env -f infra/compose.yaml --profile media up -d
 
-# Tools (vault, n8n, pgadmin)
-docker compose --env-file infra/.env -f infra/compose.yaml --profile tools up -d
+# Automation services only (n8n)
+docker compose --env-file infra/.env -f infra/compose.yaml --profile automation up -d
 ```
 
 ### Check service status

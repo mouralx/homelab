@@ -44,7 +44,7 @@ Only `workflow_dispatch` (manual trigger from GitHub UI or CLI).
 | Input | Type | Options | Default | Description |
 |---|---|---|---|---|
 | `environment` | Choice | `mouras-home-lab` | `mouras-home-lab` | Target environment for deployment |
-| `stack` | Choice | `Everything`, `Agentic`, `Media`, `Automation`, `Identity`, `Data`, `Home`, `Security`, `Monitoring`, `Core Only` | `Everything` | Compose profile to deploy |
+| `profile` | Choice | `all`, `agentic`, `automation`, `data`, `home`, `identity`, `media`, `monitoring`, `security` | `all` | Compose profile to deploy |
 | `bring_down_first` | Boolean | \u2014 | `false` | Whether to stop existing stack before deploying |
 | `update_images` | Boolean | \u2014 | `false` | Whether to pull latest Docker images (only when `bring_down_first` is true) |
 
@@ -54,7 +54,7 @@ Only `workflow_dispatch` (manual trigger from GitHub UI or CLI).
 
 | Workflow Option | Compose Profile |
 |---|---|
-| Everything | (all profiles) |
+| `all` | `--profile all` |
 | Agentic | `--profile agentic` |
 | Media | `--profile media` |
 | Automation | `--profile automation` |
@@ -63,7 +63,6 @@ Only `workflow_dispatch` (manual trigger from GitHub UI or CLI).
 | Home | `--profile home` |
 | Security | `--profile security` |
 | Monitoring | `--profile monitoring` |
-| Core Only | (no profile flags \u2014 npm and postgres only) |
 
 ## Pipeline Steps
 
@@ -129,7 +128,7 @@ docker compose -f infra/compose.yaml down --remove-orphans
 Only runs if both `bring_down_first` AND `update_images` are `true`:
 
 ```sh
-docker compose -f infra/compose.yaml pull ${{ steps.profiles.outputs.flags }}
+docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} pull
 ```
 
 ### 7. Build Infrastructure
@@ -137,7 +136,7 @@ docker compose -f infra/compose.yaml pull ${{ steps.profiles.outputs.flags }}
 Builds all images defined in the compose file (including the custom Dockerfiles for digger, transmission, honcho, and llmster):
 
 ```sh
-docker compose -f infra/compose.yaml build ${{ steps.profiles.outputs.flags }}
+docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} build
 ```
 
 ### 8. Instantiate Infrastructure
@@ -145,7 +144,7 @@ docker compose -f infra/compose.yaml build ${{ steps.profiles.outputs.flags }}
 Starts all services in detached mode:
 
 ```sh
-docker compose -f infra/compose.yaml ${{ steps.profiles.outputs.flags }} up -d
+docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} up -d
 ```
 
 ### 9. Clean Docker Dangling Images

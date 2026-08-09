@@ -21,6 +21,21 @@ on:
         options:
           - mouras-home-lab
         default: mouras-home-lab
+      profile:
+        description: "Select the Compose profile to deploy:"
+        required: true
+        type: choice
+        options:
+          - all
+          - agentic
+          - automation
+          - data
+          - home
+          - identity
+          - media
+          - monitoring
+          - security
+        default: all
       bring_down_first:
         description: "Bring down infrastructure down."
         required: true
@@ -52,16 +67,20 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash .github/workflows/scripts/create-environment-file.sh
+      - name: Select Compose profile
+        id: profile
+        run: |
+          echo "flags=--profile ${{ inputs.profile }}" >> "$GITHUB_OUTPUT"
       - name: Bring current infrastructure down
         if: ${{ inputs.bring_down_first == true }}
-        run: docker compose -f infra/compose.yaml down --remove-orphans
+        run: docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} down --remove-orphans
       - name: Pull new images
         if: ${{ inputs.bring_down_first == true && inputs.update_images == true }}
-        run: docker compose -f infra/compose.yaml pull
+        run: docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} pull
       - name: Build stack
-        run: docker compose -f infra/compose.yaml build
+        run: docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} build
       - name: Deploy stack
         if: ${{ inputs.dry_run == false }}
-        run: docker compose -f infra/compose.yaml up -d
+        run: docker compose -f infra/compose.yaml ${{ steps.profile.outputs.flags }} up -d
       - name: Clean docker dangling images
         run: bash .github/workflows/scripts/clean-docker.sh
