@@ -285,7 +285,7 @@ services:
       default:
         ipv4_address: 10.51.0.16
     volumes:
-      - ~/keycloak:/opt/keycloak/data
+      - keycloak:/opt/keycloak/data
     ports:
       - "8080:8080"
 networks:
@@ -294,3 +294,5 @@ networks:
     ipam:
       config:
         - subnet: 10.51.0.0/24
+volumes:
+  keycloak:
