@@ -83,7 +83,7 @@ This diagram shows the main idea: the home lab is an ecosystem where user-facing
 │   ├── dockerfile.digger
 │   ├── dockerfile.honcho
 │   ├── dockerfile.llmster
-│   ├── dockerfile.transmission
+│   └── dockerfile.transmission
 │   └── scripts/
 │       ├── honcho.entrypoint.sh
 │       ├── lmstudio.entrypoint.sh
