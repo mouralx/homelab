@@ -266,7 +266,6 @@ services:
     profiles: [all, agentic]
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
-    command: start-dev
     depends_on:
       - postgres
     environment:
