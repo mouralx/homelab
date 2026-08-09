@@ -239,7 +239,6 @@ services:
     image: ollama/ollama:rocm
     container_name: ollama
     restart: unless-stopped
-    command: ollama pull nomic-embed-text:latest gemma4:e2b
     ports:
       - "11434:11434"
     volumes:
