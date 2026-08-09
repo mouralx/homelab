@@ -22,7 +22,6 @@ services:
   vault:
     profiles: [all, security, agentic]
     container_name: vault
-    entrypoint: /vault/config/entrypoint.sh
     image: hashicorp/vault:latest
     restart: unless-stopped
     volumes:
