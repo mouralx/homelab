@@ -10,7 +10,7 @@ if [ ! -f ~/.lmstudio/bin/lms ]; then
 
     ~/.lmstudio/bin/lms get $LLM_MODEL
 
-    ~/.lmstudio/bin/lms load $LLM_MODEL --context-length 128000
+    ~/.lmstudio/bin/lms load $LLM_MODEL --context-length 64000
     
 fi
 

@@ -4,7 +4,7 @@ WORKDIR /lms
 
 ENV PATH="/root/.local/bin:$PATH"
 
-ENV LLM_MODEL="google/gemma-4-e2b"
+ENV LLM_MODEL="qwen/qwen3.5-4b"
 
 EXPOSE 4321
 
