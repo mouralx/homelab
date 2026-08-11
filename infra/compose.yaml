@@ -11,7 +11,7 @@ services:
       default:
         ipv4_address: 10.51.0.12
     volumes:
-      - ~/hermes:/opt/data
+      - hermes:/opt/data
     environment:
       GATEWAY_ALLOWED_USERS: "${HERMES_ALLOWED_USERS}"
       HERMES_DASHBOARD: "1"
@@ -27,8 +27,8 @@ services:
     environment:
       TZ: ${TIME_ZONE}
     volumes:
-      - ~/npm/data:/data
-      - ~/npm/certs:/etc/letsencrypt
+      - npm_data:/data
+      - npm_certs:/etc/letsencrypt
     ports:
       - "443:443"
       - "80:80"
@@ -89,7 +89,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ~/ollama:/root/.ollama
+      - ollama:/root/.ollama
     networks:
       default:
         ipv4_address: 10.51.0.15
@@ -100,14 +100,14 @@ services:
     container_name: lms
     restart: unless-stopped
     volumes:
-      - ~/lms:/lms/.lmstudio
+      - lms:/lms/.lmstudio
     networks:
       default:
         ipv4_address: 10.51.0.16
     ports:
       - "4321:4321"
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.7.1
     container_name: keycloak
     command: start
     restart: unless-stopped
@@ -149,7 +149,7 @@ services:
       default:
         ipv4_address: 10.51.0.18
     volumes:
-      - ~/postgres/data:/var/lib/postgresql/data
+      - postgres:/var/lib/postgresql/data
 networks:
   default:
     driver: bridge
@@ -157,4 +157,10 @@ networks:
       config:
         - subnet: 10.51.0.0/24
 volumes:
+  hermes:
+  npm_data:
+  npm_certs:
+  ollama:
+  lms:
   keycloak:
+  postgres:
