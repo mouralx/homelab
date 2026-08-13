@@ -1,3 +1,4 @@
+name: agentic-services
 services:
   hermes:
     image: nousresearch/hermes-agent:latest
@@ -5,16 +6,16 @@ services:
     restart: unless-stopped
     command: gateway
     ports:
-      - "8642:8642"
-      - "9119:9119"
+      - 8642:8642
+      - 9119:9119
     networks:
       default:
         ipv4_address: 10.51.0.12
     volumes:
       - hermes:/opt/data
     environment:
-      GATEWAY_ALLOWED_USERS: "${HERMES_ALLOWED_USERS}"
-      HERMES_DASHBOARD: "1"
+      GATEWAY_ALLOWED_USERS: ${HERMES_ALLOWED_USERS}
+      HERMES_DASHBOARD: 1
       HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER}
       HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID}
       HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL}
@@ -30,16 +31,16 @@ services:
       - npm_data:/data
       - npm_certs:/etc/letsencrypt
     ports:
-      - "443:443"
-      - "80:80"
-      - "81:81"
+      - 443:443
+      - 80:80
+      - 81:81
     networks:
       default:
         ipv4_address: 10.51.0.13
   honcho:
     build:
       context: ..
-      dockerfile: infra/dockerfile.honcho
+      dockerfile: images/dockerfile.honcho
     container_name: honcho
     restart: unless-stopped
     depends_on:
@@ -50,7 +51,7 @@ services:
       DB_NAME: postgres
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      AUTH_USE_AUTH: "false"
+      AUTH_USE_AUTH: false
       LLM_OPENAI_API_KEY: ${OPENCODE_API_KEY}
       LLM_OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
       DERIVER_MODEL_CONFIG__MODEL: deepseek-v4-flash
@@ -70,17 +71,15 @@ services:
       EMBEDDING_MODEL_CONFIG__TRANSPORT: openai
       EMBEDDING_MODEL_CONFIG__MODEL: nomic-embed-text
       EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://ollama:11434/v1
-      # nomic-embed-text emits 768-dimension vectors; keep this in sync with
-      # the pgvector columns documents.embedding and message_embeddings.embedding.
-      EMBEDDING_VECTOR_DIMENSIONS: "768"
-      EMBEDDING_MAX_INPUT_TOKENS: "8192"
-      LLM_DEFAULT_MAX_TOKENS: "4096"
-      LLM_ANTHROPIC_API_KEY: ""
-      LLM_ANTHROPIC_BASE_URL: ""
-      LLM_GEMINI_API_KEY: ""
+      EMBEDDING_VECTOR_DIMENSIONS: 1536
+      EMBEDDING_MAX_INPUT_TOKENS: 8192
+      LLM_DEFAULT_MAX_TOKENS: 4096
+      LLM_ANTHROPIC_API_KEY:
+      LLM_ANTHROPIC_BASE_URL:
+      LLM_GEMINI_API_KEY:
       HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
     ports:
-      - "8000:8000"
+      - 8000:8000
     networks:
       default:
         ipv4_address: 10.51.0.14
@@ -89,7 +88,7 @@ services:
     container_name: ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - 11434:11434
     volumes:
       - ollama:/root/.ollama
     networks:
@@ -98,7 +97,7 @@ services:
   lms:
     build:
       context: ..
-      dockerfile: infra/dockerfile.lms
+      dockerfile: images/dockerfile.lms
     container_name: lms
     restart: unless-stopped
     volumes:
@@ -107,7 +106,7 @@ services:
       default:
         ipv4_address: 10.51.0.16
     ports:
-      - "4321:4321"
+      - 4321:4321
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.1
     container_name: keycloak
@@ -132,12 +131,12 @@ services:
     volumes:
       - keycloak:/opt/keycloak/data
     ports:
-      - "8080:8080"
+      - 8080:8080
     deploy:
       resources:
         limits:
           memory: 2G
-          cpus: "1.0"
+          cpus: 1.0
   postgres:
     container_name: postgres
     restart: unless-stopped

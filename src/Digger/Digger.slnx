@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="Digger.Data.Common/Digger.Data.Common.csproj" />
-  <Project Path="Digger.Data/Digger.Data.csproj" />
-  <Project Path="Digger.Services.Models/Digger.Services.Models.csproj" />
-  <Project Path="Digger.Services/Digger.Services.csproj" />
-  <Project Path="Digger.Worker/Digger.Worker.csproj" />
-</Solution>

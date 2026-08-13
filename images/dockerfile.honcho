@@ -25,7 +25,7 @@ RUN git clone https://github.com/plastic-labs/honcho.git /honcho && \
     git checkout v3.0.11 && \
     uv sync
 
-COPY infra/scripts/honcho.entrypoint.sh /honcho.entrypoint.sh
+COPY scripts/image.entrypoint.honcho.sh /honcho.entrypoint.sh
 
 WORKDIR /honcho
 

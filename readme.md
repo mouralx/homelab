@@ -1,421 +1,71 @@
-# 🏠 Home Lab
+# Home Lab
 
-This repository defines a self-hosted home-lab environment that combines media serving, automation, identity, networking, and content-processing services on a single Docker host. The goal is not just to run containers, but to connect them so that the stack behaves like a cohesive system: users access services through a reverse proxy, automation tools run in the background, media is downloaded and consumed automatically, and operational tools help manage everything.
+This repository contains the current container stack for my home lab: agentic services, media services, and the supporting scripts used to build and deploy them.
 
-The most important idea is that the stack is a networked home platform, not just a list of individual apps. The services interact through shared volumes, internal Docker networking, and deployment automation.
-
-> **Full documentation available in [`docs/`](docs/index.md)** — covers architecture, all services, the Digger worker, deployment pipeline, configuration, operations, and utility scripts.
-
----
-
-## Table of Contents
-
-- [1. Home-Lab Overview](#1-home-lab-overview)
-- [2. Repository Layout](#2-repository-layout)
-- [3. Service Relationships](#3-service-relationships)
-- [4. Runtime Network and Storage Model](#4-runtime-network-and-storage-model)
-- [5. Media and Automation Flow](#5-media-and-automation-flow)
-- [6. Configuration and Secrets](#6-configuration-and-secrets)
-- [7. Digger in the Bigger Picture](#7-digger-in-the-bigger-picture)
-- [8. Deployment Pipeline](#8-deployment-pipeline)
-- [9. Local Operations](#9-local-operations)
-- [10. Backup and Maintenance](#10-backup-and-maintenance)
-
----
-
-## 1. Home-Lab Overview
-
-This repository is best understood as a home automation and media platform with several layers:
-
-- **Access layer**: reverse proxy, identity, and dashboard services
-- **Automation layer**: workflows, AI tooling, and background jobs
-- **Media layer**: torrenting, storage, and playback services
-- **Operations layer**: secrets management, container management, and monitoring tools
-
-### High-level architecture
-
-```mermaid
-flowchart LR
-    User[User / Browser] --> NPM[nginx-proxy-manager]
-    NPM --> Jellyfin[Jellyfin]
-    NPM --> HomeAssistant[Home Assistant]
-    NPM --> n8n[n8n]
-    NPM --> Keycloak[Keycloak]
-    NPM --> Portainer[Portainer]
-    NPM --> Hermes[Hermes]
-    NPM --> OWUI[Open WebUI]
-
-    Digger[Digger Worker] --> Transmission[Transmission]
-    Transmission --> Downloads[/Downloads volume/]
-    Downloads --> Jellyfin
-
-    n8n --> Postgres[(Postgres)]
-    Keycloak --> Postgres
-    Honcho[Honcho] --> Postgres
-    pgAdmin[pgAdmin] --> Postgres
-
-    Hermes --> LLMster[LLMster]
-    Honcho --> LLMster
-```
-
-This diagram shows the main idea: the home lab is an ecosystem where user-facing services are exposed through a central proxy, while background workers and storage services support the media and automation workloads.
-
----
-
-## 2. Repository Layout
+## Current layout
 
 ```text
 .
 ├── .github/
 │   └── workflows/
-│       └── publish-home-lab.yaml
+│       └── deploy.yaml
 ├── docs/
-│   ├── index.md
+│   ├── readme.md
 │   ├── architecture.md
 │   ├── services.md
-│   ├── configuration.md
-│   ├── deployment.md
-│   ├── digger.md
-│   ├── operations.md
-│   └── scripts.md
-├── infra/
-│   ├── compose.yaml
-│   ├── dockerfile.digger
+│   └── operations.md
+├── images/
 │   ├── dockerfile.honcho
-│   ├── dockerfile.llmster
-│   └── dockerfile.transmission
-│   └── scripts/
-│       ├── honcho.entrypoint.sh
-│       ├── lmstudio.entrypoint.sh
-│       └── transmission.entrypoint.sh
-└── src/
-    └── Digger/
-        ├── Digger.Data/
-        ├── Digger.Data.Common/
-        ├── Digger.Services/
-        ├── Digger.Services.Models/
-        └── Digger.Worker/
+│   └── dockerfile.lms
+├── scripts/
+│   ├── image.entrypoint.honcho.sh
+│   ├── image.entrypoint.lmstudio.sh
+│   ├── workflow.step.clean-docker.sh
+│   └── workflow.step.create-environment-file.sh
+├── services/
+│   ├── compose.agentic.yaml
+│   └── compose.media.yaml
+├── .gitignore
+├── readme.md
+└── .env.example (optional local file)
 ```
 
-### What each area is responsible for
+## Stack overview
 
-- `.github/workflows/` contains the deployment logic for bringing the stack online on a self-hosted runner.
-- `docs/` — comprehensive documentation covering architecture, services, configuration, deployment, and operations.
-- `infra/` defines the containers, networking, and startup configuration for every service, plus custom Dockerfiles for Digger, Honcho, LLMster, and Transmission.
-- `infra/scripts/` contains entrypoint scripts used by custom container images.
-- `src/Digger/` contains the worker code that discovers and manages movie content.
+- Agentic services: Honcho, Hermes, Keycloak, Postgres, shared LLM runtime
+- Media services: Transmission, Jellyfin, Prowlarr, Sonarr, Radarr
+- Deployment workflow: GitHub Actions builds and deploys the two compose stacks
 
----
+## Quick start
 
-## 3. Service Relationships
+1. Create a local `.env` file with the required variables.
+2. Start the agentic stack:
 
-The services are designed to work together, not separately. The following diagram shows how the most important components connect.
-
-```mermaid
-flowchart TD
-    subgraph Access
-        NPM[Reverse Proxy\nNginx Proxy Manager]
-        Keycloak[Identity Provider\nKeycloak]
-        Portainer[Container Admin\nPortainer]
-    end
-
-    subgraph Automation
-        n8n[Workflow Automation\nn8n]
-        Hermes[AI Gateway\nHermes]
-        LLMster[Local Model Runtime\nLLMster]
-        Honcho[Honcho API]
-        OWUI[Open WebUI]
-    end
-
-    subgraph Home
-        HA[Home Assistant]
-    end
-
-    subgraph Media
-        Transmission[Transmission]
-        Jellyfin[Jellyfin]
-        Digger[Digger Worker]
-    end
-
-    subgraph Data
-        PG[(Postgres 15 + pgvector)]
-        DB[(SQLite)]
-        Disk[/Shared Media Storage/]
-        Vault[Vault]
-    end
-
-    NPM --> Jellyfin
-    NPM --> HA
-    NPM --> n8n
-    NPM --> Portainer
-    NPM --> Hermes
-    NPM --> Keycloak
-    NPM --> OWUI
-
-    n8n --> PG
-    Keycloak --> PG
-    pgAdmin[pgAdmin] --> PG
-    Honcho --> PG
-
-    Digger --> Transmission
-    Digger --> DB
-    Transmission --> Disk
-    Jellyfin --> Disk
-
-    Hermes --> LLMster
-    Honcho --> LLMster
+```bash
+docker compose --env-file .env -f services/compose.agentic.yaml up -d
 ```
 
-### Relationship notes
+3. Start the media stack:
 
-- `NPM` is the primary facade for the stack. It is the front door for many services.
-- `Keycloak`, `n8n`, and `Honcho` all rely on `Postgres` for persistence.
-- `Jellyfin` consumes the media downloaded by `Transmission`.
-- `Digger` is the automation bridge between external movie discovery and local media storage.
-- `Hermes` and `Honcho` both use `LLMster` for local AI inference.
-- `Vault` provides centralized secrets management accessible by all services.
-
----
-
-## 4. Runtime Network and Storage Model
-
-The compose definition uses a dedicated bridge network with static IPs so services can reliably locate one another.
-
-```mermaid
-flowchart LR
-    subgraph DockerNetwork[Docker Bridge Network 10.51.0.0/24]
-        DiggerSvc[digger\n10.51.0.2]
-        VaultSvc[vault\n10.51.0.6]
-        HermesSvc[hermes\n10.51.0.17]
-        LLMsterSvc[llmster\n10.51.0.18]
-        n8nSvc[n8n\n10.51.0.7]
-        JellyfinSvc[jellyfin\n10.51.0.5]
-        NPMsvc[npm\n10.51.0.8]
-        PostgresSvc[postgres\n10.51.0.14]
-        TransmissionSvc[transmission\n10.51.0.15]
-        HonchoSvc[honcho\n10.51.0.19]
-        KeycloakSvc[keycloak\n10.51.0.16]
-        OWUISvc[owui\n10.51.0.10]
-    end
-
-    DiggerSvc --> TransmissionSvc
-    n8nSvc --> PostgresSvc
-    KeycloakSvc --> PostgresSvc
-    HonchoSvc --> PostgresSvc
-    JellyfinSvc --> TransmissionSvc
+```bash
+docker compose --env-file .env -f services/compose.media.yaml up -d
 ```
 
-### Storage layout
+4. Stop and remove everything if needed:
 
-The stack depends on both container-local and host-mounted storage:
-
-- `~/digger` for the Digger SQLite database and state
-- `~/postgres/data` for database persistence
-- `~/n8n` for workflow state
-- `~/jellyfin/config` and `~/jellyfin/cache` for media server metadata
-- `~/homeassistant/config` for automation configuration
-- `~/npm/data` and `~/npm/certs` for proxy config and SSL
-- `~/portainer/data` for container management state
-- `~/vault/config`, `~/vault/logs`, and `~/vault/file` for secrets management
-- `~/hermes` for AI gateway state
-- `~/keycloak` for identity provider data
-- `~/llmster` for model cache
-- `~/honcho` for Honcho API state
-- `~/owui` for Open WebUI data
-- `~/pgadmin/servers.json` for database admin config
-- `/mnt/ssd/transmission/downloads` and `/mnt/ssd/transmission/incomplete` for torrent content
-
-This separation is important because it keeps application state, media storage, and service configuration distinct.
-
----
-
-## 5. Media and Automation Flow
-
-The main end-to-end flow is a combination of discovery, download, storage, and consumption.
-
-```mermaid
-flowchart LR
-    A[YTS API] --> B[Digger Worker]
-    B --> C[SQLite movie records]
-    B --> D[Transmission RPC]
-    D --> E[Downloaded files]
-    E --> F[Jellyfin media library]
-    F --> G[Users watching media]
-
-    B -. checks capacity / retry rules .-> C
-    D -. tracks statuses .-> B
+```bash
+docker compose --env-file .env -f services/compose.agentic.yaml down
+docker compose --env-file .env -f services/compose.media.yaml down
 ```
 
-### What happens in practice
+## Important notes
 
-1. `Digger` asks YTS for new movie candidates.
-2. It records the metadata and intended download locations in SQLite.
-3. If there is space and the queue is under limit, it adds torrents to Transmission.
-4. Transmission downloads content into the shared media directory.
-5. Jellyfin can read the downloaded content and present it to users.
-6. If content is old or space is constrained, the worker can roll out or skip entries.
+- Docker build contexts point to `images/` and entrypoint scripts live in `scripts/`.
+- Compose files are split into separate stacks: `services/compose.agentic.yaml` and `services/compose.media.yaml`.
 
----
+## Documentation
 
-## 6. Configuration and Secrets
-
-The stack uses two important configuration layers:
-
-1. **Docker runtime values** from `infra/.env`
-2. **Worker settings** from `src/Digger/Digger.Worker/appsettings.json`
-
-### Environment values used by the compose stack
-
-- `JELLYFIN_SERVER_URL`
-- `N8N_ENCRYPTION_KEY`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_USER`
-- `TRANSMISSION_PASSWORD`
-- `TRANSMISSION_USERNAME`
-- `TIME_ZONE`
-- Storage paths (`JELLYFIN_MEDIA_DIR`, `TRANSMISSION_DOWNLOADS_DIR`, `DIGGER_HOST_MOVIES_DIR`, etc.)
-- Authentication values (`KC_HOSTNAME`, `KC_BOOTSTRAP_ADMIN_USERNAME`, `KC_BOOTSTRAP_ADMIN_PASSWORD`)
-- AI credentials (`OPENCODE_API_KEY`, `HERMES_DASHBOARD_OIDC_*`)
-- Additional values for optional services
-
-### Runtime settings used by the worker
-
-| Setting | Example value | Why it matters |
-| --- | --- | --- |
-| `Transmission:ServerUrl` | `http://transmission:9091/transmission/rpc` | Lets the worker talk to the containerized Transmission service |
-| `Transmission:UseAuth` | `true` | Ensures the RPC interface is protected |
-| `StopTime` | `1` | Controls how often the worker cycles |
-| `MaxEnqueuedTorrents` | `5` | Caps concurrent downloads |
-| `MaxAllocatedSpace` | `750000000000` | Limits how much disk the queue can claim |
-| `ConnectionStrings:DiggerContext` | `Data Source=/digger/data/movies.db` | Points the worker at its SQLite database |
-
-The deployment workflow injects secrets into the worker configuration at runtime so the repository itself does not contain sensitive values.
-
----
-
-## 7. Digger in the Bigger Picture
-
-`Digger` is one piece of the home lab, but it is the component that ties discovery, media, and storage together.
-
-```mermaid
-flowchart TD
-    Source[YTS Movie Catalog] --> Fetch[YTS Service]
-    Fetch --> Normalize[Normalize movie metadata]
-    Normalize --> DB[(SQLite)]
-    DB --> Queue[Worker scheduling logic]
-    Queue --> RPC[Transmission RPC]
-    RPC --> Folder[/Download folder/]
-    Folder --> Viewer[Jellyfin]
-```
-
-### Why Digger matters
-
-- It automates the intake of new content.
-- It keeps the media queue within configured limits.
-- It tracks the lifecycle of each movie through discovery, download, seeding, and cleanup.
-- It protects the home lab from uncontrolled disk usage.
-
-In other words, Digger is the automation engine that keeps the media side of the home lab manageable.
-
----
-
-## 8. Deployment Pipeline
-
-The deployment flow is handled by GitHub Actions and is designed to turn repository inputs into a running local stack.
-
-```mermaid
-flowchart LR
-    Repo[Repository] --> Workflow[GitHub Actions workflow]
-    Workflow --> Env[Selected GitHub environment]
-    Env --> Secrets[Inject vars and secrets]
-    Secrets --> Compose[Write infra/.env]
-    Compose --> Build[Build compose stack]
-    Build --> Start[Start containers]
-    Start --> Health[Verify services online]
-```
-
-### What the workflow does
-
-1. selects the environment to deploy to;
-2. updates Transmission credentials in the worker settings;
-3. writes runtime values into `infra/.env`;
-4. optionally brings existing services down;
-5. pulls or builds images;
-6. starts the stack with Docker Compose;
-7. removes dangling images to reclaim space.
-
-This makes deployments repeatable and keeps sensitive runtime values outside the repository.
-
----
-
-## 9. Local Operations
-
-### Start the stack
-
-```sh
-docker compose --env-file infra/.env -f infra/compose.yaml up -d
-```
-
-### Start with specific profiles
-
-```sh
-# Agentic services only (hermes, honcho, and ollama)
-docker compose --env-file infra/.env -f infra/compose.yaml --profile agentic up -d
-
-# Media services only (digger, transmission)
-docker compose --env-file infra/.env -f infra/compose.yaml --profile media up -d
-
-# Automation services only (n8n)
-docker compose --env-file infra/.env -f infra/compose.yaml --profile automation up -d
-```
-
-### Check service status
-
-```sh
-docker compose --env-file infra/.env -f infra/compose.yaml ps
-```
-
-### Read container logs
-
-```sh
-docker compose --env-file infra/.env -f infra/compose.yaml logs -f transmission
-```
-
-### Stop everything
-
-```sh
-docker compose --env-file infra/.env -f infra/compose.yaml down
-```
-
-### Update images
-
-```sh
-docker compose --env-file infra/.env -f infra/compose.yaml pull
-docker compose --env-file infra/.env -f infra/compose.yaml up -d
-```
-
-### Recommended habits
-
-- keep `infra/.env` local and uncommitted;
-- verify the GitHub environment matches the variables the compose file expects;
-- treat runtime settings as deployment artifacts, not source-of-truth configuration;
-- back up volumes before making major changes;
-- watch Digger logs if the media queue or download health changes unexpectedly.
-
----
-
-## 10. Backup and Maintenance
-
-Before making changes to storage, networking, or images, back up the most important persistent areas:
-
-- Postgres data
-- Nginx Proxy Manager data and certificates
-- Home Assistant configuration
-- Jellyfin configuration, cache, and media
-- Portainer data
-- Vault data and configuration
-- Transmission downloads and incomplete folders
-- Digger SQLite data under `~/digger`
-- Hermes, Honcho, and Keycloak state directories
-
-A home lab is especially sensitive to storage and configuration drift, so keeping these backups current is important for resilience.
+- [docs/readme.md](docs/readme.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/services.md](docs/services.md)
+- [docs/operations.md](docs/operations.md)

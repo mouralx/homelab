@@ -8,7 +8,7 @@ ENV LLM_MODEL="qwen/qwen3.5-4b"
 
 EXPOSE 4321
 
-COPY infra/scripts/lmstudio.entrypoint.sh lmstudio.entrypoint.sh
+COPY scripts/image.entrypoint.lmstudio.sh lmstudio.entrypoint.sh
 
 RUN chmod +x lmstudio.entrypoint.sh
 
