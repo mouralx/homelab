@@ -11,7 +11,7 @@ services:
     networks:
       shared:
     volumes:
-      - hermes:/opt/data
+      - ~/agentic/hermes:/opt/data
     environment:
       GATEWAY_ALLOWED_USERS: ${HERMES_ALLOWED_USERS}
       HERMES_DASHBOARD: 1
@@ -27,8 +27,8 @@ services:
     environment:
       TZ: ${TIME_ZONE}
     volumes:
-      - npm_data:/data
-      - npm_certs:/etc/letsencrypt
+      - ~/agentic/npm/data:/data
+      - ~/agentic/npm/certs:/etc/letsencrypt
     ports:
       - 443:443
       - 80:80
@@ -87,7 +87,7 @@ services:
     ports:
       - 11434:11434
     volumes:
-      - ollama:/root/.ollama
+      - ~/agentic/ollama:/root/.ollama
     networks:
       shared:
   lms:
@@ -97,7 +97,7 @@ services:
     container_name: lms
     restart: unless-stopped
     volumes:
-      - lms:/lms/.lmstudio
+      - ~/agentic/lms:/lms/.lmstudio
     networks:
       shared:
     ports:
@@ -123,7 +123,7 @@ services:
     networks:
       shared:
     volumes:
-      - keycloak:/opt/keycloak/data
+      - ~/agentic/keycloak:/opt/keycloak/data
     ports:
       - 8080:8080
     deploy:
@@ -143,15 +143,7 @@ services:
     networks:
       shared:
     volumes:
-      - postgres:/var/lib/postgresql/data
+      - ~/agentic/postgres:/var/lib/postgresql/data
 networks:
   shared:
     external: true
-volumes:
-  hermes:
-  npm_data:
-  npm_certs:
-  ollama:
-  lms:
-  keycloak:
-  postgres:

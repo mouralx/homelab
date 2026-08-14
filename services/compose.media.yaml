@@ -5,7 +5,7 @@ services:
     container_name: prowlarr
     restart: unless-stopped
     volumes:
-      - prowlarr:/config
+      - ~/media/prowlarr:/config
     ports:
       - 9696:9696
     depends_on:
@@ -17,8 +17,8 @@ services:
     container_name: sonarr
     restart: unless-stopped
     volumes:
-      - sonarr:/config
-      - data:/downloads
+      - ~/media/sonarr:/config
+      - ~/media/data:/downloads
     ports:
       - 8989:8989
     depends_on:
@@ -30,8 +30,8 @@ services:
     container_name: radarr
     restart: unless-stopped
     volumes:
-      - radarr:/config
-      - data:/downloads
+      - ~/media/radarr:/config
+      - ~/media/data:/downloads
     ports:
       - 7878:7878
     depends_on:
@@ -44,9 +44,9 @@ services:
     environment:
       PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
     volumes:
-      - transmission:/config
-      - data:/downloads
-      - watch:/watch
+      - ~/media/transmission:/config
+      - ~/media/data:/downloads
+      - ~/media/watch:/watch
     ports:
       - 9091:9091
       - 51413:51413/udp
@@ -57,8 +57,8 @@ services:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     volumes:
-      - jellyfin:/config
-      - data:/data:ro
+      - ~/media/jellyfin:/config
+      - ~/media/data:/data:ro
     ports:
       - 8096:8096
       - 7359:7359/udp
@@ -67,11 +67,3 @@ services:
 networks:
   shared:
     external: true
-volumes:
-  prowlarr:
-  radarr:
-  sonarr:
-  jellyfin:
-  transmission:
-  data:
-  watch:
