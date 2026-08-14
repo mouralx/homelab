@@ -31,7 +31,7 @@ services:
       - ~/agentic/npm/certs:/etc/letsencrypt
     ports:
       - 443:443
-      - 80:80
+      - 80:80r
       - 81:81
     networks:
       shared:
@@ -69,7 +69,7 @@ services:
       EMBEDDING_MODEL_CONFIG__TRANSPORT: openai
       EMBEDDING_MODEL_CONFIG__MODEL: nomic-embed-text
       EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://ollama:11434/v1
-      EMBEDDING_VECTOR_DIMENSIONS: 1536
+      EMBEDDING_VECTOR_DIMENSIONS: 768
       EMBEDDING_MAX_INPUT_TOKENS: 8192
       LLM_agentic_MAX_TOKENS: 4096
       LLM_ANTHROPIC_API_KEY:
@@ -84,6 +84,16 @@ services:
     image: ollama/ollama:rocm
     container_name: ollama
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        SERVER_PID=$!
+        sleep 5
+        echo "Ensuring embedding model nomic-embed-text is pulled..."
+        ollama pull nomic-embed-text
+        ollama list
+        wait $SERVER_PID
     ports:
       - 11434:11434
     volumes:
