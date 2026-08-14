@@ -60,18 +60,21 @@ jobs:
         run: |
           docker compose --env-file .env -f services/compose.agentic.yaml config >/dev/null
           docker compose --env-file .env -f services/compose.media.yaml config >/dev/null
+          docker compose --env-file .env -f services/compose.tools.yaml config >/dev/null
 
       - name: Stop current stacks
         if: ${{ inputs.bring_down_first == true }}
         run: |
           docker compose --env-file .env -f services/compose.agentic.yaml down --remove-orphans || true
           docker compose --env-file .env -f services/compose.media.yaml down --remove-orphans || true
+          docker compose --env-file .env -f services/compose.tools.yaml down --remove-orphans || true
 
       - name: Pull updated images
         if: ${{ inputs.bring_down_first == true && inputs.update_images == true }}
         run: |
           docker compose --env-file .env -f services/compose.agentic.yaml pull || true
           docker compose --env-file .env -f services/compose.media.yaml pull || true
+          docker compose --env-file .env -f services/compose.tools.yaml pull || true
 
       - name: Build agentic stack
         run: docker compose --env-file .env -f services/compose.agentic.yaml build
@@ -86,6 +89,10 @@ jobs:
       - name: Deploy media stack
         if: ${{ inputs.dry_run == false }}
         run: docker compose --env-file .env -f services/compose.media.yaml up -d
+      
+      - name: Deploy tools stack
+        if: ${{ inputs.dry_run == false }}
+        run: docker compose --env-file .env -f services/compose.tools.yaml up -d
 
       - name: Clean up dangling Docker images
         run: bash scripts/workflow.step.clean-docker.sh
