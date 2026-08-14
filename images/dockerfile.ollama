@@ -1,0 +1,7 @@
+FROM ollama/ollama:rocm
+
+COPY scripts/image.entrypoint.ollama.sh ollama.entrypoint.sh
+
+RUN chmod +x ollama.entrypoint.sh
+
+ENTRYPOINT [ "sh", "ollama.entrypoint.sh" ]
