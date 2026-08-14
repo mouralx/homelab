@@ -31,7 +31,7 @@ services:
       - ~/agentic/npm/certs:/etc/letsencrypt
     ports:
       - 443:443
-      - 80:80r
+      - 80:80
       - 81:81
     networks:
       shared:
