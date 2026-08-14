@@ -6,6 +6,8 @@ ENV PATH="/root/.local/bin:$PATH"
 
 ENV LLM_MODEL="qwen/qwen3.5-4b"
 
+ENV EMBEDDING_MODEL="text-embedding-nomic-embed-text-v1.5"
+
 EXPOSE 4321
 
 COPY scripts/image.entrypoint.lmstudio.sh lmstudio.entrypoint.sh
