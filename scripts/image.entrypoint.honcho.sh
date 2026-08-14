@@ -23,4 +23,10 @@ done
 psql "postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;" >/dev/null 2>&1 || true
 
 uv run alembic upgrade head
+
+# Start the honcho deriver worker in the background. It polls the message queue
+# and computes peer representations, session summaries, and dream conclusions
+# (derived memory). Runs alongside the API server in this same container.
+uv run python -m src.deriver &
+
 uv run fastapi dev src/main.py --host "${HOST:-0.0.0.0}" --port "${PORT:-8000}"
