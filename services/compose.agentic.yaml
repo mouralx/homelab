@@ -88,12 +88,12 @@ services:
     command:
       - |
         ollama serve &
-        SERVER_PID=$!
+        SERVER_PID=$$!
         sleep 5
         echo "Ensuring embedding model nomic-embed-text is pulled..."
         ollama pull nomic-embed-text
         ollama list
-        wait $SERVER_PID
+        wait $$SERVER_PID
     ports:
       - 11434:11434
     volumes:
