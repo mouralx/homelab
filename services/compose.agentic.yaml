@@ -81,19 +81,11 @@ services:
     networks:
       shared:
   ollama:
-    image: ollama/ollama:rocm
+    build:
+      context: ..
+      dockerfile: images/dockerfile.ollama
     container_name: ollama
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        SERVER_PID=$$!
-        sleep 5
-        echo "Ensuring embedding model nomic-embed-text is pulled..."
-        ollama pull nomic-embed-text
-        ollama list
-        wait $$SERVER_PID
     ports:
       - 11434:11434
     volumes:
