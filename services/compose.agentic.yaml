@@ -9,8 +9,7 @@ services:
       - 8642:8642
       - 9119:9119
     networks:
-      agentic:
-        ipv4_address: 10.51.0.10
+      shared:
     volumes:
       - hermes:/opt/data
     environment:
@@ -35,8 +34,7 @@ services:
       - 80:80
       - 81:81
     networks:
-      agentic:
-        ipv4_address: 10.51.0.11
+      shared:
   honcho:
     build:
       context: ..
@@ -81,8 +79,7 @@ services:
     ports:
       - 8000:8000
     networks:
-      agentic:
-        ipv4_address: 10.51.0.12
+      shared:
   ollama:
     image: ollama/ollama:rocm
     container_name: ollama
@@ -92,8 +89,7 @@ services:
     volumes:
       - ollama:/root/.ollama
     networks:
-      agentic:
-        ipv4_address: 10.51.0.13
+      shared:
   lms:
     build:
       context: ..
@@ -103,8 +99,7 @@ services:
     volumes:
       - lms:/lms/.lmstudio
     networks:
-      agentic:
-        ipv4_address: 10.51.0.14
+      shared:
     ports:
       - 4321:4321
   keycloak:
@@ -126,8 +121,7 @@ services:
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
-      agentic:
-        ipv4_address: 10.51.0.15
+      shared:
     volumes:
       - keycloak:/opt/keycloak/data
     ports:
@@ -147,17 +141,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
     networks:
-      agentic:
-        ipv4_address: 10.51.0.16
+      shared:
     volumes:
       - postgres:/var/lib/postgresql/data
 networks:
-  agentic:
+  shared:
     external: true
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.51.0.0/24
 volumes:
   hermes:
   npm_data:
