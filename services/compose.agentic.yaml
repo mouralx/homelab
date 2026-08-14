@@ -67,9 +67,9 @@ services:
       SUMMARY_MODEL_CONFIG__MODEL: deepseek-v4-flash
       SUMMARY_MODEL_CONFIG__TRANSPORT: openai
       EMBEDDING_MODEL_CONFIG__TRANSPORT: openai
-      EMBEDDING_MODEL_CONFIG__MODEL: nomic-embed-text
-      EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://ollama:11434/v1
-      EMBEDDING_VECTOR_DIMENSIONS: 1536
+      EMBEDDING_MODEL_CONFIG__MODEL: text-embedding-nomic-embed-text-v1.5
+      EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://lms:4321/v1
+      EMBEDDING_VECTOR_DIMENSIONS: 768
       EMBEDDING_MAX_INPUT_TOKENS: 8192
       LLM_agentic_MAX_TOKENS: 4096
       LLM_ANTHROPIC_API_KEY:
@@ -78,16 +78,6 @@ services:
       HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
     ports:
       - 8000:8000
-    networks:
-      shared:
-  ollama:
-    image: ollama/ollama:rocm
-    container_name: ollama
-    restart: unless-stopped
-    ports:
-      - 11434:11434
-    volumes:
-      - ~/agentic/ollama:/root/.ollama
     networks:
       shared:
   lms:
