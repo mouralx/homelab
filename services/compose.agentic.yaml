@@ -10,7 +10,7 @@ services:
       - 9119:9119
     networks:
       default:
-        ipv4_address: 10.51.0.12
+        ipv4_address: 10.51.0.10
     volumes:
       - hermes:/opt/data
     environment:
@@ -36,7 +36,7 @@ services:
       - 81:81
     networks:
       default:
-        ipv4_address: 10.51.0.13
+        ipv4_address: 10.51.0.11
   honcho:
     build:
       context: ..
@@ -82,7 +82,7 @@ services:
       - 8000:8000
     networks:
       default:
-        ipv4_address: 10.51.0.14
+        ipv4_address: 10.51.0.12
   ollama:
     image: ollama/ollama:rocm
     container_name: ollama
@@ -93,7 +93,7 @@ services:
       - ollama:/root/.ollama
     networks:
       default:
-        ipv4_address: 10.51.0.15
+        ipv4_address: 10.51.0.13
   lms:
     build:
       context: ..
@@ -104,7 +104,7 @@ services:
       - lms:/lms/.lmstudio
     networks:
       default:
-        ipv4_address: 10.51.0.16
+        ipv4_address: 10.51.0.14
     ports:
       - 4321:4321
   keycloak:
@@ -127,7 +127,7 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
       default:
-        ipv4_address: 10.51.0.17
+        ipv4_address: 10.51.0.15
     volumes:
       - keycloak:/opt/keycloak/data
     ports:
@@ -148,7 +148,7 @@ services:
       POSTGRES_DB: postgres
     networks:
       default:
-        ipv4_address: 10.51.0.18
+        ipv4_address: 10.51.0.16
     volumes:
       - postgres:/var/lib/postgresql/data
 networks:

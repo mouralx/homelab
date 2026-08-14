@@ -10,6 +10,9 @@ services:
       - 9696:9696
     depends_on:
       - transmission
+    networks:
+      default:
+        ipv4_address: 10.51.1.10
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
@@ -21,6 +24,9 @@ services:
       - 8989:8989
     depends_on:
       - prowlarr
+    networks:
+      default:
+        ipv4_address: 10.51.1.11
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
@@ -32,6 +38,9 @@ services:
       - 7878:7878
     depends_on:
       - prowlarr
+    networks:
+      default:
+        ipv4_address: 10.51.1.12
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
@@ -45,6 +54,9 @@ services:
       - 9091:9091
       - 51413:51413/udp
       - 51413:51413/tcp
+    networks:
+      default:
+        ipv4_address: 10.51.1.13
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -54,6 +66,15 @@ services:
     ports:
       - 8096:8096
       - 7359:7359/udp
+    networks:
+      default:
+        ipv4_address: 10.51.1.14
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.51.1.0/24
 volumes:
   prowlarr:
   radarr:
