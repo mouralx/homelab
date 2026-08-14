@@ -11,7 +11,7 @@ services:
     depends_on:
       - transmission
     networks:
-      default:
+      media:
         ipv4_address: 10.51.1.10
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -25,7 +25,7 @@ services:
     depends_on:
       - prowlarr
     networks:
-      default:
+      media:
         ipv4_address: 10.51.1.11
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -39,7 +39,7 @@ services:
     depends_on:
       - prowlarr
     networks:
-      default:
+      media:
         ipv4_address: 10.51.1.12
   transmission:
     image: lscr.io/linuxserver/transmission:latest
@@ -55,7 +55,7 @@ services:
       - 51413:51413/udp
       - 51413:51413/tcp
     networks:
-      default:
+      media:
         ipv4_address: 10.51.1.13
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
@@ -67,10 +67,10 @@ services:
       - 8096:8096
       - 7359:7359/udp
     networks:
-      default:
+      media:
         ipv4_address: 10.51.1.14
 networks:
-  default:
+  media:
     external: true
     driver: bridge
     ipam:

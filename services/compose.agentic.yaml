@@ -9,7 +9,7 @@ services:
       - 8642:8642
       - 9119:9119
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.10
     volumes:
       - hermes:/opt/data
@@ -35,7 +35,7 @@ services:
       - 80:80
       - 81:81
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.11
   honcho:
     build:
@@ -73,7 +73,7 @@ services:
       EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://ollama:11434/v1
       EMBEDDING_VECTOR_DIMENSIONS: 1536
       EMBEDDING_MAX_INPUT_TOKENS: 8192
-      LLM_DEFAULT_MAX_TOKENS: 4096
+      LLM_agentic_MAX_TOKENS: 4096
       LLM_ANTHROPIC_API_KEY:
       LLM_ANTHROPIC_BASE_URL:
       LLM_GEMINI_API_KEY:
@@ -81,7 +81,7 @@ services:
     ports:
       - 8000:8000
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.12
   ollama:
     image: ollama/ollama:rocm
@@ -92,7 +92,7 @@ services:
     volumes:
       - ollama:/root/.ollama
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.13
   lms:
     build:
@@ -103,7 +103,7 @@ services:
     volumes:
       - lms:/lms/.lmstudio
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.14
     ports:
       - 4321:4321
@@ -126,7 +126,7 @@ services:
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.15
     volumes:
       - keycloak:/opt/keycloak/data
@@ -147,12 +147,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
     networks:
-      default:
+      agentic:
         ipv4_address: 10.51.0.16
     volumes:
       - postgres:/var/lib/postgresql/data
 networks:
-  default:
+  agentic:
     external: true
     driver: bridge
     ipam:
