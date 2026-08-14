@@ -94,7 +94,7 @@ services:
     container_name: lms
     restart: unless-stopped
     volumes:
-      - ~/agentic/lms:/lms/.lmstudio
+      - ~/agentic/lms:/root/.lmstudio
     networks:
       shared:
     ports:
