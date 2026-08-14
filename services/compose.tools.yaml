@@ -22,3 +22,6 @@ services:
       shared:
     volumes:
       - ~/tools/pgadmin/servers.json:/pgadmin4/servers.json
+networks:
+  shared:
+    external: true
