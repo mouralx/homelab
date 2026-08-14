@@ -1,36 +1,4 @@
 name: agentic-services
-x-honcho-env: &honcho-env
-  DB_HOST: postgres
-  DB_PORT: 5432
-  DB_NAME: postgres
-  DB_USER: ${POSTGRES_USER}
-  DB_PASSWORD: ${POSTGRES_PASSWORD}
-  LLM_OPENAI_API_KEY: ${OPENCODE_API_KEY}
-  LLM_OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
-  DERIVER_MODEL_CONFIG__MODEL: deepseek-v4-flash
-  DERIVER_MODEL_CONFIG__TRANSPORT: openai
-  DIALECTIC_LEVELS__LOW__MODEL_CONFIG__MODEL: deepseek-v4-flash
-  DIALECTIC_LEVELS__LOW__MODEL_CONFIG__TRANSPORT: openai
-  DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__MODEL: deepseek-v4-flash
-  DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__TRANSPORT: openai
-  DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__MODEL: deepseek-v4-flash
-  DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__TRANSPORT: openai
-  DIALECTIC_LEVELS__MAX__MODEL_CONFIG__MODEL: deepseek-v4-flash
-  DIALECTIC_LEVELS__MAX__MODEL_CONFIG__TRANSPORT: openai
-  DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__MODEL: deepseek-v4-flash
-  DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__TRANSPORT: openai
-  SUMMARY_MODEL_CONFIG__MODEL: deepseek-v4-flash
-  SUMMARY_MODEL_CONFIG__TRANSPORT: openai
-  EMBEDDING_MODEL_CONFIG__TRANSPORT: openai
-  EMBEDDING_MODEL_CONFIG__MODEL: text-embedding-nomic-embed-text-v1.5
-  EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://lms:4321/v1
-  EMBEDDING_VECTOR_DIMENSIONS: 768
-  EMBEDDING_MAX_INPUT_TOKENS: 8192
-  LLM_agentic_MAX_TOKENS: 4096
-  LLM_ANTHROPIC_API_KEY:
-  LLM_ANTHROPIC_BASE_URL:
-  LLM_GEMINI_API_KEY:
-  HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
 services:
   hermes:
     image: nousresearch/hermes-agent:latest
@@ -76,26 +44,40 @@ services:
     depends_on:
       - postgres
     environment:
-      <<: *honcho-env
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       AUTH_USE_AUTH: false
+      LLM_OPENAI_API_KEY: ${OPENCODE_API_KEY}
+      LLM_OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
+      DERIVER_MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DERIVER_MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__LOW__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__LOW__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__MAX__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__MAX__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__TRANSPORT: openai
+      SUMMARY_MODEL_CONFIG__MODEL: deepseek-v4-flash
+      SUMMARY_MODEL_CONFIG__TRANSPORT: openai
+      EMBEDDING_MODEL_CONFIG__TRANSPORT: openai
+      EMBEDDING_MODEL_CONFIG__MODEL: text-embedding-nomic-embed-text-v1.5
+      EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://lms:4321/v1
+      EMBEDDING_VECTOR_DIMENSIONS: 768
+      EMBEDDING_MAX_INPUT_TOKENS: 8192
+      LLM_agentic_MAX_TOKENS: 4096
+      LLM_ANTHROPIC_API_KEY:
+      LLM_ANTHROPIC_BASE_URL:
+      LLM_GEMINI_API_KEY:
+      HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
     ports:
       - 8000:8000
-    networks:
-      shared:
-  honcho-deriver:
-    build:
-      context: ..
-      dockerfile: images/dockerfile.honcho
-    container_name: honcho-deriver
-    restart: unless-stopped
-    depends_on:
-      - honcho
-      - postgres
-    entrypoint: ["/bin/sh", "-lc"]
-    command: ["uv run python -m src.deriver"]
-    environment:
-      <<: *honcho-env
-      DB_CONNECTION_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/postgres
     networks:
       shared:
   lms:
