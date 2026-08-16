@@ -110,16 +110,16 @@ jobs:
         run: docker compose --env-file .env -f services/compose.tools.yaml build
 
       - name: Deploy agentic stack
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && inputs.agentic }}
         run: docker compose --env-file .env -f services/compose.agentic.yaml up -d
       - name: Deploy agents stack
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && inputs.agents }}
         run: docker compose --env-file .env -f services/compose.agents.yaml up -d
       - name: Deploy media stack
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && inputs.media }}
         run: docker compose --env-file .env -f services/compose.media.yaml up -d
       - name: Deploy tools stack
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && inputs.tools }}
         run: docker compose --env-file .env -f services/compose.tools.yaml up -d
 
       - name: Clean up dangling Docker images
