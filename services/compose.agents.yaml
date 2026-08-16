@@ -6,4 +6,7 @@ services:
     ports:
       - 9001:9001
     volumes:
-      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - /run/user/1000/docker.sock:/var/run/docker.sock
+      - portainer:/data
+volumes:
+  portainer:
