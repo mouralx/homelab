@@ -1,13 +1,23 @@
 name: Deploy Home Lab
-
 on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Validate the stack without starting containers?"
         required: true
+        description: "Test only if deploy is ok"
         type: boolean
-        default: true
+      agentic:
+        description: "Install Agentic AI Services"
+        type: boolean
+        default: false
+      media:
+        description: "Install Media Services"
+        type: boolean
+        default: false
+      tools:
+        description: "Install Tools Services"
+        type: boolean
+        default: false
       host:
         description: "Select the host runner"
         required: true
@@ -32,67 +42,59 @@ on:
         required: true
         type: boolean
         default: false
-
 permissions:
   contents: read
-
 jobs:
   deploy:
     name: Deploy to ${{ inputs.environment || 'mouras-home-lab' }}
     runs-on: ${{ inputs.host }}
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
-
     defaults:
       run:
         shell: bash
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Create .env file from selected environment
         env:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
-
-      - name: Validate compose files
-        run: |
-          docker compose --env-file .env -f services/compose.agentic.yaml config >/dev/null
-          docker compose --env-file .env -f services/compose.media.yaml config >/dev/null
-          docker compose --env-file .env -f services/compose.tools.yaml config >/dev/null
-
+      - name: Validate agentic compose files
+        if: ${{ inputs.agentic }}
+        run: docker compose --env-file .env -f services/compose.agentic.yaml config >/dev/null
+      - name: Validate media compose files
+        if: ${{ inputs.media }}
+        run: docker compose --env-file .env -f services/compose.media.yaml config >/dev/null
+      - name: Validate tools compose files
+        if: ${{ inputs.tools }}
+        run: docker compose --env-file .env -f services/compose.tools.yaml config >/dev/null
       - name: Stop current stacks
-        if: ${{ inputs.bring_down_first == true }}
-        run: |
-          docker compose --env-file .env -f services/compose.agentic.yaml down --remove-orphans || true
-          docker compose --env-file .env -f services/compose.media.yaml down --remove-orphans || true
-          docker compose --env-file .env -f services/compose.tools.yaml down --remove-orphans || true
-
-      - name: Pull updated images
-        if: ${{ inputs.bring_down_first == true && inputs.update_images == true }}
-        run: |
-          docker compose --env-file .env -f services/compose.agentic.yaml pull || true
-          docker compose --env-file .env -f services/compose.media.yaml pull || true
-          docker compose --env-file .env -f services/compose.tools.yaml pull || true
-
+        if: ${{ inputs.bring_down_first || inputs.update_images }}
+        run: docker stop $(docker ps -q)
+      - name: Pull agentic updated images
+        if: ${{ inputs.update_images && inputs.agentic }}
+        run: docker compose --env-file .env -f services/compose.agentic.yaml pull || true
+      - name: Pull media updated images
+        if: ${{ inputs.update_images && inputs.media }}
+        run: docker compose --env-file .env -f services/compose.agentic.yaml pull || true
+      - name: Pull tools updated images
+        if: ${{ inputs.update_images && inputs.tools }}
+        run: docker compose --env-file .env -f services/compose.agentic.yaml pull || true
       - name: Build agentic stack
         run: docker compose --env-file .env -f services/compose.agentic.yaml build
-
       - name: Build media stack
         run: docker compose --env-file .env -f services/compose.media.yaml build
-
+      - name: Build tools stack
+        run: docker compose --env-file .env -f services/compose.tools.yaml build
       - name: Deploy agentic stack
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ !inputs.dry_run }}
         run: docker compose --env-file .env -f services/compose.agentic.yaml up -d
-
       - name: Deploy media stack
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ !inputs.dry_run }}
         run: docker compose --env-file .env -f services/compose.media.yaml up -d
-      
       - name: Deploy tools stack
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ !inputs.dry_run }}
         run: docker compose --env-file .env -f services/compose.tools.yaml up -d
-
       - name: Clean up dangling Docker images
-        run: bash scripts/workflow.step.clean-docker.sh
+        run: docker system prune -af --volumes
