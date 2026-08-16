@@ -68,7 +68,7 @@ jobs:
 
       - name: Created shared network
         continue-on-error: true
-        run: docker create network shared
+        run: docker network create shared
 
       - name: Validate agentic compose files
         if: ${{ inputs.agentic }}
