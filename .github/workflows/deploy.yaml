@@ -71,7 +71,7 @@ jobs:
         run: docker compose --env-file .env -f services/compose.tools.yaml config >/dev/null
       - name: Stop current stacks
         if: ${{ inputs.bring_down_first || inputs.update_images }}
-        run: docker stop $(docker ps -q)
+        run: docker ps -q | xargs -r docker stop
       - name: Pull agentic updated images
         if: ${{ inputs.update_images && inputs.agentic }}
         run: docker compose --env-file .env -f services/compose.agentic.yaml pull || true
