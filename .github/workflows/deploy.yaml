@@ -66,6 +66,10 @@ jobs:
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
 
+      - name: Created shared network
+        continue-on-error: true
+        run: docker create network shared
+
       - name: Validate agentic compose files
         if: ${{ inputs.agentic }}
         run: docker compose --env-file .env -f services/compose.agentic.yaml config >/dev/null
