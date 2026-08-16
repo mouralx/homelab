@@ -97,12 +97,16 @@ jobs:
         run: docker compose --env-file .env -f services/compose.tools.yaml pull || true
 
       - name: Build agentic stack
+        if: ${{ inputs.agentic }}
         run: docker compose --env-file .env -f services/compose.agentic.yaml build
       - name: Build agents stack
+        if: ${{ inputs.agents }}
         run: docker compose --env-file .env -f services/compose.agents.yaml build
       - name: Build media stack
+        if: ${{ inputs.media }}
         run: docker compose --env-file .env -f services/compose.media.yaml build
       - name: Build tools stack
+        if: ${{ inputs.tools }}
         run: docker compose --env-file .env -f services/compose.tools.yaml build
 
       - name: Deploy agentic stack
