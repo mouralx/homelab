@@ -85,6 +85,7 @@ jobs:
 
       - name: Stop current stacks
         if: ${{ inputs.bring_down_first || inputs.update_images }}
+        continue-on-error: true
         run: docker ps -q | xargs -r docker stop
 
       - name: Pull agentic updated images
