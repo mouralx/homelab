@@ -1,4 +1,4 @@
-name: media-services
+name: media
 services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest

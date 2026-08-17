@@ -1,4 +1,4 @@
-name: tools-services
+name: tools
 services:
   portainer:
     image: portainer/portainer-ce:latest
@@ -7,8 +7,6 @@ services:
     volumes:
       - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
       - ~/tools/portainer:/data
-    networks:
-      shared:
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
   pgadmin:
@@ -18,10 +16,5 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    networks:
-      shared:
     volumes:
       - ~/tools/pgadmin/servers.json:/pgadmin4/servers.json
-networks:
-  shared:
-    external: true

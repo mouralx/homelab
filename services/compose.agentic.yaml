@@ -1,4 +1,4 @@
-name: agentic-services
+name: agentic
 services:
   hermes:
     image: nousresearch/hermes-agent:latest
