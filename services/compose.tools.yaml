@@ -18,3 +18,6 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - ~/tools/pgadmin/servers.json:/pgadmin4/servers.json
+    ports:
+      - 4431:443
+      - 8001:81
