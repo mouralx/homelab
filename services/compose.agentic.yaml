@@ -8,8 +8,6 @@ services:
     ports:
       - 8642:8642
       - 9119:9119
-    networks:
-      shared:
     volumes:
       - ~/agentic/hermes:/opt/data
     environment:
@@ -33,8 +31,6 @@ services:
       - 443:443
       - 80:80
       - 81:81
-    networks:
-      shared:
   honcho:
     build:
       context: ..
@@ -85,8 +81,6 @@ services:
       HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
     ports:
       - 8000:8000
-    networks:
-      shared:
   lms:
     build:
       context: ..
@@ -95,8 +89,6 @@ services:
     restart: unless-stopped
     volumes:
       - ~/agentic/lms:/root/.lmstudio
-    networks:
-      shared:
     ports:
       - 4321:4321
   keycloak:
@@ -117,8 +109,6 @@ services:
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
-    networks:
-      shared:
     volumes:
       - ~/agentic/keycloak:/opt/keycloak/data
     ports:
@@ -137,10 +127,5 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
-    networks:
-      shared:
     volumes:
       - ~/agentic/postgres:/var/lib/postgresql/data
-networks:
-  shared:
-    external: true

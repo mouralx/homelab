@@ -10,8 +10,6 @@ services:
       - 9696:9696
     depends_on:
       - transmission
-    networks:
-      shared:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
@@ -23,8 +21,6 @@ services:
       - 8989:8989
     depends_on:
       - prowlarr
-    networks:
-      shared:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
@@ -36,8 +32,6 @@ services:
       - 7878:7878
     depends_on:
       - prowlarr
-    networks:
-      shared:
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
@@ -50,9 +44,6 @@ services:
     ports:
       - 9091:9091
       - 51413:51413/udp
-      - 51413:51413/tcp
-    networks:
-      shared:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -62,8 +53,3 @@ services:
     ports:
       - 8096:8096
       - 7359:7359/udp
-    networks:
-      shared:
-networks:
-  shared:
-    external: true
