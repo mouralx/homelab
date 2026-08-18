@@ -9,6 +9,10 @@ services:
       - ~/tools/portainer:/data
     environment:
       - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+    ports:
+      - 8002:8000
+      - 9002:9000
+      - 9443:9443
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped

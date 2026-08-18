@@ -22,6 +22,9 @@ services:
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
+    networks:
+      - default
+      - tools_default
     environment:
       TZ: ${TIME_ZONE}
     volumes:
@@ -129,3 +132,7 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - ~/agentic/postgres:/var/lib/postgresql/data
+
+networks:
+  tools_default:
+    external: true
