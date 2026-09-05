@@ -9,7 +9,7 @@ export PATH="$test_dir:$PATH"
 export DOCKER_LOG="$test_dir/docker.log"
 export GITHUB_STEP_SUMMARY="$test_dir/summary"
 export TEST_CONFIG='{"name":"lab","services":{"honcho":{"depends_on":{"postgres":{},"lms":{}}},"postgres":{},"lms":{},"keycloak":{"depends_on":{"postgres":{}}},"frontend":{"depends_on":{"honcho":{}}},"jellyfin":{}}}'
-TEST_CONFIG=$(jq '.services |= with_entries(.value.profiles = (if .key == "jellyfin" then ["rpi5"] elif .key == "frontend" then ["debug"] else ["beelink"] end))' <<< "$TEST_CONFIG")
+TEST_CONFIG=$(jq '.services |= with_entries(.value.profiles = (if .key == "jellyfin" then ["media"] elif .key == "frontend" then ["debug"] else ["ai"] end))' <<< "$TEST_CONFIG")
 
 cat > "$test_dir/docker" <<'MOCK'
 #!/usr/bin/env bash
@@ -109,15 +109,15 @@ run_case fail 'INSTALLED={"agentic":["postgres","keycloak"]}'
 [[ $(< "$test_dir/output") == *keycloak* ]]
 run_case pass SELECTED_SERVICES=honcho,keycloak 'INSTALLED={"agentic":["postgres","keycloak"]}'
 assert_calls 'any(.[]; . == ["rm","-f","agentic-postgres"])'
-run_case pass SELECTED_PROFILE=beelink
+run_case pass SELECTED_PROFILE=ai
 assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","honcho","keycloak","lms","postgres"]'
-run_case pass SELECTED_PROFILE=rpi5
+run_case pass SELECTED_PROFILE=media
 assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","jellyfin"]'
 run_case fail SELECTED_PROFILE=unknown
 run_case fail SELECTED_PROFILE=debug
-run_case fail SERVICE_ACTION=uninstall SELECTED_PROFILE=beelink 'INSTALLED={"lab":["frontend"]}'
-run_case pass SERVICE_ACTION=uninstall SELECTED_PROFILE=rpi5 'INSTALLED={"lab":["jellyfin","honcho"]}'
+run_case fail SERVICE_ACTION=uninstall SELECTED_PROFILE=ai 'INSTALLED={"lab":["frontend"]}'
+run_case pass SERVICE_ACTION=uninstall SELECTED_PROFILE=media 'INSTALLED={"lab":["jellyfin","honcho"]}'
 assert_calls '. == [["compose","--env-file",".env","rm","--stop","--force","jellyfin"]]'
-run_case pass SELECTED_PROFILE=beelink DRY_RUN=true
+run_case pass SELECTED_PROFILE=ai DRY_RUN=true
 assert_calls 'length == 0'
 printf 'All %s service workflow checks passed.\n' "$checks"

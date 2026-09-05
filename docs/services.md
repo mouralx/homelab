@@ -2,11 +2,11 @@
 
 All services are defined in [services/compose.yaml](../services/compose.yaml).
 
-## Machine profiles
+## Workload profiles
 
-- `beelink`: `hermes`, `honcho`, `lms`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
-- `rpi5`: `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
-- `rpi4`: `npm`, `portainer`.
+- `ai`: `hermes`, `honcho`, `lms`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
+- `media`: `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
+- `management`: `npm`, `portainer`.
 
 Portainer Agent runs on both Beelink and Pi 5; all other services belong to one profile. Dependencies stay on the same machine.
 

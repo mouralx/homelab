@@ -11,11 +11,11 @@ All 14 services are defined in [services/compose.yaml](../services/compose.yaml)
 
 Services are assigned to three Compose profiles:
 
-- `beelink` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, and Portainer Agent.
-- `rpi5` (8 GB RAM, 1 TB SSD): Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent.
-- `rpi4` (4 GB RAM, 256 GB SD card): Nginx Proxy Manager and Portainer.
+- `ai` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, and Portainer Agent.
+- `media` (8 GB RAM, 1 TB SSD): Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent.
+- `management` (4 GB RAM, 256 GB SD card): Nginx Proxy Manager and Portainer.
 
-Every service has a profile, so an unqualified `compose up` does not start the whole lab. Portainer Agent runs independently on Beelink and Pi 5. All declared dependencies stay within their dependent service's profile.
+Profiles describe workloads; the workflow separately maps `ai` to Beelink, `media` to Pi 5, and `management` to Pi 4. Every service has a profile, so an unqualified `compose up` does not start the whole lab. Portainer Agent belongs to `ai` and `media` and runs independently on their hosts. All declared dependencies stay within their dependent service's profile.
 
 Each host has its own project network. Honcho and Keycloak use local `postgres:5432`; Honcho uses local `lms:4321` for embeddings. Cross-host connections use stable LAN DNS names or reserved IPs and published ports. Nginx Proxy Manager on Pi 4 routes to services on Beelink and Pi 5. Configure Portainer with the two remote agent endpoints on port `9001`; its local Docker socket manages Pi 4. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
 
@@ -33,4 +33,4 @@ Build contexts point to the repository root; Dockerfiles are in `images/` and en
 
 ## Environment and deployment
 
-Runtime variables come from a repository-root `.env` file. GitHub Actions generates it from the selected environment and creates a separate job for each checked profile on its matching runner label (`beelink`, `rpi5`, or `rpi4`, plus `self-hosted`). It validates configuration and dependencies before installing or uninstalling the profile. Jobs on different hosts can run concurrently; deployments to the same host are serialized. Profile selection does not move existing containers or data between hosts.
+Runtime variables come from a repository-root `.env` file. GitHub Actions generates it from the selected environment and creates a separate job for each checked profile on its mapped runner label (`beelink`, `rpi5`, or `rpi4`, plus `self-hosted`). The mapping lives in `scripts/workflow.step.select-profiles.sh`. It validates configuration and dependencies before installing or uninstalling the profile. Jobs on different hosts can run concurrently; deployments to the same host are serialized. Profile selection does not move existing containers or data between hosts.

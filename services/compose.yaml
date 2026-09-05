@@ -1,7 +1,7 @@
 name: lab
 services:
   hermes:
-    profiles: [beelink]
+    profiles: [ai]
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -20,7 +20,7 @@ services:
       OPENCODE_GO_API_KEY: ${OPENCODE_API_KEY}
       OPENCODE_ZEN_API_KEY: ${OPENCODE_API_KEY}
   npm:
-    profiles: [rpi4]
+    profiles: [management]
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
@@ -34,7 +34,7 @@ services:
       - 80:80
       - 81:81
   honcho:
-    profiles: [beelink]
+    profiles: [ai]
     build:
       context: ..
       dockerfile: images/dockerfile.honcho
@@ -88,7 +88,7 @@ services:
     ports:
       - 8000:8000
   lms:
-    profiles: [beelink]
+    profiles: [ai]
     build:
       context: ..
       dockerfile: images/dockerfile.lms
@@ -105,7 +105,7 @@ services:
     ports:
       - 4321:4321
   keycloak:
-    profiles: [beelink]
+    profiles: [ai]
     image: quay.io/keycloak/keycloak:26.7.1
     container_name: keycloak
     command: start-dev
@@ -134,7 +134,7 @@ services:
           memory: 2G
           cpus: 1.0
   postgres:
-    profiles: [beelink]
+    profiles: [ai]
     container_name: postgres
     restart: unless-stopped
     image: pgvector/pgvector:pg15
@@ -154,7 +154,7 @@ services:
     volumes:
       - ~/postgres:/var/lib/postgresql/data
   portainer_agent:
-    profiles: [beelink, rpi5]
+    profiles: [ai, media]
     image: portainer/agent:2.39.6
     container_name: portainer_agent
     restart: always
@@ -164,7 +164,7 @@ services:
       - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
       - ~/portainer_agent:/data
   prowlarr:
-    profiles: [rpi5]
+    profiles: [media]
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
@@ -173,7 +173,7 @@ services:
     ports:
       - 9696:9696
   sonarr:
-    profiles: [rpi5]
+    profiles: [media]
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
@@ -188,7 +188,7 @@ services:
       transmission:
         condition: service_started
   radarr:
-    profiles: [rpi5]
+    profiles: [media]
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
@@ -203,7 +203,7 @@ services:
       transmission:
         condition: service_started
   transmission:
-    profiles: [rpi5]
+    profiles: [media]
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
     environment:
@@ -217,7 +217,7 @@ services:
       - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp"
       - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp"
   jellyfin:
-    profiles: [rpi5]
+    profiles: [media]
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     volumes:
@@ -227,7 +227,7 @@ services:
       - 8096:8096
       - 7359:7359/udp
   portainer:
-    profiles: [rpi4]
+    profiles: [management]
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
@@ -240,7 +240,7 @@ services:
       - 9000:9000
       - 9443:9443
   pgadmin:
-    profiles: [beelink]
+    profiles: [ai]
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin

@@ -9,16 +9,16 @@ on:
         options:
           - install
           - uninstall
-      beelink:
-        description: "Beelink — AI, Postgres, Keycloak, pgAdmin, Portainer Agent"
+      ai:
+        description: "AI — Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent"
         type: boolean
         default: false
-      rpi5:
-        description: "Pi 5 — Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent"
+      media:
+        description: "Media — Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent"
         type: boolean
         default: false
-      rpi4:
-        description: "Pi 4 — Nginx Proxy Manager and Portainer"
+      management:
+        description: "Management — Nginx Proxy Manager and Portainer"
         type: boolean
         default: false
       dry_run:
@@ -66,14 +66,14 @@ jobs:
           bash scripts/test-manage-services.sh
           bash scripts/test-validate-compose.sh
   deploy:
-    name: ${{ inputs.action }} ${{ matrix.profile }}
+    name: ${{ inputs.action }} ${{ matrix.profile }} on ${{ matrix.host }}
     needs: select
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.select.outputs.matrix) }}
-    runs-on: [self-hosted, "${{ matrix.profile }}"]
+    runs-on: [self-hosted, "${{ matrix.host }}"]
     concurrency:
-      group: home-lab-${{ matrix.profile }}
+      group: home-lab-${{ matrix.host }}
       cancel-in-progress: false
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
     defaults:

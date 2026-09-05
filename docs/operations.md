@@ -6,7 +6,7 @@ Run from the repository root with a configured `.env`:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml --profile '*' config --format json | bash scripts/validate-compose.sh
-docker compose --env-file .env -f services/compose.yaml --profile beelink up -d --build
+docker compose --env-file .env -f services/compose.yaml --profile ai up -d --build
 ```
 
 The validator rejects duplicate container names and overlapping published ports, including overrides of `TRANSMISSION_PEER_PORT`. TCP and UDP may use the same number. It checks the Compose configuration; other processes on the target host can still occupy a published port.
@@ -14,17 +14,19 @@ The validator rejects duplicate container names and overlapping published ports,
 ## Logs and shutdown
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml --profile beelink logs -f
-docker compose --env-file .env -f services/compose.yaml --profile beelink down
+docker compose --env-file .env -f services/compose.yaml --profile ai logs -f
+docker compose --env-file .env -f services/compose.yaml --profile ai down
 ```
 
-Replace `beelink` with `rpi5` or `rpi4` on the corresponding machine. Append a service name to `logs` to inspect just that service.
+Replace `ai` with `media` or `management` as needed. Append a service name to `logs` to inspect just that service.
 
 ## GitHub deployment
 
-Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`, then check **Beelink**, **Pi 5**, and/or **Pi 4**. Each checked profile runs a separate job on its corresponding PC. All checkboxes start unchecked; select at least one. Service membership comes directly from Compose. See [the profile inventory](services.md#machine-profiles).
+Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`, then check **AI**, **Media**, and/or **Management**. All checkboxes start unchecked; select at least one. Service membership comes directly from Compose. See [the profile inventory](services.md#workload-profiles).
 
-Assign distinct labels to your self-hosted runners: `beelink`, `rpi5`, and `rpi4`. The previous generic `rpi` label is no longer used for routing. Only give a machine its own profile label; an offline or missing runner leaves its job queued. The selection/test job uses GitHub's `ubuntu-latest` runner. Deployments to each machine are serialized, and one machine failing does not cancel the other selected machines.
+Profile names describe workloads. Runner routing is defined separately in `scripts/workflow.step.select-profiles.sh`: `ai` → `beelink`, `media` → `rpi5`, and `management` → `rpi4`. Each selected profile runs a job on its mapped host. Change that mapping to relocate a workload without renaming the Compose profile.
+
+Assign distinct labels to your self-hosted runners: `beelink`, `rpi5`, and `rpi4`. The previous generic `rpi` label is no longer used for routing. Only give a machine its own host label; an offline or missing runner leaves its job queued. The selection/test job uses GitHub's `ubuntu-latest` runner. Deployments to each host are serialized, even if multiple profiles are mapped to it, and one machine failing does not cancel the other selected machines.
 
 Install automatically includes all transitive `depends_on` dependencies from Compose and respects their startup/healthcheck conditions. For example, `honcho` includes `postgres` and `lms`; `keycloak` includes `postgres`. Image updates, builds, and optional shutdown apply to the selection including dependencies. Shared dependencies may therefore restart during an update.
 
@@ -36,7 +38,7 @@ The runner needs Docker Compose v2, Bash, and jq. Local regression checks run wi
 
 ## Moving from a single host to three machines
 
-Profiles do not transfer data or remove services from their old hosts. Stop a service on its old host, back up and copy its data to the corresponding directory on the new host with ownership preserved, then install its new machine profile. Remove obsolete containers from the old host explicitly after verifying the migration; starting a profile does not remove other installed services.
+Profiles do not transfer data or remove services from their old hosts. Stop a service on its old host, back up and copy its data to the corresponding directory on the new host with ownership preserved, then install its new workload profile. Remove obsolete containers from the old host explicitly after verifying the migration; starting a profile does not remove other installed services.
 
 Keep Postgres and both database consumers on Beelink. Keep downloads and media directories together on Pi 5. Update Nginx Proxy Manager routes to the destination host's LAN DNS/IP and published port. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. Add the Beelink and Pi 5 agent endpoints to Portainer on Pi 4. Use 64-bit Linux on both Pis and verify ARM64 image support before deployment. The selected GitHub environment supplies runtime configuration; make sure host-specific values such as socket user IDs match your runners.
 
