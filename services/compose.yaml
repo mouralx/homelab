@@ -52,8 +52,8 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       AUTH_USE_AUTH: "false"
-      LLM_OPENAI_API_KEY: ${OPENCODE_API_KEY}
-      LLM_OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
+      LLM_OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LLM_OPENAI_BASE_URL: https://api.openai.com/v1
       DERIVER_MODEL_CONFIG__MODEL: deepseek-v4-flash
       DERIVER_MODEL_CONFIG__TRANSPORT: openai
       DERIVER_MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
