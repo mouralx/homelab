@@ -2,6 +2,8 @@
 services:
   honcho:
     environment:
+      # Process short chat batches promptly instead of waiting up to 30 minutes.
+      DERIVER_REPRESENTATION_BATCH_MAX_AGE_SECONDS: "60"
       LLM_OPENAI_API_KEY: local-lms
       LLM_OPENAI_BASE_URL: http://lms:4321/v1
       DERIVER_MODEL_CONFIG__TRANSPORT: openai
