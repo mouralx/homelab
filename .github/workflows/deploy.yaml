@@ -3,70 +3,22 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "Install/update or uninstall selected services"
+        description: "Install/update or uninstall selected profiles"
         required: true
         type: choice
         options:
           - install
           - uninstall
-      all_services:
-        description: "Select all services (overrides individual checkboxes)"
+      beelink:
+        description: "Beelink — AI, Postgres, Keycloak, pgAdmin, Portainer Agent"
         type: boolean
         default: false
-      service_hermes:
-        description: "Hermes"
+      rpi5:
+        description: "Pi 5 — Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent"
         type: boolean
         default: false
-      service_npm:
-        description: "Nginx Proxy Manager"
-        type: boolean
-        default: false
-      service_honcho:
-        description: "Honcho (includes Postgres and LM Studio)"
-        type: boolean
-        default: false
-      service_lms:
-        description: "LM Studio"
-        type: boolean
-        default: false
-      service_keycloak:
-        description: "Keycloak (includes Postgres)"
-        type: boolean
-        default: false
-      service_postgres:
-        description: "Postgres"
-        type: boolean
-        default: false
-      service_portainer_agent:
-        description: "Portainer Agent"
-        type: boolean
-        default: false
-      service_prowlarr:
-        description: "Prowlarr"
-        type: boolean
-        default: false
-      service_sonarr:
-        description: "Sonarr (includes Prowlarr and Transmission)"
-        type: boolean
-        default: false
-      service_radarr:
-        description: "Radarr (includes Prowlarr and Transmission)"
-        type: boolean
-        default: false
-      service_transmission:
-        description: "Transmission"
-        type: boolean
-        default: false
-      service_jellyfin:
-        description: "Jellyfin"
-        type: boolean
-        default: false
-      service_portainer:
-        description: "Portainer"
-        type: boolean
-        default: false
-      service_pgadmin:
-        description: "pgAdmin"
+      rpi4:
+        description: "Pi 4 — Nginx Proxy Manager and Portainer"
         type: boolean
         default: false
       dry_run:
@@ -74,13 +26,6 @@ on:
         description: "Validate only, without changing running services"
         type: boolean
         default: false
-      host:
-        description: "Select the host runner"
-        required: true
-        type: choice
-        options:
-          - rpi
-          - beelink
       environment:
         description: "GitHub environment"
         required: true
@@ -89,54 +34,69 @@ on:
           - mouras-home-lab
         default: mouras-home-lab
       bring_down_first:
-        description: "Stop selected services and dependencies before installing"
+        description: "Stop each selected profile before installing"
         required: true
         type: boolean
         default: false
       update_images:
-        description: "Pull remote image updates before deployment"
+        description: "Pull remote image updates before installation"
         required: true
         type: boolean
         default: false
 permissions:
   contents: read
-concurrency:
-  group: home-lab-${{ inputs.host }}
-  cancel-in-progress: false
 jobs:
+  select:
+    name: Select profiles
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.profiles.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve profile checkboxes
+        id: profiles
+        env:
+          WORKFLOW_INPUTS: ${{ toJson(inputs) }}
+        run: |
+          matrix=$(bash scripts/workflow.step.select-profiles.sh)
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+      - name: Test workflow scripts
+        run: |
+          bash scripts/test-select-profiles.sh
+          bash scripts/test-manage-services.sh
+          bash scripts/test-validate-compose.sh
   deploy:
-    name: Deploy to ${{ inputs.host }}
-    runs-on: ${{ inputs.host }}
+    name: ${{ inputs.action }} ${{ matrix.profile }}
+    needs: select
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.select.outputs.matrix) }}
+    runs-on: [self-hosted, "${{ matrix.profile }}"]
+    concurrency:
+      group: home-lab-${{ matrix.profile }}
+      cancel-in-progress: false
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
     defaults:
       run:
         shell: bash
     env:
       COMPOSE_FILE: services/compose.yaml
+      SELECTED_PROFILE: ${{ matrix.profile }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Create .env file from selected environment
         env:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
-
-      - name: Validate Compose configuration and published ports
-        run: |
-          bash scripts/test-validate-compose.sh
-          docker compose --env-file .env config --format json | bash scripts/validate-compose.sh
-
-      - name: Manage selected services and dependencies
+      - name: Manage profile services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}
-          WORKFLOW_INPUTS: ${{ toJson(inputs) }}
           DRY_RUN: ${{ inputs.dry_run }}
           UPDATE_IMAGES: ${{ inputs.update_images }}
           BRING_DOWN_FIRST: ${{ inputs.bring_down_first }}
         run: bash scripts/workflow.step.manage-services.sh
-
       - name: Remove generated environment file
         if: ${{ always() }}
         run: rm -f .env

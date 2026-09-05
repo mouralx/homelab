@@ -9,7 +9,17 @@ All 14 services are defined in [services/compose.yaml](../services/compose.yaml)
 - Monitoring: Portainer agent.
 - Tools: Portainer server and pgAdmin.
 
-All services join the project's default network and can address each other by service name. Honcho and Keycloak use `postgres:5432`; Honcho uses `lms:4321` for embeddings. Nginx Proxy Manager can reach services directly on this shared network.
+Services are assigned to three Compose profiles:
+
+- `beelink` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, and Portainer Agent.
+- `rpi5` (8 GB RAM, 1 TB SSD): Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent.
+- `rpi4` (4 GB RAM, 256 GB SD card): Nginx Proxy Manager and Portainer.
+
+Every service has a profile, so an unqualified `compose up` does not start the whole lab. Portainer Agent runs independently on Beelink and Pi 5. All declared dependencies stay within their dependent service's profile.
+
+Each host has its own project network. Honcho and Keycloak use local `postgres:5432`; Honcho uses local `lms:4321` for embeddings. Cross-host connections use stable LAN DNS names or reserved IPs and published ports. Nginx Proxy Manager on Pi 4 routes to services on Beelink and Pi 5. Configure Portainer with the two remote agent endpoints on port `9001`; its local Docker socket manages Pi 4. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
+
+Postgres stays on the Beelink SSD. Restarting that machine interrupts identity and AI services. Jellyfin on Pi 5 is intended for Direct Play, including remote playback. These profiles distribute workloads without providing automatic failover.
 
 Published host ports are distinct per protocol. Portainer server uses container name `portainer` and the agent uses `portainer_agent`.
 
@@ -23,4 +33,4 @@ Build contexts point to the repository root; Dockerfiles are in `images/` and en
 
 ## Environment and deployment
 
-Runtime variables come from a repository-root `.env` file. GitHub Actions generates it from the selected environment, validates the resolved configuration and port bindings, and deploys the entire stack on the selected runner. Deployments to the same host are serialized.
+Runtime variables come from a repository-root `.env` file. GitHub Actions generates it from the selected environment and creates a separate job for each checked profile on its matching runner label (`beelink`, `rpi5`, or `rpi4`, plus `self-hosted`). It validates configuration and dependencies before installing or uninstalling the profile. Jobs on different hosts can run concurrently; deployments to the same host are serialized. Profile selection does not move existing containers or data between hosts.

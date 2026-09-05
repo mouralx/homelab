@@ -1,10 +1,10 @@
 # Home Lab
 
-One Docker Compose stack runs the home lab's agentic, media, monitoring, and tools services.
+One Docker Compose file groups the home lab's services into three machine profiles.
 
 ## Layout
 
-- `services/compose.yaml`: all 14 services in the `home-lab` project
+- `services/compose.yaml`: all 14 services in the `lab` project, organized by machine profile
 - `images/`: Dockerfiles for Honcho and LM Studio
 - `scripts/`: entrypoints, environment generation, and Compose validation
 - `.github/workflows/deploy.yaml`: manual deployment to the selected host
@@ -12,21 +12,25 @@ One Docker Compose stack runs the home lab's agentic, media, monitoring, and too
 
 ## Quick start
 
-To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and tick the checkboxes for the services you want, or **Select all services**. Installs include dependencies automatically; uninstalls protect dependencies still needed by installed services and preserve stored data. Enable `dry_run` to preview the selection.
+To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and check one or more machine profiles. Each selected profile runs on its matching self-hosted runner. Enable `dry_run` to preview the selection. Uninstall preserves stored data and protects dependencies still used by installed services.
+
+- `beelink`: Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent.
+- `rpi5`: Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent.
+- `rpi4`: Nginx Proxy Manager and Portainer.
 
 Create a local `.env` file with the required environment variables, then run:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml up -d --build
+docker compose --env-file .env -f services/compose.yaml --profile beelink up -d --build
 ```
 
-Stop the stack with:
+Replace `beelink` with the local machine's profile. Stop that profile with:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml down
+docker compose --env-file .env -f services/compose.yaml --profile beelink down
 ```
 
-All services share one Compose network. Persistent data lives under `~/<service-name>`. Shared media lives in `~/transmission/downloads`; Docker socket mounts retain their system paths.
+Services share a Compose network on each host; networks do not span machines. Persistent data lives under `~/<service-name>` on the host running each service. Shared media lives in `~/transmission/downloads` on Pi 5; Docker socket mounts retain their system paths.
 
 For an existing installation, follow the migration instructions before starting the unified stack.
 

@@ -9,11 +9,13 @@ export PATH="$test_dir:$PATH"
 export DOCKER_LOG="$test_dir/docker.log"
 export GITHUB_STEP_SUMMARY="$test_dir/summary"
 export TEST_CONFIG='{"name":"lab","services":{"honcho":{"depends_on":{"postgres":{},"lms":{}}},"postgres":{},"lms":{},"keycloak":{"depends_on":{"postgres":{}}},"frontend":{"depends_on":{"honcho":{}}},"jellyfin":{}}}'
+TEST_CONFIG=$(jq '.services |= with_entries(.value.profiles = (if .key == "jellyfin" then ["rpi5"] elif .key == "frontend" then ["debug"] else ["beelink"] end))' <<< "$TEST_CONFIG")
 
 cat > "$test_dir/docker" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ $1 == compose && $4 == config ]]; then
+  [[ $COMPOSE_PROFILES == '*' ]] || exit 1
   printf '%s\n' "$TEST_CONFIG"
 elif [[ $1 == ps ]]; then
   [[ ${PS_FAIL:-false} == false ]] || exit 1
@@ -32,6 +34,7 @@ elif [[ $1 == ps ]]; then
       '.[$owner][]? | select(. == $service) | $owner + "-" + .' <<< "$INSTALLED"
   fi
 else
+  [[ $COMPOSE_PROFILES == "${SELECTED_PROFILE:-*}" ]] || exit 1
   jq -cn --args '$ARGS.positional' -- "$@" >> "$DOCKER_LOG"
 fi
 MOCK
@@ -44,7 +47,7 @@ run_case() {
   : > "$DOCKER_LOG"
   local actual=pass
   if ! env SERVICE_ACTION=install SELECTED_SERVICES=honcho INSTALLED='{}' \
-      DRY_RUN=false UPDATE_IMAGES=false BRING_DOWN_FIRST=false PS_FAIL=false WORKFLOW_INPUTS='' \
+      DRY_RUN=false UPDATE_IMAGES=false BRING_DOWN_FIRST=false PS_FAIL=false SELECTED_PROFILE='' \
       "$@" bash scripts/workflow.step.manage-services.sh > "$test_dir/output" 2>&1; then
     actual=fail
   fi
@@ -106,10 +109,15 @@ run_case fail 'INSTALLED={"agentic":["postgres","keycloak"]}'
 [[ $(< "$test_dir/output") == *keycloak* ]]
 run_case pass SELECTED_SERVICES=honcho,keycloak 'INSTALLED={"agentic":["postgres","keycloak"]}'
 assert_calls 'any(.[]; . == ["rm","-f","agentic-postgres"])'
-run_case pass 'WORKFLOW_INPUTS={"service_honcho":true,"service_jellyfin":false,"dry_run":true}'
-assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","honcho","lms","postgres"]'
-run_case fail 'WORKFLOW_INPUTS={"service_honcho":false,"all_services":false,"update_images":true}'
-run_case pass 'WORKFLOW_INPUTS={"all_services":true,"service_honcho":false}'
-assert_calls '.[-1][-6:] == ["frontend","honcho","jellyfin","keycloak","lms","postgres"]'
-run_case fail SERVICE_ACTION=uninstall 'WORKFLOW_INPUTS={"service_postgres":true}' 'INSTALLED={"lab":["honcho"]}'
+run_case pass SELECTED_PROFILE=beelink
+assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","honcho","keycloak","lms","postgres"]'
+run_case pass SELECTED_PROFILE=rpi5
+assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","jellyfin"]'
+run_case fail SELECTED_PROFILE=unknown
+run_case fail SELECTED_PROFILE=debug
+run_case fail SERVICE_ACTION=uninstall SELECTED_PROFILE=beelink 'INSTALLED={"lab":["frontend"]}'
+run_case pass SERVICE_ACTION=uninstall SELECTED_PROFILE=rpi5 'INSTALLED={"lab":["jellyfin","honcho"]}'
+assert_calls '. == [["compose","--env-file",".env","rm","--stop","--force","jellyfin"]]'
+run_case pass SELECTED_PROFILE=beelink DRY_RUN=true
+assert_calls 'length == 0'
 printf 'All %s service workflow checks passed.\n' "$checks"
