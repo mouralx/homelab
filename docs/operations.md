@@ -30,7 +30,7 @@ Uninstall stops and removes only the selected containers, preserving stored data
 
 A dry run generates the environment file, validates configuration and dependency safety, and displays the resolved selection in the job summary without changing containers. Real installs pull images when requested and build before removing selected legacy containers. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
 
-The runner needs Docker Compose v2, Bash, and jq. Local regression checks run with `bash scripts/test-validate-compose.sh` and `python3 scripts/test-manage-services.py` (Python 3; uses a fake Docker CLI).
+The runner needs Docker Compose v2, Bash, and jq. Local regression checks run with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
 
 ## Migration from the four previous projects
 
