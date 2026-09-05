@@ -2,6 +2,15 @@
 set -euo pipefail
 
 export COMPOSE_FILE=${COMPOSE_FILE:-services/compose.yaml}
+if [[ -n ${WORKFLOW_INPUTS:-} ]]; then
+  SELECTED_SERVICES=$(jq -er '
+    if .all_services == true then "all"
+    else [to_entries[] | select(.key | startswith("service_"))
+      | select(.value == true) | .key | ltrimstr("service_")]
+      | if length == 0 then error("Check at least one service or Select all services")
+        else join(" ") end
+    end' <<< "$WORKFLOW_INPUTS")
+fi
 action=${SERVICE_ACTION:-install}
 case "$action" in install|uninstall) ;; *) echo 'Invalid service action' >&2; exit 1 ;; esac
 for flag in DRY_RUN UPDATE_IMAGES BRING_DOWN_FIRST; do

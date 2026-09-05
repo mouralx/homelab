@@ -22,7 +22,7 @@ Append a service name to `logs` to inspect just that service.
 
 ## GitHub deployment
 
-Open **Actions → Deploy Home Lab → Run workflow** and select the host and environment. Choose `install` (also updates existing services) or `uninstall`, then enter service names separated by commas or spaces in `services`, or enter `all` for the whole stack. For example, `sonarr,jellyfin` installs Sonarr and Jellyfin plus Sonarr's dependencies, Prowlarr and Transmission. See [the service inventory](services.md) for names.
+Open **Actions → Deploy Home Lab → Run workflow** and select the host and environment. Choose `install` (also updates existing services) or `uninstall`, then tick the individual service checkboxes, or **Select all services** for the whole stack. All checkboxes start unchecked; select at least one. For example, checking **Sonarr** and **Jellyfin** installs both plus Sonarr's dependencies, Prowlarr and Transmission. Dependency hints on checkboxes describe installs; uninstall removes only checked services and protects dependencies as described below.
 
 Install automatically includes all transitive `depends_on` dependencies from Compose and respects their startup/healthcheck conditions. For example, `honcho` includes `postgres` and `lms`; `keycloak` includes `postgres`. Image updates, builds, and optional shutdown apply to the selection including dependencies. Shared dependencies may therefore restart during an update.
 
@@ -34,7 +34,7 @@ The runner needs Docker Compose v2, Bash, and jq. Local regression checks run wi
 
 ## Migration from the four previous projects
 
-Real workflow installs remove selected services (including their dependencies) carrying Compose project labels `agentic`, `agents`, `media`, or `tools` before starting them in `lab`. This causes a brief interruption. It does not relocate stored data. Use `all` for the initial migration so dependent services move to the new network together. Partial migrations are blocked if an installed legacy dependent would be left behind when its dependency moves. Complete the storage migration below before deployment so services do not start with empty data directories.
+Real workflow installs remove selected services (including their dependencies) carrying Compose project labels `agentic`, `agents`, `media`, or `tools` before starting them in `lab`. This causes a brief interruption. It does not relocate stored data. Check **Select all services** for the initial migration so dependent services move to the new network together. Partial migrations are blocked if an installed legacy dependent would be left behind when its dependency moves. Complete the storage migration below before deployment so services do not start with empty data directories.
 
 Stop the existing services before copying data, preserving ownership and permissions:
 

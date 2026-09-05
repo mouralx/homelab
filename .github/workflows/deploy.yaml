@@ -9,10 +9,66 @@ on:
         options:
           - install
           - uninstall
-      services:
-        description: "Service names separated by commas/spaces, or all (see docs/services.md)"
-        required: true
-        type: string
+      all_services:
+        description: "Select all services (overrides individual checkboxes)"
+        type: boolean
+        default: false
+      service_hermes:
+        description: "Hermes"
+        type: boolean
+        default: false
+      service_npm:
+        description: "Nginx Proxy Manager"
+        type: boolean
+        default: false
+      service_honcho:
+        description: "Honcho (includes Postgres and LM Studio)"
+        type: boolean
+        default: false
+      service_lms:
+        description: "LM Studio"
+        type: boolean
+        default: false
+      service_keycloak:
+        description: "Keycloak (includes Postgres)"
+        type: boolean
+        default: false
+      service_postgres:
+        description: "Postgres"
+        type: boolean
+        default: false
+      service_portainer_agent:
+        description: "Portainer Agent"
+        type: boolean
+        default: false
+      service_prowlarr:
+        description: "Prowlarr"
+        type: boolean
+        default: false
+      service_sonarr:
+        description: "Sonarr (includes Prowlarr and Transmission)"
+        type: boolean
+        default: false
+      service_radarr:
+        description: "Radarr (includes Prowlarr and Transmission)"
+        type: boolean
+        default: false
+      service_transmission:
+        description: "Transmission"
+        type: boolean
+        default: false
+      service_jellyfin:
+        description: "Jellyfin"
+        type: boolean
+        default: false
+      service_portainer:
+        description: "Portainer"
+        type: boolean
+        default: false
+      service_pgadmin:
+        description: "pgAdmin"
+        type: boolean
+        default: false
       dry_run:
         required: true
         description: "Validate only, without changing running services"
@@ -75,7 +131,7 @@ jobs:
       - name: Manage selected services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}
-          SELECTED_SERVICES: ${{ inputs.services }}
+          WORKFLOW_INPUTS: ${{ toJson(inputs) }}
           DRY_RUN: ${{ inputs.dry_run }}
           UPDATE_IMAGES: ${{ inputs.update_images }}
           BRING_DOWN_FIRST: ${{ inputs.bring_down_first }}

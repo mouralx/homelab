@@ -44,7 +44,7 @@ run_case() {
   : > "$DOCKER_LOG"
   local actual=pass
   if ! env SERVICE_ACTION=install SELECTED_SERVICES=honcho INSTALLED='{}' \
-      DRY_RUN=false UPDATE_IMAGES=false BRING_DOWN_FIRST=false PS_FAIL=false \
+      DRY_RUN=false UPDATE_IMAGES=false BRING_DOWN_FIRST=false PS_FAIL=false WORKFLOW_INPUTS='' \
       "$@" bash scripts/workflow.step.manage-services.sh > "$test_dir/output" 2>&1; then
     actual=fail
   fi
@@ -106,4 +106,10 @@ run_case fail 'INSTALLED={"agentic":["postgres","keycloak"]}'
 [[ $(< "$test_dir/output") == *keycloak* ]]
 run_case pass SELECTED_SERVICES=honcho,keycloak 'INSTALLED={"agentic":["postgres","keycloak"]}'
 assert_calls 'any(.[]; . == ["rm","-f","agentic-postgres"])'
+run_case pass 'WORKFLOW_INPUTS={"service_honcho":true,"service_jellyfin":false,"dry_run":true}'
+assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","honcho","lms","postgres"]'
+run_case fail 'WORKFLOW_INPUTS={"service_honcho":false,"all_services":false,"update_images":true}'
+run_case pass 'WORKFLOW_INPUTS={"all_services":true,"service_honcho":false}'
+assert_calls '.[-1][-6:] == ["frontend","honcho","jellyfin","keycloak","lms","postgres"]'
+run_case fail SERVICE_ACTION=uninstall 'WORKFLOW_INPUTS={"service_postgres":true}' 'INSTALLED={"lab":["honcho"]}'
 printf 'All %s service workflow checks passed.\n' "$checks"

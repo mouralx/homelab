@@ -12,7 +12,7 @@ One Docker Compose stack runs the home lab's agentic, media, monitoring, and too
 
 ## Quick start
 
-To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and enter service names (such as `sonarr,jellyfin`) or `all`. Installs include dependencies automatically; uninstalls protect dependencies still needed by installed services and preserve stored data. Enable `dry_run` to preview the selection.
+To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and tick the checkboxes for the services you want, or **Select all services**. Installs include dependencies automatically; uninstalls protect dependencies still needed by installed services and preserve stored data. Enable `dry_run` to preview the selection.
 
 Create a local `.env` file with the required environment variables, then run:
 
