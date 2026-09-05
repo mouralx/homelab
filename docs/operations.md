@@ -28,7 +28,7 @@ Profile names describe workloads. Runner routing is defined separately in `scrip
 
 Assign distinct labels to your self-hosted runners: `beelink`, `rpi5`, and `rpi4`. The previous generic `rpi` label is no longer used for routing. Only give a machine its own host label; an offline or missing runner leaves its job queued. The selection/test job uses GitHub's `ubuntu-latest` runner. Deployments to each host are serialized, even if multiple profiles are mapped to it, and one machine failing does not cancel the other selected machines.
 
-Install automatically includes all transitive `depends_on` dependencies from Compose and respects their startup/healthcheck conditions. For example, `honcho` includes `postgres` and `lms`; `keycloak` includes `postgres`. Image updates, builds, and optional shutdown apply to the selection including dependencies. Shared dependencies may therefore restart during an update.
+Install automatically includes all transitive `depends_on` dependencies from Compose and respects their startup/healthcheck conditions. For example, `keycloak` includes `postgres`. Image updates, builds, and optional shutdown apply to the selection including dependencies. Shared dependencies may therefore restart during an update.
 
 Uninstall stops and removes all containers in the selected profile, including that profile's dependencies, preserving stored data, images, and volumes. Removal is blocked if another installed service outside the profile still needs one of those dependencies, including stopped containers and services in legacy projects. Services outside the profile are left installed. Each workflow run is an action, not a saved desired-state list.
 
@@ -40,7 +40,7 @@ The runner needs Docker Compose v2, Bash, and jq. Local regression checks run wi
 
 Profiles do not transfer data or remove services from their old hosts. Stop a service on its old host, back up and copy its data to the corresponding directory on the new host with ownership preserved, then install its new workload profile. Remove obsolete containers from the old host explicitly after verifying the migration; starting a profile does not remove other installed services.
 
-Keep Postgres and both database consumers on Beelink. Keep downloads and media directories together on Pi 5. Update Nginx Proxy Manager routes to the destination host's LAN DNS/IP and published port. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. Add the Beelink and Pi 5 agent endpoints to Portainer on Pi 4. Use 64-bit Linux on both Pis and verify ARM64 image support before deployment. The selected GitHub environment supplies runtime configuration; make sure host-specific values such as socket user IDs match your runners.
+Keep Postgres and Keycloak on Beelink. Keep downloads and media directories together on Pi 5. Update Nginx Proxy Manager routes to the destination host's LAN DNS/IP and published port. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. Add the Beelink and Pi 5 agent endpoints to Portainer on Pi 4. Use 64-bit Linux on both Pis and verify ARM64 image support before deployment. The selected GitHub environment supplies runtime configuration; make sure host-specific values such as socket user IDs match your runners.
 
 ## Migration from the four previous projects
 
@@ -62,17 +62,8 @@ For manual migration, stop and remove the containers belonging to those four pre
 
 `TRANSMISSION_PEER_PORT` defaults to `51413` and controls both the internal listener and the published TCP/UDP ports. Choose a value not published by another service; validation rejects collisions.
 
-## Reset Honcho after the embedding backend change
+## Honcho retirement
 
-Honcho uses LM Studio's `text-embedding-nomic-embed-text-v1.5` with 768 dimensions. An existing 1536-dimensional Honcho schema must be recreated to use those vectors. This deletes Honcho's stored memory; Keycloak's separate database is unaffected.
+Honcho is no longer part of the home lab stack. Hermes uses local Holographic memory instead; it does not require the retired Honcho service.
 
-Keep Postgres running while stopping Honcho:
-
-```bash
-docker compose --env-file .env -f services/compose.yaml stop honcho
-docker exec postgres psql -U "$POSTGRES_USER" -d postgres \
-  -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
-docker compose --env-file .env -f services/compose.yaml up -d honcho
-```
-
-Set `POSTGRES_USER` in your shell before running the reset. The LM Studio entrypoint fetches `nomic-embed-text` on first boot and uses CPU when no supported GPU is available.
+Preserve existing PostgreSQL data, including any historical Honcho schemas and Keycloak's database. Do not drop schemas, reset Postgres, or delete `~/postgres` as part of this retirement. The former embedding-backend reset procedure is obsolete and must not be run. Retiring Honcho does not migrate its stored memories into local Holographic memory.

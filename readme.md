@@ -4,8 +4,8 @@ One Docker Compose file groups the home lab's services into three workload profi
 
 ## Layout
 
-- `services/compose.yaml`: all 14 services in the `lab` project, organized by workload profile
-- `images/`: Dockerfiles for Honcho and LM Studio
+- `services/compose.yaml`: all 13 services in the `lab` project, organized by workload profile
+- `images/`: Dockerfile for LM Studio
 - `scripts/`: entrypoints, environment generation, and Compose validation
 - `.github/workflows/deploy.yaml`: manual deployment to the selected host
 - `docs/`: architecture, service inventory, and operations
@@ -14,7 +14,7 @@ One Docker Compose file groups the home lab's services into three workload profi
 
 To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and check one or more workload profiles. Each selected profile runs on its matching self-hosted runner. Enable `dry_run` to preview the selection. Uninstall preserves stored data and protects dependencies still used by installed services.
 
-- `ai`: Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent.
+- `ai`: Hermes, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent.
 - `media`: Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent.
 - `management`: Nginx Proxy Manager and Portainer.
 

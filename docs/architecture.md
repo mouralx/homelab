@@ -1,29 +1,29 @@
 # Architecture
 
-All 14 services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
+All 13 services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
 
 ## Services and networking
 
-- Agentic: Hermes, Honcho, LM Studio, Keycloak, Postgres, and Nginx Proxy Manager.
+- Agentic: Hermes, LM Studio, Keycloak, Postgres, and Nginx Proxy Manager.
 - Media: Transmission, Jellyfin, Prowlarr, Sonarr, and Radarr.
 - Monitoring: Portainer agent.
 - Tools: Portainer server and pgAdmin.
 
 Services are assigned to three Compose profiles:
 
-- `ai` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, and Portainer Agent.
+- `ai` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, LM Studio, Postgres, Keycloak, pgAdmin, and Portainer Agent.
 - `media` (8 GB RAM, 1 TB SSD): Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent.
 - `management` (4 GB RAM, 256 GB SD card): Nginx Proxy Manager and Portainer.
 
 Profiles describe workloads; the workflow separately maps `ai` to Beelink, `media` to Pi 5, and `management` to Pi 4. Every service has a profile, so an unqualified `compose up` does not start the whole lab. Portainer Agent belongs to `ai` and `media` and runs independently on their hosts. All declared dependencies stay within their dependent service's profile.
 
-Each host has its own project network. Honcho and Keycloak use local `postgres:5432`; Honcho uses local `lms:4321` for embeddings. Cross-host connections use stable LAN DNS names or reserved IPs and published ports. Nginx Proxy Manager on Pi 4 routes to services on Beelink and Pi 5. Configure Portainer with the two remote agent endpoints on port `9001`; its local Docker socket manages Pi 4. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
+Each host has its own project network. Keycloak uses local `postgres:5432`. Cross-host connections use stable LAN DNS names or reserved IPs and published ports. Nginx Proxy Manager on Pi 4 routes to services on Beelink and Pi 5. Configure Portainer with the two remote agent endpoints on port `9001`; its local Docker socket manages Pi 4. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
 
 Postgres stays on the Beelink SSD. Restarting that machine interrupts identity and AI services. Jellyfin on Pi 5 is intended for Direct Play, including remote playback. These profiles distribute workloads without providing automatic failover.
 
 Published host ports are distinct per protocol. Portainer server uses container name `portainer` and the agent uses `portainer_agent`.
 
-Honcho waits for healthy Postgres and the LM Studio HTTP API; Keycloak waits for healthy Postgres. LM Studio has a ten-minute startup grace period for installation and model downloads. Its API healthcheck does not guarantee an embedding model is loaded. Sonarr and Radarr start after Prowlarr and Transmission; those integrations reconnect independently, so their ordering uses `service_started`. Prowlarr does not require Transmission to start. Proxy, administration, and playback services can start independently.
+Keycloak waits for healthy Postgres. LM Studio has a ten-minute startup grace period for installation and model downloads. Its API healthcheck does not guarantee an embedding model is loaded. Sonarr and Radarr start after Prowlarr and Transmission; those integrations reconnect independently, so their ordering uses `service_started`. Prowlarr does not require Transmission to start. Proxy, administration, and playback services can start independently.
 
 ## Storage and builds
 

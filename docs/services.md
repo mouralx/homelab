@@ -4,7 +4,7 @@ All services are defined in [services/compose.yaml](../services/compose.yaml).
 
 ## Workload profiles
 
-- `ai`: `hermes`, `honcho`, `lms`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
+- `ai`: `hermes`, `lms`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
 - `media`: `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
 - `management`: `npm`, `portainer`.
 
@@ -16,12 +16,7 @@ Portainer Agent runs on both Beelink and Pi 5; all other services belong to one 
 - Container: `nousresearch/hermes-agent:latest`
 - Purpose: AI gateway and agent access layer
 - Ports: `8642`, `9119`
-
-### `honcho`
-- Build: `images/dockerfile.honcho`
-- Purpose: agent runtime and backend logic
-- Depends on Postgres
-- Exposed on port `8000`
+- Holographic memory is local to Hermes, under its existing `~/hermes` data mount; it does not require a Honcho service.
 
 ### `lms`
 - Build: `images/dockerfile.lms`
@@ -35,7 +30,7 @@ Portainer Agent runs on both Beelink and Pi 5; all other services belong to one 
 
 ### `postgres`
 - Image: `pgvector/pgvector:pg15`
-- Purpose: shared database for agentic and identity services
+- Purpose: database for identity services; existing data is preserved
 
 ### `npm`
 - Image: `jc21/nginx-proxy-manager:latest`
