@@ -1,0 +1,70 @@
+name: Try local Qwen for Honcho
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate only; uncheck to replace Honcho
+        type: boolean
+        default: true
+        required: true
+      model:
+        description: Model already downloaded in LM Studio
+        type: string
+        default: qwen/qwen3.5-4b
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: home-lab-beelink
+  cancel-in-progress: false
+jobs:
+  trial:
+    runs-on: [self-hosted, beelink]
+    environment: mouras-home-lab
+    env:
+      HONCHO_LOCAL_MODEL: ${{ inputs.model }}
+      COMPOSE_PROFILES: ai
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create deployment environment
+        env:
+          ENVIRONMENT_VARS: ${{ toJson(vars) }}
+          ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
+        run: bash scripts/workflow.step.create-environment-file.sh
+      - name: Validate Compose without printing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose --env-file .env -f services/compose.yaml -f services/compose.qwen.yaml config --format json | bash scripts/validate-compose.sh
+          docker image inspect lab-honcho:latest >/dev/null
+      - name: Load local model with bounded context
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg model "$HONCHO_LOCAL_MODEL" '{model:$model,context_length:16384}' |
+            curl --fail-with-body --silent --show-error --max-time 120 http://127.0.0.1:4321/api/v1/models/load -H 'Content-Type: application/json' --data-binary @- |
+            jq -e 'select(.status == "loaded") | {status,instance_id}'
+      - name: Replace only Honcho; keep database and other services running
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose --env-file .env -f services/compose.yaml -f services/compose.qwen.yaml up -d --no-deps --no-build --pull never honcho
+      - name: Check Honcho API health
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8000/health | jq -e '.status == "ok"' >/dev/null; then
+              echo 'API healthy. Reasoning, worker progress and latency still require functional verification.'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Honcho health check failed.' >&2
+          exit 1
+      - name: Remove generated environment file
+        if: ${{ always() }}
+        run: rm -f .env
