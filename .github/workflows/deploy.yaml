@@ -10,7 +10,7 @@ on:
           - install
           - uninstall
       ai:
-        description: "AI — Hermes, Honcho, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent"
+        description: "AI — Hermes, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent"
         type: boolean
         default: false
       media:
