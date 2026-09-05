@@ -10,7 +10,7 @@ on:
       model:
         description: Model already downloaded in LM Studio
         type: string
-        default: qwen/qwen3.5-4b
+        default: qwen3-1.7b
         required: true
 permissions:
   contents: read
@@ -42,9 +42,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jq -n --arg model "$HONCHO_LOCAL_MODEL" '{model:$model,context_length:16384}' |
-            curl --fail-with-body --silent --show-error --max-time 120 http://127.0.0.1:4321/api/v1/models/load -H 'Content-Type: application/json' --data-binary @- |
-            jq -e 'select(.status == "loaded") | {status,instance_id}'
+          models=$(curl --fail --silent --show-error --max-time 15 http://127.0.0.1:4321/api/v0/models)
+          if jq -e --arg model "$HONCHO_LOCAL_MODEL" '.data[] | select(.id == $model and .state == "loaded" and .loaded_context_length == 16384)' <<< "$models" >/dev/null; then
+            echo 'Reusing the existing model instance with 16K context.'
+          elif jq -e --arg model "$HONCHO_LOCAL_MODEL" '.data[] | select(.id == $model and .state == "loaded")' <<< "$models" >/dev/null; then
+            echo 'Model is already loaded with a different context; refusing to create a duplicate.' >&2
+            exit 1
+          else
+            jq -n --arg model "$HONCHO_LOCAL_MODEL" '{model:$model,context_length:16384}' |
+              curl --fail-with-body --silent --show-error --max-time 120 http://127.0.0.1:4321/api/v1/models/load -H 'Content-Type: application/json' --data-binary @- |
+              jq -e 'select(.status == "loaded") | {status,instance_id}'
+          fi
       - name: Replace only Honcho; keep database and other services running
         if: ${{ !inputs.dry_run }}
         shell: bash
