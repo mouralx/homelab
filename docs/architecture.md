@@ -1,66 +1,26 @@
 # Architecture
 
-The repository is organised around two Docker Compose stacks that run independently but share the same host environment and a common `.env` file.
+All 14 services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
 
-## High-level design
+## Services and networking
 
-```mermaid
-flowchart LR
-    User[User] --> NPM[Nginx Proxy Manager]
-    NPM --> Keycloak[Keycloak]
-    NPM --> Jellyfin[Jellyfin]
-    NPM --> Honcho[Honcho]
-    NPM --> Hermes[Hermes]
+- Agentic: Hermes, Honcho, LM Studio, Keycloak, Postgres, and Nginx Proxy Manager.
+- Media: Transmission, Jellyfin, Prowlarr, Sonarr, and Radarr.
+- Monitoring: Portainer agent.
+- Tools: Portainer server and pgAdmin.
 
-    Honcho --> Postgres[(Postgres)]
-    Keycloak --> Postgres
+All services join the project's default network and can address each other by service name. Honcho and Keycloak use `postgres:5432`; Honcho uses `lms:4321` for embeddings. Nginx Proxy Manager can reach services directly on this shared network.
 
-    Hermes --> LLM[LM Studio / local model runtime]
-    Honcho --> LLM
+Published host ports are distinct per protocol. Portainer server uses container name `portainer` and the agent uses `portainer_agent`.
 
-    Transmission[Transmission] --> Media[/Shared media volume/]
-    Jellyfin --> Media
-    Prowlarr[Prowlarr] --> Transmission
-    Sonarr[Sonarr] --> Media
-    Radarr[Radarr] --> Media
-```
+Honcho waits for healthy Postgres and the LM Studio HTTP API; Keycloak waits for healthy Postgres. LM Studio has a ten-minute startup grace period for installation and model downloads. Its API healthcheck does not guarantee an embedding model is loaded. Sonarr and Radarr start after Prowlarr and Transmission; those integrations reconnect independently, so their ordering uses `service_started`. Prowlarr does not require Transmission to start. Proxy, administration, and playback services can start independently.
 
-## Stack split
+## Storage and builds
 
-### Agentic stack
+Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `~/transmission/downloads`, and `~/transmission/watch`. Sonarr, Radarr, and Jellyfin share `~/transmission/downloads`, with Jellyfin mounting it read-only. The Portainer agent uses `~/portainer_agent`; no named volumes remain. Docker socket mounts retain their system paths.
 
-File: [../services/compose.agentic.yaml](../services/compose.agentic.yaml)
+Build contexts point to the repository root; Dockerfiles are in `images/` and entrypoints are in `scripts/`.
 
-Contains:
-- `hermes`
-- `honcho`
-- `lms`
-- `keycloak`
-- `postgres`
-- `npm`
+## Environment and deployment
 
-### Media stack
-
-File: [../services/compose.media.yaml](../services/compose.media.yaml)
-
-Contains:
-- `prowlarr`
-- `sonarr`
-- `radarr`
-- `transmission`
-- `jellyfin`
-
-## Build path
-
-The project now uses:
-- `images/` for Dockerfiles
-- `scripts/` for entrypoint scripts
-- `services/` for compose files
-
-## Environment model
-
-Runtime variables are supplied from a local `.env` file at the repository root. The GitHub workflow writes that file in the same location before running the compose commands.
-
-## Validation
-
-The repository is intentionally kept simple: the current structure is the source of truth, and old references to the previous layout should not be used anywhere in the project.
+Runtime variables come from a repository-root `.env` file. GitHub Actions generates it from the selected environment, validates the resolved configuration and port bindings, and deploys the entire stack on the selected runner. Deployments to the same host are serialized.

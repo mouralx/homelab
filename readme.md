@@ -1,71 +1,37 @@
 # Home Lab
 
-This repository contains the current container stack for my home lab: agentic services, media services, and the supporting scripts used to build and deploy them.
+One Docker Compose stack runs the home lab's agentic, media, monitoring, and tools services.
 
-## Current layout
+## Layout
 
-```text
-.
-├── .github/
-│   └── workflows/
-│       └── deploy.yaml
-├── docs/
-│   ├── readme.md
-│   ├── architecture.md
-│   ├── services.md
-│   └── operations.md
-├── images/
-│   ├── dockerfile.honcho
-│   └── dockerfile.lms
-├── scripts/
-│   ├── image.entrypoint.honcho.sh
-│   ├── image.entrypoint.lmstudio.sh
-│   ├── workflow.step.clean-docker.sh
-│   └── workflow.step.create-environment-file.sh
-├── services/
-│   ├── compose.agentic.yaml
-│   └── compose.media.yaml
-├── .gitignore
-├── readme.md
-└── .env.example (optional local file)
-```
-
-## Stack overview
-
-- Agentic services: Honcho, Hermes, Keycloak, Postgres, shared LLM runtime
-- Media services: Transmission, Jellyfin, Prowlarr, Sonarr, Radarr
-- Deployment workflow: GitHub Actions builds and deploys the two compose stacks
+- `services/compose.yaml`: all 14 services in the `home-lab` project
+- `images/`: Dockerfiles for Honcho and LM Studio
+- `scripts/`: entrypoints, environment generation, and Compose validation
+- `.github/workflows/deploy.yaml`: manual deployment to the selected host
+- `docs/`: architecture, service inventory, and operations
 
 ## Quick start
 
-1. Create a local `.env` file with the required variables.
-2. Start the agentic stack:
+To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and enter service names (such as `sonarr,jellyfin`) or `all`. Installs include dependencies automatically; uninstalls protect dependencies still needed by installed services and preserve stored data. Enable `dry_run` to preview the selection.
+
+Create a local `.env` file with the required environment variables, then run:
 
 ```bash
-docker compose --env-file .env -f services/compose.agentic.yaml up -d
+docker compose --env-file .env -f services/compose.yaml up -d --build
 ```
 
-3. Start the media stack:
+Stop the stack with:
 
 ```bash
-docker compose --env-file .env -f services/compose.media.yaml up -d
+docker compose --env-file .env -f services/compose.yaml down
 ```
 
-4. Stop and remove everything if needed:
+All services share one Compose network. Persistent data lives under `~/<service-name>`. Shared media lives in `~/transmission/downloads`; Docker socket mounts retain their system paths.
 
-```bash
-docker compose --env-file .env -f services/compose.agentic.yaml down
-docker compose --env-file .env -f services/compose.media.yaml down
-```
-
-## Important notes
-
-- Docker build contexts point to `images/` and entrypoint scripts live in `scripts/`.
-- Compose files are split into separate stacks: `services/compose.agentic.yaml` and `services/compose.media.yaml`.
+For an existing installation, follow the migration instructions before starting the unified stack.
 
 ## Documentation
 
-- [docs/readme.md](docs/readme.md)
-- [docs/architecture.md](docs/architecture.md)
-- [docs/services.md](docs/services.md)
-- [docs/operations.md](docs/operations.md)
+- [Architecture](docs/architecture.md)
+- [Services](docs/services.md)
+- [Operations and migration](docs/operations.md)

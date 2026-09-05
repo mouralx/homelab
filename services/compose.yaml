@@ -1,0 +1,240 @@
+name: lab
+services:
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway
+    ports:
+      - 8642:8642
+      - 9119:9119
+    volumes:
+      - ~/hermes:/opt/data
+    environment:
+      GATEWAY_ALLOWED_USERS: ${HERMES_ALLOWED_USERS}
+      HERMES_DASHBOARD: 1
+      HERMES_DASHBOARD_OIDC_ISSUER: ${HERMES_DASHBOARD_OIDC_ISSUER}
+      HERMES_DASHBOARD_OIDC_CLIENT_ID: ${HERMES_DASHBOARD_OIDC_CLIENT_ID}
+      HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL}
+      OPENCODE_GO_API_KEY: ${OPENCODE_API_KEY}
+      OPENCODE_ZEN_API_KEY: ${OPENCODE_API_KEY}
+  npm:
+    container_name: npm
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    environment:
+      TZ: ${TIME_ZONE}
+    volumes:
+      - ~/npm/data:/data
+      - ~/npm/certs:/etc/letsencrypt
+    ports:
+      - 443:443
+      - 80:80
+      - 81:81
+  honcho:
+    build:
+      context: ..
+      dockerfile: images/dockerfile.honcho
+    container_name: honcho
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      lms:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_USE_AUTH: "false"
+      LLM_OPENAI_API_KEY: ${OPENCODE_API_KEY}
+      LLM_OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
+      DERIVER_MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DERIVER_MODEL_CONFIG__TRANSPORT: openai
+      DERIVER_MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      DIALECTIC_LEVELS__LOW__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__LOW__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__LOW__MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__MEDIUM__MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__HIGH__MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      DIALECTIC_LEVELS__MAX__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__MAX__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__MAX__MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__MODEL: deepseek-v4-flash
+      DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__TRANSPORT: openai
+      DIALECTIC_LEVELS__MINIMAL__MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      SUMMARY_MODEL_CONFIG__MODEL: deepseek-v4-flash
+      SUMMARY_MODEL_CONFIG__TRANSPORT: openai
+      SUMMARY_MODEL_CONFIG__STRUCTURED_OUTPUT_MODE: json_object
+      EMBEDDING_MODEL_CONFIG__TRANSPORT: openai
+      EMBEDDING_MODEL_CONFIG__MODEL: text-embedding-nomic-embed-text-v1.5
+      EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: http://lms:4321/v1
+      EMBEDDING_VECTOR_DIMENSIONS: 768
+      EMBEDDING_MAX_INPUT_TOKENS: 8192
+      LLM_agentic_MAX_TOKENS: 4096
+      LLM_ANTHROPIC_API_KEY:
+      LLM_ANTHROPIC_BASE_URL:
+      LLM_GEMINI_API_KEY:
+      HONCHO_MEMORY_LIMIT: ${HONCHO_MEMORY_LIMIT:-2G}
+    ports:
+      - 8000:8000
+  lms:
+    build:
+      context: ..
+      dockerfile: images/dockerfile.lms
+    container_name: lms
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "5", "http://localhost:4321/v1/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10m
+    volumes:
+      - ~/lms:/root/.lmstudio
+    ports:
+      - 4321:4321
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.1
+    container_name: keycloak
+    command: start-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+      KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ~/keycloak:/opt/keycloak/data
+    ports:
+      - 8080:8080
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: 1.0
+  postgres:
+    container_name: postgres
+    restart: unless-stopped
+    image: pgvector/pgvector:pg15
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - ~/postgres:/var/lib/postgresql/data
+  portainer_agent:
+    image: portainer/agent:2.39.6
+    container_name: portainer_agent
+    restart: always
+    ports:
+      - 9001:9001
+    volumes:
+      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - ~/portainer_agent:/data
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    volumes:
+      - ~/prowlarr:/config
+    ports:
+      - 9696:9696
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    volumes:
+      - ~/sonarr:/config
+      - ~/transmission/downloads:/downloads
+    ports:
+      - 8989:8989
+    depends_on:
+      prowlarr:
+        condition: service_started
+      transmission:
+        condition: service_started
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    volumes:
+      - ~/radarr:/config
+      - ~/transmission/downloads:/downloads
+    ports:
+      - 7878:7878
+    depends_on:
+      prowlarr:
+        condition: service_started
+      transmission:
+        condition: service_started
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
+    environment:
+      PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
+    volumes:
+      - ~/transmission/config:/config
+      - ~/transmission/downloads:/downloads
+      - ~/transmission/watch:/watch
+    ports:
+      - 9091:9091
+      - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp"
+      - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp"
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    volumes:
+      - ~/jellyfin:/config
+      - ~/transmission/downloads:/data:ro
+    ports:
+      - 8096:8096
+      - 7359:7359/udp
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - ~/portainer:/data
+    environment:
+      - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+    ports:
+      - 9000:9000
+      - 9443:9443
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - ~/pgadmin/servers.json:/pgadmin4/servers.json
+    ports:
+      - 4431:443
+      - 8001:80

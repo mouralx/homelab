@@ -2,24 +2,20 @@ name: Deploy Home Lab
 on:
   workflow_dispatch:
     inputs:
+      action:
+        description: "Install/update or uninstall selected services"
+        required: true
+        type: choice
+        options:
+          - install
+          - uninstall
+      services:
+        description: "Service names separated by commas/spaces, or all (see docs/services.md)"
+        required: true
+        type: string
       dry_run:
         required: true
-        description: "Test only if deploy is ok"
-        type: boolean
-      agentic:
-        description: "Install Agentic AI Services"
-        type: boolean
-        default: false
-      agents:
-        description: "Install Monitoring Agents Services"
-        type: boolean
-        default: false
-      media:
-        description: "Install Media Services"
-        type: boolean
-        default: false
-      tools:
-        description: "Install Tools Services"
+        description: "Validate only, without changing running services"
         type: boolean
         default: false
       host:
@@ -37,25 +33,30 @@ on:
           - mouras-home-lab
         default: mouras-home-lab
       bring_down_first:
-        description: "Stop the current stacks before deploying."
+        description: "Stop selected services and dependencies before installing"
         required: true
         type: boolean
         default: false
       update_images:
-        description: "Pull remote image updates before deployment."
+        description: "Pull remote image updates before deployment"
         required: true
         type: boolean
         default: false
 permissions:
   contents: read
+concurrency:
+  group: home-lab-${{ inputs.host }}
+  cancel-in-progress: false
 jobs:
   deploy:
-    name: Deploy to ${{ inputs.environment || 'mouras-home-lab' }}
+    name: Deploy to ${{ inputs.host }}
     runs-on: ${{ inputs.host }}
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
     defaults:
       run:
         shell: bash
+    env:
+      COMPOSE_FILE: services/compose.yaml
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -66,62 +67,20 @@ jobs:
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
 
-      - name: Validate agentic compose files
-        if: ${{ inputs.agentic }}
-        run: docker compose --env-file .env -f services/compose.agentic.yaml config >/dev/null
-      - name: Validate agentic compose files
-        if: ${{ inputs.agents }}
-        run: docker compose --env-file .env -f services/compose.agents.yaml config >/dev/null
-      - name: Validate media compose files
-        if: ${{ inputs.media }}
-        run: docker compose --env-file .env -f services/compose.media.yaml config >/dev/null
-      - name: Validate tools compose files
-        if: ${{ inputs.tools }}
-        run: docker compose --env-file .env -f services/compose.tools.yaml config >/dev/null
+      - name: Validate Compose configuration and published ports
+        run: |
+          bash scripts/test-validate-compose.sh
+          docker compose --env-file .env config --format json | bash scripts/validate-compose.sh
 
-      - name: Stop current stacks
-        if: ${{ inputs.bring_down_first || inputs.update_images }}
-        continue-on-error: true
-        run: docker ps -q | xargs -r docker stop
+      - name: Manage selected services and dependencies
+        env:
+          SERVICE_ACTION: ${{ inputs.action }}
+          SELECTED_SERVICES: ${{ inputs.services }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          UPDATE_IMAGES: ${{ inputs.update_images }}
+          BRING_DOWN_FIRST: ${{ inputs.bring_down_first }}
+        run: bash scripts/workflow.step.manage-services.sh
 
-      - name: Pull agentic updated images
-        if: ${{ inputs.update_images && inputs.agentic }}
-        run: docker compose --env-file .env -f services/compose.agentic.yaml pull || true
-      - name: Pull agents updated images
-        if: ${{ inputs.update_images && inputs.agents }}
-        run: docker compose --env-file .env -f services/compose.agents.yaml pull || true
-      - name: Pull media updated images
-        if: ${{ inputs.update_images && inputs.media }}
-        run: docker compose --env-file .env -f services/compose.media.yaml pull || true
-      - name: Pull tools updated images
-        if: ${{ inputs.update_images && inputs.tools }}
-        run: docker compose --env-file .env -f services/compose.tools.yaml pull || true
-
-      - name: Build agentic stack
-        if: ${{ inputs.agentic }}
-        run: docker compose --env-file .env -f services/compose.agentic.yaml build
-      - name: Build agents stack
-        if: ${{ inputs.agents }}
-        run: docker compose --env-file .env -f services/compose.agents.yaml build
-      - name: Build media stack
-        if: ${{ inputs.media }}
-        run: docker compose --env-file .env -f services/compose.media.yaml build
-      - name: Build tools stack
-        if: ${{ inputs.tools }}
-        run: docker compose --env-file .env -f services/compose.tools.yaml build
-
-      - name: Deploy agentic stack
-        if: ${{ !inputs.dry_run && inputs.agentic }}
-        run: docker compose --env-file .env -f services/compose.agentic.yaml up -d
-      - name: Deploy agents stack
-        if: ${{ !inputs.dry_run && inputs.agents }}
-        run: docker compose --env-file .env -f services/compose.agents.yaml up -d
-      - name: Deploy media stack
-        if: ${{ !inputs.dry_run && inputs.media }}
-        run: docker compose --env-file .env -f services/compose.media.yaml up -d
-      - name: Deploy tools stack
-        if: ${{ !inputs.dry_run && inputs.tools }}
-        run: docker compose --env-file .env -f services/compose.tools.yaml up -d
-
-      - name: Clean up dangling Docker images
-        run: docker system prune -af --volumes
+      - name: Remove generated environment file
+        if: ${{ always() }}
+        run: rm -f .env

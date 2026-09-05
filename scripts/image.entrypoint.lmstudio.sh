@@ -2,8 +2,6 @@
 
 if [ ! -f ~/.lmstudio/bin/lms ]; then
 
-    apt update -yq && apt install -yq curl libatomic1 libgomp1
-
     curl -fsSL https://lmstudio.ai/install.sh | bash
 
     ~/.lmstudio/bin/lms get $LLM_MODEL

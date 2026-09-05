@@ -11,5 +11,4 @@ This folder contains the current documentation for the live home-lab setup.
 ## Quick links
 
 - Repository root: [../readme.md](../readme.md)
-- Agentic compose file: [../services/compose.agentic.yaml](../services/compose.agentic.yaml)
-- Media compose file: [../services/compose.media.yaml](../services/compose.media.yaml)
+- Unified Compose file: [../services/compose.yaml](../services/compose.yaml)
