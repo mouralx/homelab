@@ -1,0 +1,43 @@
+services:
+  media-cleanup:
+    image: python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
+    container_name: media-cleanup
+    user: "911:911"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 32
+    mem_limit: 128m
+    restart: unless-stopped
+    command: ["/bin/sh", "-c", "while true; do python -B /app/controller.py --apply; sleep 900; done"]
+    environment:
+      RADARR_URL: http://radarr:7878
+      TRANSMISSION_URL: http://transmission:9091/transmission/rpc
+      RADARR_CONFIG_XML: /run/radarr-config.xml
+      EXPECTED_MOUNT_SOURCE: /dev/nvme0n1p2
+      EXPECTED_MOUNT_ROOT: /home/moura/transmission/downloads
+    volumes:
+      - type: bind
+        source: /home/moura/bazarr/media-cleanup
+        target: /app
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /home/moura/bazarr/media-cleanup-state
+        target: /state
+        bind: {create_host_path: false}
+      - type: bind
+        source: /home/moura/transmission/downloads
+        target: /downloads
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /home/moura/radarr/config.xml
+        target: /run/radarr-config.xml
+        read_only: true
+        bind: {create_host_path: false}
+    networks: [media]
+networks:
+  media:
+    external: true
+    name: lab_default
