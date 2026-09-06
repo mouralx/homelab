@@ -9,11 +9,14 @@ services:
     pids_limit: 32
     mem_limit: 128m
     restart: unless-stopped
-    command: ["/bin/sh", "-c", "while true; do python -B /app/controller.py --apply; sleep 900; done"]
+    command: ["/bin/sh", "-c", "while true; do python -B /app/controller.py --apply && python -B /app/replenish.py --apply; sleep 900; done"]
     environment:
       RADARR_URL: http://radarr:7878
       TRANSMISSION_URL: http://transmission:9091/transmission/rpc
       RADARR_CONFIG_XML: /run/radarr-config.xml
+      AUTO_TAG_ID: "1"
+      QUALITY_PROFILE_ID: "7"
+      RESERVE_GIB: "20"
       EXPECTED_MOUNT_SOURCE: /dev/nvme0n1p2
       EXPECTED_MOUNT_ROOT: /home/moura/transmission/downloads
     volumes:

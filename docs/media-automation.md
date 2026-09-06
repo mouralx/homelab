@@ -1,36 +1,47 @@
-# RPi5 movie automation
+# RPi5 automatic movie library
 
-## Live configuration
+## Behaviour
 
-Movie pipeline: Prowlarr -> Radarr -> Transmission -> organized Movies -> Jellyfin.
+Popular/recent discovery -> automatic Radarr addition and search -> Prowlarr/Knaben -> Transmission -> organized Movies -> Jellyfin.
 
-- Radarr root: `/downloads/library/movies` (root ID 1).
-- New Radarr profile: **4K - Original Audio** (ID 7). Only 2160p qualities, Original language, no automatic quality upgrades. **Select this profile when adding movies**; creating it does not change other profiles or browser defaults.
-- Transmission client: `transmission:9091`, directory `/downloads/torrents/movies`. Radarr's Transmission adapter rejects simultaneous Category and Directory: Directory is set, Category blank. No other downloads belong in this dedicated directory.
-- Completed-download handling and hardlinks are enabled. An isolated hardlink test passed as Radarr's `abc` user across torrent/library folders.
-- Prowlarr Radarr application uses `http://radarr:7878`, advertised Prowlarr URL `http://prowlarr:9696`, full sync. Knaben passed its connection test and synced RSS, automatic and interactive search into Radarr.
-- Knaben uses seed ratio 2.0. Radarr removes completed torrent data only after its finished-seeding criteria are met, retaining imported library hardlinks. Active/seeding downloads remain protected. Any torrent still retained by Transmission or file with multiple hardlinks must be excluded by the cleanup controller.
-- Jellyfin Movies location: `/data/library/movies`; same host media tree mounted read-only. Account subtitle preference `pop` is Jellyfin's Portuguese (Portugal) code; `pob` is Brazil. Default audio track preference is not a guarantee of original-language playback.
-- Bazarr: `http://192.168.1.202:6767`, private generated forms credentials, Radarr enabled, Sonarr disabled, shared `/downloads` path (no remapping required). Default movie language profile **Portuguese (Portugal)** uses Bazarr `pt`, not `pb` (Brazil).
+No manual movie additions are required. `scripts/media-cleanup/replenish.py` reads Radarr's TMDb popular/trending discovery, retaining provider order, excludes every existing/excluded TMDb ID (including retired unmonitored movies), and selects recent movies with an already-passed digital or physical release date. Recent means a cinema release within 730 days; absent that date, the current or preceding calendar year.
 
-## Deployment
+The `media-cleanup` Portainer stack runs cleanup followed by replenishment every 15 minutes. Replenishment adds at most one movie per six hours and allows at most two monitored movies without files. Movies are tagged `auto-popular-recent` (live tag ID 1). Initial deployment selected The Whisper Man automatically and verified an actual 2160p WEB-DL transfer in Transmission, not just a submitted search.
 
-`services/compose.media-addons.yaml` defines the independent **media-addons** stack on RPi5. It reuses external network `lab_default` and does not redeploy existing applications. The live stack is managed through Portainer environment 4. Do not run both a second differently named stack and this stack with the same container names.
+## Space and retirement
 
-The paths, LAN IP and LinuxServer UID/GID 911 are specific to this rootless-Docker installation; inspect before applying elsewhere. Persisted application configuration lives in each app's `/config` bind, not in Git. No API keys or passwords belong in Compose or this repository. A deployment of the manifest alone does not reproduce application API settings on fresh empty config directories; apply the settings listed above through authenticated app interfaces.
+- Existing cleanup policy is unchanged: below 15% actual media-filesystem free, retire oldest eligible Radarr-added movies, including unwatched, until at least 25% free.
+- Retired records remain unmonitored; selection never re-adds or re-monitors them.
+- Active/seeding/stopped torrents and multiply hardlinked files remain protected. If everything is protected, cleanup can stop without reaching 25%.
+- Replenishment pauses below 15% free or when the estimate for existing pending movies plus the next movie exceeds available bytes. The estimate is 20 GiB per movie; it is not a filesystem reservation.
+- Radarr maximum release size is 20480 MB. Indexer size metadata can be absent or inaccurate, so this is not an absolute storage guarantee.
+- Transmission's download queue is enabled with size 1. Stalled-queue handling remains Transmission's existing policy.
+- A tagged movie with no file after seven days may be unmonitored to unblock selection, but only with no queue entry and no Transmission torrents at all. This intentionally conservative rule does not automatically remove stalled torrents.
+- No live movie deletion was forced for testing.
 
-## Subtitle blocker
+## Applications
 
-The user currently has no subtitle-provider account. Bazarr is configured but **automatic subtitle downloads are not verified or operational until providers are configured and tested**. Create an OpenSubtitles.com or LegendasDivx account, then enter it privately in Bazarr Settings -> Providers. Do not enable Portuguese (Brazil) as a fallback. Match quality and availability depend on provider/release coverage.
+- Radarr root `/downloads/library/movies` (ID 1), profile **4K - Original Audio** (ID 7): 2160p only, Original language, no automatic quality upgrades. The replenisher explicitly sets this profile for every automatic addition.
+- Transmission uses `/downloads/torrents/movies`, with blank Radarr client category. All media shares host parent `/home/moura/transmission/downloads` for hardlinks.
+- Completed import and hardlinks are enabled. Knaben seed ratio is 2.0; completed torrent removal waits for finished-seeding criteria.
+- Prowlarr advertises `http://prowlarr:9696`, syncs fully to `http://radarr:7878`, and supplies Knaben RSS/automatic/interactive search.
+- Jellyfin Movies points to `/data/library/movies` on the same host tree, mounted read-only. Portuguese-Portugal preference uses `pop`, not Brazilian `pob`. Default audio selection alone does not prove original-language playback.
+- Bazarr at `http://192.168.1.202:6767` is movie-only, connected to Radarr, and configured for Portuguese (Portugal), Bazarr `pt` rather than `pb`.
 
-## Verification and limitations
+## Deployment and credentials
 
-Connection tests for Prowlarr -> Radarr and Radarr -> Transmission passed; Knaben test and Radarr indexer read-back passed. Bazarr reports Radarr version and an empty health-error list; unauthenticated settings API returns 401. Jellyfin library and account settings were read back.
+`services/compose.media-addons.yaml` and `services/compose.media-cleanup.yaml` are separate Portainer stacks on RPi5 environment 4, sharing `lab_default`; they do not redeploy the existing lab stack. Paths, UID/GID 911 and disk source pins are specific to this installation.
 
-1337x failed TLS certificate verification from the Prowlarr container; SSL verification was not disabled. Internet Archive indexer testing timed out (its website itself returned HTTP 200). Neither failing definition was saved. Knaben is the tested alternative.
+Stage both `controller.py` and `replenish.py` under `/home/moura/bazarr/media-cleanup/` before deploying the cleanup manifest. That source directory, media and Radarr config are mounted read-only in the runner; `/state` is writable. The runner reads the Radarr API key from mounted `config.xml`. Never commit credentials.
 
-No movie has been added or acquired as a test. A complete real download/import/playback/subtitle round trip is therefore **untested**. Add only media you are authorized to download. An empty Jellyfin library is expected until media arrives.
+Application API settings are persisted in app config directories, not created by Compose alone. Reproduce the profile/root/tag IDs and release/queue limits on a fresh installation. Replenishment defaults to dry-run; `--apply` is explicit. It uses mount verification, locking, API readbacks and a durable pre-add intent/cooldown.
 
-## Approved cleanup policy
+## Verification and remaining limits
 
-The user explicitly confirmed: trigger below 15% actual media filesystem free, retire oldest Radarr-added eligible movies (including unwatched) until at least 25% free, protecting active/seeding downloads. Implementation/test/deployment status must be checked separately; this approval does not itself enable deletion. No actual user media should be deleted for testing. Conservative skipped files may prevent reaching the target; report that rather than weakening protection.
+Run `python -m unittest discover -s scripts/media-cleanup -p 'test_*.py' -v`. The combined cleanup/replenishment suite passed 35 tests during initial integration. Validate Compose and read back the actual deployed source hashes, command and environment separately.
+
+A real movie was automatically selected, searched, grabbed and observed transferring from peers. Completed import, Jellyfin playback and real retirement/replenishment of a full disk must be verified separately; do not infer them from running containers.
+
+The user has no subtitle-provider account configured. Actual pt-PT subtitle retrieval remains blocked until an OpenSubtitles.com or LegendasDivx provider is configured and tested privately in Bazarr. Do not substitute Portuguese-Brazil.
+
+1337x failed TLS verification; Internet Archive indexer testing timed out. Neither was kept and TLS verification was not disabled. Knaben is the active indexer. Source availability and discovery metadata can change; the runner fails closed on API or filesystem errors. Only acquire media you are authorized to download.
