@@ -149,12 +149,12 @@ services:
     profiles: [home]
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
+    # Bypass the rpi5 Docker bridge egress fault for metadata providers.
+    # Host networking binds Jellyfin's ports directly; do not add ports here.
+    network_mode: host
     volumes:
       - ~/jellyfin:/config
       - ~/transmission/downloads:/data:ro
-    ports:
-      - 8096:8096
-      - 7359:7359/udp
   portainer:
     profiles: [management]
     image: portainer/portainer-ce:latest
