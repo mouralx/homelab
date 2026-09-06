@@ -1,0 +1,17 @@
+name: Media cleanup tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/media-cleanup/**'
+      - '.github/workflows/media-cleanup-tests.yaml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated stdlib tests
+        run: python3 -m unittest discover -s scripts/media-cleanup -v
