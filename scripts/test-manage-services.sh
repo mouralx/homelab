@@ -8,8 +8,8 @@ trap 'rm -rf "$test_dir"' EXIT
 export PATH="$test_dir:$PATH"
 export DOCKER_LOG="$test_dir/docker.log"
 export GITHUB_STEP_SUMMARY="$test_dir/summary"
-export TEST_CONFIG='{"name":"lab","services":{"honcho":{"depends_on":{"postgres":{},"lms":{}}},"postgres":{},"lms":{},"keycloak":{"depends_on":{"postgres":{}}},"frontend":{"depends_on":{"honcho":{}}},"jellyfin":{}}}'
-TEST_CONFIG=$(jq '.services |= with_entries(.value.profiles = (if .key == "jellyfin" then ["media"] elif .key == "frontend" then ["debug"] else ["ai"] end))' <<< "$TEST_CONFIG")
+export TEST_CONFIG='{"name":"lab","services":{"honcho":{"depends_on":{"postgres":{}}},"postgres":{},"keycloak":{"depends_on":{"postgres":{}}},"frontend":{"depends_on":{"honcho":{}}},"jellyfin":{}}}'
+TEST_CONFIG=$(jq '.services |= with_entries(.value.profiles = (if .key == "jellyfin" then ["home"] elif .key == "frontend" then ["debug"] else ["ai"] end))' <<< "$TEST_CONFIG")
 
 cat > "$test_dir/docker" <<'MOCK'
 #!/usr/bin/env bash
@@ -72,10 +72,10 @@ assert_calls() {
 
 run_case pass SELECTED_SERVICES=$' frontend, jellyfin\nfrontend ' UPDATE_IMAGES=true BRING_DOWN_FIRST=true
 assert_calls '. == [
-  ["compose","--env-file",".env","pull","--ignore-buildable","frontend","honcho","jellyfin","lms","postgres"],
-  ["compose","--env-file",".env","build","frontend","honcho","jellyfin","lms","postgres"],
-  ["compose","--env-file",".env","stop","frontend","honcho","jellyfin","lms","postgres"],
-  ["compose","--env-file",".env","up","-d","frontend","honcho","jellyfin","lms","postgres"]]'
+  ["compose","--env-file",".env","pull","--ignore-buildable","frontend","honcho","jellyfin","postgres"],
+  ["compose","--env-file",".env","build","frontend","honcho","jellyfin","postgres"],
+  ["compose","--env-file",".env","stop","frontend","honcho","jellyfin","postgres"],
+  ["compose","--env-file",".env","up","-d","frontend","honcho","jellyfin","postgres"]]'
 
 for selection in '' ' , ' unknown all,honcho --help '$(touch /tmp/no)'; do
   run_case fail "SELECTED_SERVICES=$selection"
@@ -95,8 +95,8 @@ run_case pass SERVICE_ACTION=uninstall SELECTED_SERVICES=honcho,postgres,keycloa
 assert_calls '. == [["compose","--env-file",".env","rm","--stop","--force","honcho","keycloak","postgres"]]'
 
 for action in install uninstall; do
-  run_case pass "SERVICE_ACTION=$action" SELECTED_SERVICES=all 'INSTALLED={"lab":["frontend","honcho","jellyfin","keycloak","lms","postgres"]}'
-  assert_calls '.[-1][-6:] == ["frontend","honcho","jellyfin","keycloak","lms","postgres"]'
+    run_case pass "SERVICE_ACTION=$action" SELECTED_SERVICES=all 'INSTALLED={"lab":["frontend","honcho","jellyfin","keycloak","postgres"]}'
+    assert_calls '.[-1][-5:] == ["frontend","honcho","jellyfin","keycloak","postgres"]'
 done
 
 run_case pass SELECTED_SERVICES=jellyfin 'INSTALLED={"media":["jellyfin","sonarr"]}'
@@ -110,13 +110,13 @@ run_case fail 'INSTALLED={"agentic":["postgres","keycloak"]}'
 run_case pass SELECTED_SERVICES=honcho,keycloak 'INSTALLED={"agentic":["postgres","keycloak"]}'
 assert_calls 'any(.[]; . == ["rm","-f","agentic-postgres"])'
 run_case pass SELECTED_PROFILE=ai
-assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","honcho","keycloak","lms","postgres"]'
-run_case pass SELECTED_PROFILE=media
+assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","honcho","keycloak","postgres"]'
+run_case pass SELECTED_PROFILE=home
 assert_calls '.[-1] == ["compose","--env-file",".env","up","-d","jellyfin"]'
 run_case fail SELECTED_PROFILE=unknown
 run_case fail SELECTED_PROFILE=debug
 run_case fail SERVICE_ACTION=uninstall SELECTED_PROFILE=ai 'INSTALLED={"lab":["frontend"]}'
-run_case pass SERVICE_ACTION=uninstall SELECTED_PROFILE=media 'INSTALLED={"lab":["jellyfin","honcho"]}'
+run_case pass SERVICE_ACTION=uninstall SELECTED_PROFILE=home 'INSTALLED={"lab":["jellyfin","honcho"]}'
 assert_calls '. == [["compose","--env-file",".env","rm","--stop","--force","jellyfin"]]'
 run_case pass SELECTED_PROFILE=ai DRY_RUN=true
 assert_calls 'length == 0'

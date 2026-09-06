@@ -18,13 +18,13 @@ docker compose --env-file .env -f services/compose.yaml --profile ai logs -f
 docker compose --env-file .env -f services/compose.yaml --profile ai down
 ```
 
-Replace `ai` with `media` or `management` as needed. Append a service name to `logs` to inspect just that service.
+Replace `ai` with `home` or `management` as needed. Append a service name to `logs` to inspect just that service.
 
 ## GitHub deployment
 
-Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`, then check **AI**, **Media**, and/or **Management**. All checkboxes start unchecked; select at least one. Service membership comes directly from Compose. See [the profile inventory](services.md#workload-profiles).
+Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`, then check **AI**, **Home**, and/or **Management**. All checkboxes start unchecked; select at least one. Service membership comes directly from Compose. See [the profile inventory](services.md#workload-profiles).
 
-Profile names describe workloads. Runner routing is defined separately in `scripts/workflow.step.select-profiles.sh`: `ai` → `beelink`, `media` → `rpi5`, and `management` → `rpi4`. Each selected profile runs a job on its mapped host. Change that mapping to relocate a workload without renaming the Compose profile.
+Profile names describe workloads. Runner routing is defined separately in `scripts/workflow.step.select-profiles.sh`: `ai` → `beelink`, `home` → `rpi5`, and `management` → `rpi4`. Each selected profile runs a job on its mapped host. Change that mapping to relocate a workload without renaming the Compose profile.
 
 Assign distinct labels to your self-hosted runners: `beelink`, `rpi5`, and `rpi4`. The previous generic `rpi` label is no longer used for routing. Only give a machine its own host label; an offline or missing runner leaves its job queued. The selection/test job uses GitHub's `ubuntu-latest` runner. Deployments to each host are serialized, even if multiple profiles are mapped to it, and one machine failing does not cancel the other selected machines.
 
@@ -48,7 +48,7 @@ Real workflow installs remove selected services (including their dependencies) c
 
 Stop the existing services before copying data, preserving ownership and permissions:
 
-- Move `~/agentic/hermes`, `~/agentic/npm`, `~/agentic/lms`, `~/agentic/keycloak`, and `~/agentic/postgres` to their corresponding `~/<service-name>` directories.
+- Move `~/agentic/hermes`, `~/agentic/npm`, `~/agentic/keycloak`, and `~/agentic/postgres` to their corresponding `~/<service-name>` directories.
 - Move `~/tools/portainer` and `~/tools/pgadmin` to `~/portainer` and `~/pgadmin`.
 - Move `~/media/prowlarr`, `~/media/sonarr`, `~/media/radarr`, and `~/media/jellyfin` to their corresponding `~/<service-name>` directories.
 - Move `~/media/transmission` to `~/transmission/config`, `~/media/data` to `~/transmission/downloads`, and `~/media/watch` to `~/transmission/watch`.

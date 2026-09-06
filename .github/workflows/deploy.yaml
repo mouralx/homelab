@@ -10,11 +10,11 @@ on:
           - install
           - uninstall
       ai:
-        description: "AI — Hermes, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent"
+        description: "AI — Hermes, Postgres, Keycloak, pgAdmin, Portainer Agent"
         type: boolean
         default: false
-      media:
-        description: "Media — Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent"
+      home:
+        description: "Home — Home Assistant, Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent"
         type: boolean
         default: false
       management:

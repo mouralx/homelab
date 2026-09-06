@@ -33,23 +33,6 @@ services:
       - 443:443
       - 80:80
       - 81:81
-  lms:
-    profiles: [ai]
-    build:
-      context: ..
-      dockerfile: images/dockerfile.lms
-    container_name: lms
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "5", "http://localhost:4321/v1/models"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 10m
-    volumes:
-      - ~/lms:/root/.lmstudio
-    ports:
-      - 4321:4321
   keycloak:
     profiles: [ai]
     image: quay.io/keycloak/keycloak:26.7.1
@@ -100,7 +83,7 @@ services:
     volumes:
       - ~/postgres:/var/lib/postgresql/data
   portainer_agent:
-    profiles: [ai, media]
+    profiles: [ai, home]
     image: portainer/agent:2.39.6
     container_name: portainer_agent
     restart: always
@@ -110,7 +93,7 @@ services:
       - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
       - ~/portainer_agent:/data
   prowlarr:
-    profiles: [media]
+    profiles: [home]
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
@@ -119,7 +102,7 @@ services:
     ports:
       - 9696:9696
   sonarr:
-    profiles: [media]
+    profiles: [home]
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
@@ -134,7 +117,7 @@ services:
       transmission:
         condition: service_started
   radarr:
-    profiles: [media]
+    profiles: [home]
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
@@ -149,7 +132,7 @@ services:
       transmission:
         condition: service_started
   transmission:
-    profiles: [media]
+    profiles: [home]
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
     environment:
@@ -163,7 +146,7 @@ services:
       - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp"
       - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp"
   jellyfin:
-    profiles: [media]
+    profiles: [home]
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     volumes:
@@ -198,3 +181,16 @@ services:
     ports:
       - 4431:443
       - 8001:80
+  homeassistant:
+    profiles: [home]
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ~/homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    environment:
+      TZ: Europe/Lisbon

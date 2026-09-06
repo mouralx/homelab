@@ -4,24 +4,19 @@ All services are defined in [services/compose.yaml](../services/compose.yaml).
 
 ## Workload profiles
 
-- `ai`: `hermes`, `lms`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
-- `media`: `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
+- `ai`: `hermes`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
+- `home`: `homeassistant`, `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
 - `management`: `npm`, `portainer`.
 
 Portainer Agent runs on both Beelink and Pi 5; all other services belong to one profile. Dependencies stay on the same machine.
 
-## Agentic services
+## AI services
 
 ### `hermes`
 - Container: `nousresearch/hermes-agent:latest`
 - Purpose: AI gateway and agent access layer
 - Ports: `8642`, `9119`
 - Holographic memory is local to Hermes, under its existing `~/hermes` data mount; it does not require a Honcho service.
-
-### `lms`
-- Build: `images/dockerfile.lms`
-- Purpose: local model runtime
-- Exposed on port `4321`
 
 ### `keycloak`
 - Image: `quay.io/keycloak/keycloak:26.7.1`
@@ -32,11 +27,12 @@ Portainer Agent runs on both Beelink and Pi 5; all other services belong to one 
 - Image: `pgvector/pgvector:pg15`
 - Purpose: database for identity services; existing data is preserved
 
-### `npm`
-- Image: `jc21/nginx-proxy-manager:latest`
-- Purpose: reverse proxy and HTTPS termination
+## Home services
 
-## Media services
+### `homeassistant`
+- Image: `ghcr.io/home-assistant/home-assistant:stable`
+- Purpose: home automation and device management
+- Uses host networking for device discovery; exposed on host port `8123`
 
 ### `prowlarr`
 - Image: `lscr.io/linuxserver/prowlarr:latest`
@@ -63,7 +59,11 @@ Portainer Agent runs on both Beelink and Pi 5; all other services belong to one 
 - Purpose: media playback
 - Exposed on port `8096`
 
-## Monitoring and tools
+## Platform services
+
+### `npm`
+- Image: `jc21/nginx-proxy-manager:latest`
+- Purpose: reverse proxy and HTTPS termination
 
 ### `portainer_agent`
 

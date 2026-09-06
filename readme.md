@@ -1,41 +1,50 @@
-# Home Lab
+# 🏠 Home Lab
 
-One Docker Compose file groups the home lab's services into three workload profiles.
+A compact, self-hosted stack for AI, home automation, media, and everyday infrastructure. Everything lives in one Compose project and is split into three workload profiles so each machine only runs what it needs.
 
-## Layout
+## 🧭 What's inside
 
-- `services/compose.yaml`: all 13 services in the `lab` project, organized by workload profile
-- `images/`: Dockerfile for LM Studio
-- `scripts/`: entrypoints, environment generation, and Compose validation
-- `.github/workflows/deploy.yaml`: manual deployment to the selected host
-- `docs/`: architecture, service inventory, and operations
+- 🧩 [`services/compose.yaml`](services/compose.yaml) — the 13-service `lab` stack
+- 🛠️ [`scripts/`](scripts/) — deployment helpers and validation checks
+- 🚀 [`.github/workflows/deploy.yaml`](.github/workflows/deploy.yaml) — manual GitHub deployment
+- 📚 [`docs/`](docs/) — architecture, service inventory, and operations
 
-## Quick start
+## 🧰 Workload profiles
 
-To manage services through GitHub, run **Actions → Deploy Home Lab**. Choose `install` or `uninstall` and check one or more workload profiles. Each selected profile runs on its matching self-hosted runner. Enable `dry_run` to preview the selection. Uninstall preserves stored data and protects dependencies still used by installed services.
+- 🤖 **AI** — Hermes, Postgres, Keycloak, pgAdmin, and Portainer Agent on Beelink
+- 🏡 **Home** — Home Assistant, Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent on Pi 5
+- 🧭 **Management** — Nginx Proxy Manager and Portainer on Pi 4
 
-- `ai`: Hermes, LM Studio, Postgres, Keycloak, pgAdmin, Portainer Agent.
-- `media`: Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent.
-- `management`: Nginx Proxy Manager and Portainer.
+Each profile has its own runner and persistent host storage. Services on different machines communicate through LAN addresses and published ports.
 
-Create a local `.env` file with the required environment variables, then run:
+## 🚀 Quick start
+
+### GitHub Actions
+
+Run **Actions → Deploy Home Lab** and choose `install` or `uninstall`, then select one or more profiles. Use `dry_run` to preview the selection. Uninstall preserves stored data and protects dependencies still used by installed services.
+
+### Local Compose
+
+Create a local `.env` file with the required environment variables, then start a profile:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml --profile ai up -d --build
 ```
 
-Replace `ai` with `media` or `management` as needed. The workflow maps `ai` to Beelink, `media` to Pi 5, and `management` to Pi 4. Stop a profile with:
+Replace `ai` with `home` or `management` as needed. Stop a profile with:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml --profile ai down
 ```
 
-Services share a Compose network on each host; networks do not span machines. Persistent data lives under `~/<service-name>` on the host running each service. Shared media lives in `~/transmission/downloads` on Pi 5; Docker socket mounts retain their system paths.
+💡 Home Assistant uses host networking for device discovery. Other services share a Compose network on their host; networks do not span machines.
 
-For an existing installation, follow the migration instructions before starting the unified stack.
+💾 Persistent data lives under `~/<service-name>` on the host running each service. Shared media lives in `~/transmission/downloads` on Pi 5.
 
-## Documentation
+⚠️ For an existing installation, follow the [migration instructions](docs/operations.md#moving-from-a-single-host-to-three-machines) before starting the unified stack.
 
-- [Architecture](docs/architecture.md)
-- [Services](docs/services.md)
-- [Operations and migration](docs/operations.md)
+## 📖 Documentation
+
+- 🗺️ [Architecture](docs/architecture.md)
+- 📦 [Services](docs/services.md)
+- 🔧 [Operations and migration](docs/operations.md)
