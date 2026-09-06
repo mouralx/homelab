@@ -1,0 +1,22 @@
+# Managed separately from the existing lab stack to avoid restarting it.
+# docker compose -p media-addons -f services/compose.media-addons.yaml up -d
+services:
+  bazarr:
+    image: lscr.io/linuxserver/bazarr@sha256:a20fb11a440d704a9d61c283aa26462aad33dc63223b173f8d8c77d33e8e9d59
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      PUID: "911"
+      PGID: "911"
+      TZ: Europe/Lisbon
+    volumes:
+      - /home/moura/bazarr:/config
+      - /home/moura/transmission/downloads:/downloads
+    ports:
+      - "192.168.1.202:6767:6767"
+    networks:
+      - media
+networks:
+  media:
+    external: true
+    name: lab_default
