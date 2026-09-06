@@ -1,37 +1,32 @@
-# Live RPi5 cleanup deployment
+# RPi5 cleanup and replenishment deployment
 
-The approved cleanup policy is enabled in the separate Portainer **media-cleanup** stack (environment4). The container runs the controller, then sleeps900 seconds, repeating while running; `unless-stopped` makes it persistent across daemon restarts. Stop this stack to disable automatic deletion without affecting other services.
+Portainer **media-cleanup**, environment 4, runs retirement followed by automatic movie selection every 900 seconds, with `unless-stopped`. Stopping this stack disables both retirement and selection, but not already queued downloads.
 
-- Trigger: strictly below15% free; retain active hysteresis until at least25% free.
-- Oldest Radarr-added eligible movie first, including unwatched.
-- Protect all retained Transmission torrents, queued imports and multiply-linked files. Files retained by these protections can prevent the free-space target; never weaken protection automatically.
-- Unmonitor and read back before deleting only the movie file through Radarr. Keep the movie record unmonitored; no direct filesystem deletion by the controller.
-- Read-only media/source/config mounts; only persistent `/state` is writable. Run as911:911, capabilities dropped, no exposed ports. The Radarr API key is read privately from its read-only config.xml mount, not embedded in Compose.
-- Pin the verified block-device source and bind-root. If storage is migrated, verify the new filesystem before intentionally updating these pins. Do not copy this host-specific manifest blindly to another machine.
+## Deployment
 
-## Reproduce or update
+Stage both tested modules under `/home/moura/bazarr/media-cleanup/`: `controller.py` and `replenish.py`. The directory is mounted read-only at `/app`. Media and Radarr config are read-only; `/state` is writable. Run as UID/GID 911 with dropped capabilities. Credentials come from the mounted Radarr config, never Git or Compose.
 
-From a checked-out repository on RPi5, copy the controller to the dedicated host code directory:
+The live command is:
 
 ```sh
-install -Dm644 scripts/media-cleanup/controller.py "$HOME/bazarr/media-cleanup/controller.py"
-docker exec --user 911:911 bazarr python3 -c "from pathlib import Path; Path('/config/media-cleanup-state').mkdir(mode=0o700, exist_ok=True)"
-docker compose -p media-cleanup -f services/compose.media-cleanup.yaml config --quiet
+while true; do
+  python -B /app/controller.py --apply && python -B /app/replenish.py --apply
+  sleep 900
+done
 ```
 
-Do not host-chown to911 blindly: Docker here is rootless and container IDs map to subordinate host IDs. Never overwrite the existing persistent state to clear an active cleanup cycle.
+Use the existing Portainer stack, not a duplicate Compose project. Validate `services/compose.media-cleanup.yaml`, run both modules without `--apply` first on a new deployment, then verify deployed source hashes and live command. Rootless host UID mapping means host paths must not be blindly chowned to 911. Never clear persistent state to bypass an active cycle.
 
-Before enabling on a new deployment, use a temporary manifest with restart `no` and command `[python, -B, /app/controller.py]` (no `--apply`) and verify the dry-run output. Then apply the committed manifest. For the existing Portainer-managed stack, update it through Portainer rather than launching a differently named duplicate stack. Source updates must precede runner restarts; verify deployed source SHA256 against the tested file.
+Cleanup remains below 15% actual free -> at least 25%, oldest eligible first, including unwatched, preserving every retained torrent and multiply linked file. Unmonitor/readback precedes Radarr movie-file deletion; keep the movie record.
 
-## Observed verification
+Replenishment uses profile 7, root `/downloads/library/movies`, tag 1 (`auto-popular-recent`), an estimated 20 GiB per pending movie, one addition per six hours and at most two pending movies. Radarr release cap is 20480 MB, Transmission download queue size 1. See [media-automation.md](media-automation.md) for policy details and conservative limits.
 
--21 isolated tests passed from a different working directory, including HTTP fixtures and failure cases.
--Controller source copied to RPi5 and independently hash-verified against local tested source and GitHub blob.
--One-shot live dry-run exited0 with apply=false, active=false, no deletions.
--First scheduled enabled execution reported apply=true, active=false, no deletions.
--Read-only inventory from the runner using its mounted Radarr config succeeded:0 movies,0 torrents,0 queued items.
--Persistent state read-back was version1, active=false.
+## Verified progress and current blocker
 
-No real user media was deleted to test this. A real media download/import/playback round trip remains untested. Inspect container logs for active cycles, skipped IDs, no-progress stops or API failures; no external alert channel is configured.
+The combined suite passed 35 tests, Compose validated, and deployed replenisher SHA256 matched tested source: `2d6d52cfee15c373a380466957f250e0311c7c6470ea636ae508601f58252319`. Scheduled apply logs show cleanup no-op and replenisher cooldown.
 
-Radarr movie renaming is enabled with the existing title/year/quality format. The rest of the live movie/subtitle setup and outstanding provider-account requirement are documented in [media-automation.md](media-automation.md).
+The first automatic selection, The Whisper Man (TMDb 860508), completed downloading and imported into Radarr automatically: 3840x2160, H265, English EAC3 Atmos. No real movie deletion was forced for testing. Jellyfin display/playback and the full-disk retirement/refill cycle remain unverified. Subtitle-provider credentials are still absent.
+
+**A subsequent fresh-discovery check exposed an outbound Docker bridge network failure.** Internal APIs and DNS work; new TCP connections from both the lab and default Docker bridges to unrelated public addresses time out. The same addresses connect from a host-network probe. Thus the scheduler is enabled, but future discovery is blocked until bridge egress is restored. A successful cooldown run does not verify discovery.
+
+Temporary diagnostic containers/stacks were removed. A temporary Transmission upload cap did not fix connectivity and was restored. No Docker-daemon restart or network recreation has been performed; an interrupting repair needs approval. Inspect local container logs for API failures, protected/no-progress retirement and replenishment reasons; no external alert channel is configured.
