@@ -123,7 +123,7 @@ services:
     restart: unless-stopped
     volumes:
       - ~/radarr:/config
-      - ~/transmission/downloads:/downloads
+      - ~/transmission/downloads:/data
     ports:
       - 7878:7878
     depends_on:
