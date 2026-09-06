@@ -13,5 +13,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Run isolated stdlib tests
-        run: python3 -m unittest discover -s scripts/media-cleanup -v
+      - name: Require test suites and run isolated stdlib tests
+        run: |
+          test -f scripts/media-cleanup/test_controller.py
+          test -f scripts/media-cleanup/test_http.py
+          test -f scripts/media-cleanup/test_cli.py
+          python3 -m unittest discover -s scripts/media-cleanup -v
