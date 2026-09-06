@@ -96,11 +96,10 @@ services:
     profiles: [home]
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
+    network_mode: host
     restart: unless-stopped
     volumes:
       - ~/prowlarr:/config
-    ports:
-      - 9696:9696
   sonarr:
     profiles: [home]
     image: lscr.io/linuxserver/sonarr:latest
@@ -120,12 +119,11 @@ services:
     profiles: [home]
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
+    network_mode: host
     restart: unless-stopped
     volumes:
       - ~/radarr:/config
       - ~/transmission/downloads:/data
-    ports:
-      - 7878:7878
     depends_on:
       prowlarr:
         condition: service_started
@@ -135,16 +133,14 @@ services:
     profiles: [home]
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
+    network_mode: host
+    restart: unless-stopped
     environment:
       PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
     volumes:
       - ~/transmission/config:/config
       - ~/transmission/downloads:/downloads
       - ~/transmission/watch:/watch
-    ports:
-      - 9091:9091
-      - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp"
-      - "${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp"
   jellyfin:
     profiles: [home]
     image: lscr.io/linuxserver/jellyfin:latest
