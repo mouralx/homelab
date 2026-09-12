@@ -130,7 +130,7 @@ services:
       NODE_ENV: production
       WEBHOOK_URL: https://n8n.mouras.me/webhook
       GENERIC_TIMEZONE: Europe/Lisbon
-      TZ: ${GENERIC_TIMEZONE}
+      TZ: Europe/Lisbon
       N8N_RESTRICT_FILE_ACCESS_TO: /files
     volumes:
       - ~/n8n/data:/home/node/.n8n
