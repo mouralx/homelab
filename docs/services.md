@@ -4,13 +4,29 @@ All services are defined in [services/compose.yaml](../services/compose.yaml).
 
 ## Workload profiles
 
-- `ai`: `hermes`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
+- `ai`: `openclaw`, `hermes`, `postgres`, `keycloak`, `pgadmin`, `portainer_agent`.
 - `home`: `homeassistant`, `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
 - `management`: `npm`, `portainer`.
 
 Portainer Agent runs on both Beelink and Pi 5; all other services belong to one profile. Dependencies stay on the same machine.
 
 ## AI services
+
+### `openclaw`
+
+- Image: `ghcr.io/openclaw/openclaw:latest`
+- Purpose: AI agent gateway and Control UI
+- Port: `18789`
+- Persistent configuration and workspace: `~/openclaw`; auth-profile secrets: `~/openclaw/auth-profile-secrets`.
+- Optional `OPENCLAW_GATEWAY_TOKEN` overrides the token saved during onboarding. For GitHub deployments, store it as an environment secret.
+
+Before first startup, create both host directories and make them writable by the image's `node` user (UID/GID `1000:1000`; account for UID mapping when using rootless Docker). From the repository root, complete onboarding with your model provider credentials:
+
+```bash
+docker compose --env-file .env -f services/compose.yaml run --rm --no-deps --entrypoint node openclaw dist/index.js onboard --mode local --no-install-daemon
+```
+
+Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for the exact HTTPS origin used to access the dashboard through Nginx Proxy Manager. Then start the `ai` profile. See the [official Docker setup documentation](https://docs.openclaw.ai/install/docker) for pairing and configuration details.
 
 ### `hermes`
 - Container: `nousresearch/hermes-agent:latest`

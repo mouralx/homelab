@@ -1,5 +1,21 @@
 name: lab
 services:
+  openclaw:
+    profiles: [ai]
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw
+    restart: unless-stopped
+    init: true
+    command: [node, dist/index.js, gateway, --bind, lan, --port, "18789"]
+    ports:
+      - 18789:18789
+    volumes:
+      - ~/openclaw:/home/node/.openclaw
+      - ~/openclaw/auth-profile-secrets:/home/node/.config/openclaw
+    environment:
+      HOME: /home/node
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      TZ: ${TIME_ZONE:-Europe/Lisbon}
   hermes:
     profiles: [ai]
     image: nousresearch/hermes-agent:latest
