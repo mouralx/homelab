@@ -6,7 +6,7 @@ services:
     container_name: openclaw
     restart: unless-stopped
     init: true
-    command: [node, dist/index.js, gateway, --bind, lan, --port, "18789"]
+    command: [node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured]
     ports:
       - 18789:18789
     volumes:
