@@ -174,7 +174,7 @@ services:
     network_mode: host
     volumes:
       - ~/jellyfin:/config
-      - ~/transmission/downloads/completed:/data:ro
+      - ~/transmission/downloads/complete:/data:ro
   portainer:
     profiles: [management]
     image: portainer/portainer-ce:latest
