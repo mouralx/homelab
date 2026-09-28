@@ -4,14 +4,14 @@ A compact, self-hosted stack for AI, home automation, media, and everyday infras
 
 ## 🧭 What's inside
 
-- 🧩 [`services/compose.yaml`](services/compose.yaml) — the 13-service `lab` stack
+- 🧩 [`services/compose.yaml`](services/compose.yaml) — the `lab` stack
 - 🛠️ [`scripts/`](scripts/) — deployment helpers and validation checks
 - 🚀 [`.github/workflows/deploy.yaml`](.github/workflows/deploy.yaml) — manual GitHub deployment
 - 📚 [`docs/`](docs/) — architecture, service inventory, and operations
 
 ## 🧰 Workload profiles
 
-- 🤖 **AI** — Hermes, Postgres, Keycloak, pgAdmin, and Portainer Agent on Beelink
+- 🤖 **AI** — Hermes, Postgres, Keycloak, Kanbada, pgAdmin, and Portainer Agent on Beelink
 - 🏡 **Home** — Home Assistant, Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent on Pi 5
 - 🧭 **Management** — Nginx Proxy Manager and Portainer on Pi 4
 

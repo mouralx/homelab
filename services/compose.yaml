@@ -78,6 +78,58 @@ services:
         limits:
           memory: 2G
           cpus: 1.0
+  kanbada-api:
+    profiles: [ai]
+    image: ghcr.io/mouralx/kanbada-api:latest
+    container_name: kanbada-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      PortalOrigin: ${KANBADA_PORTAL_ORIGIN:-https://kanbada.mouras.me}
+      Jira__AllowedHosts: ${KANBADA_JIRA_ALLOWED_HOSTS:-}
+      Platform__AdminEmails: ${KANBADA_PLATFORM_ADMIN_EMAILS:-}
+      Authentication__Google__ClientId: ${KANBADA_GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${KANBADA_GOOGLE_CLIENT_SECRET:-}
+      Authentication__Microsoft__ClientId: ${KANBADA_MICROSOFT_CLIENT_ID:-}
+      Authentication__Microsoft__ClientSecret: ${KANBADA_MICROSOFT_CLIENT_SECRET:-}
+      ConnectionStrings__Postgres: Host=postgres;Database=${KANBADA_POSTGRES_DB:-kanbada};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    volumes:
+      - ~/kanbada/data-protection:/app/.data-protection
+    ports:
+      - ${KANBADA_API_PORT:-5180}:5180
+  kanbada-portal:
+    profiles: [ai]
+    image: ghcr.io/mouralx/kanbada-portal:latest
+    container_name: kanbada-portal
+    restart: unless-stopped
+    depends_on:
+      kanbada-api:
+        condition: service_started
+    environment:
+      API_PROXY_TARGET: http://kanbada-api:5180
+    ports:
+      - ${KANBADA_PORTAL_PORT:-4173}:4173
+  kanbada-worker:
+    profiles: [ai]
+    image: ghcr.io/mouralx/kanbada-worker:latest
+    container_name: kanbada-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kanbada-api:
+        condition: service_started
+    environment:
+      Jira__AllowedHosts: ${KANBADA_JIRA_ALLOWED_HOSTS:-}
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${KANBADA_POSTGRES_DB:-kanbada}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ~/kanbada/data-protection:/app/.data-protection
   postgres:
     profiles: [ai]
     container_name: postgres

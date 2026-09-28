@@ -12,13 +12,13 @@ All 13 services are defined in [services/compose.yaml](../services/compose.yaml)
 
 Services are assigned to three Compose profiles:
 
-- `ai` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, Postgres, Keycloak, pgAdmin, and Portainer Agent.
+- `ai` (Ryzen 9, 24 GB RAM, 500 GB SSD): Hermes, Postgres, Keycloak, pgAdmin, Kanbada, and Portainer Agent.
 - `home` (8 GB RAM, 1 TB SSD): Home Assistant, Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent.
 - `management` (4 GB RAM, 256 GB SD card): Nginx Proxy Manager and Portainer.
 
 Profiles describe workloads; the workflow separately maps `ai` to Beelink, `home` to Pi 5, and `management` to Pi 4. Every service has a profile, so an unqualified `compose up` does not start the whole lab. Portainer Agent belongs to `ai` and `home` and runs independently on their hosts. All declared dependencies stay within their dependent service's profile.
 
-Each host has its own project network. Home Assistant uses host networking for device discovery and is the exception to the project-network model. Keycloak uses local `postgres:5432`. Cross-host connections use stable LAN DNS names or reserved IPs and published ports. Nginx Proxy Manager on Pi 4 routes to services on Beelink and Pi 5. Configure Portainer with the two remote agent endpoints on port `9001`; its local Docker socket manages Pi 4. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
+Each host has its own project network. Home Assistant uses host networking for device discovery and is the exception to the project-network model. Keycloak and Kanbada use local `postgres:5432`; Kanbada uses its own database in the shared PostgreSQL instance. Cross-host connections use stable LAN DNS names or reserved IPs and published ports. Nginx Proxy Manager on Pi 4 routes to services on Beelink and Pi 5. Configure Portainer with the two remote agent endpoints on port `9001`; its local Docker socket manages Pi 4. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
 
 Postgres stays on the Beelink SSD. Restarting that machine interrupts identity and AI services. Home Assistant uses host networking on Pi 5 for device discovery. Jellyfin on Pi 5 is intended for Direct Play, including remote playback. These profiles distribute workloads without providing automatic failover.
 
