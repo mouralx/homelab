@@ -43,10 +43,10 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 ### Kanbada
 
 - `kanbada-api`, `kanbada-portal`, and `kanbada-worker` run on Beelink in the `ai` profile, using the published GHCR images.
-- The API and Jira worker use the existing `postgres` service on the private Compose network. Create the `kanbada` database once in that PostgreSQL instance before first deployment; `POSTGRES_USER` and `POSTGRES_PASSWORD` are shared with the existing stack. Override the database with `KANBADA_POSTGRES_DB` if needed.
+- The API and Jira worker use the existing `postgres` service on the private Compose network. On startup, the API creates the `kanbada` database if needed and applies pending EF migrations. `POSTGRES_USER` and `POSTGRES_PASSWORD` are shared with the existing stack; the PostgreSQL role must be allowed to create databases and tables. Override the database with `KANBADA_POSTGRES_DB` if needed.
 - The API is published on host port `5180` and the portal on `4173` by default. Set `KANBADA_API_PORT` and `KANBADA_PORTAL_PORT` to change them, and point Nginx Proxy Manager at the Beelink portal port.
 - Set `KANBADA_PORTAL_ORIGIN` to the public HTTPS origin. Optional `KANBADA_PLATFORM_ADMIN_EMAILS`, `KANBADA_JIRA_ALLOWED_HOSTS`, and Google/Microsoft OAuth variables configure the application. `~/kanbada/data-protection` persists API and Jira encryption keys.
-- Production migrations must be applied to the `kanbada` database with a migration role before starting a release that requires them. The application runs as Production and does not apply migrations automatically.
+- Startup migration is enabled for this homelab deployment so a fresh database is initialized and upgrades are applied automatically.
 
 ### `postgres`
 - Image: `pgvector/pgvector:pg15`
