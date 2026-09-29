@@ -88,6 +88,7 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      AllowedHosts: ${KANBADA_ALLOWED_HOSTS:-kanbada.mouras.me}
       Database__ApplyMigrationsOnStartup: "true"
       PortalOrigin: ${KANBADA_PORTAL_ORIGIN:-https://kanbada.mouras.me}
       Jira__AllowedHosts: ${KANBADA_JIRA_ALLOWED_HOSTS:-}
