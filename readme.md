@@ -24,7 +24,7 @@ docker compose --env-file .env -f services/compose.yaml up -d --remove-orphans
 docker compose --env-file .env -f services/compose.yaml down
 ```
 
-Home Assistant uses host networking for device discovery. Persistent data lives under `~/service-name` on the Beelink.
+Each service has a fixed container address on the `10.203.0.0/24` Docker network. Persistent data lives under `~/service-name` on the Beelink. Home Assistant uses bridge networking to keep a fixed address, which can limit automatic mDNS/broadcast discovery.
 
 For an existing multi-host installation, review the [migration instructions](docs/operations.md#moving-everything-to-the-beelink) before deployment.
 

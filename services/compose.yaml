@@ -1,6 +1,9 @@
 name: lab
 services:
   openclaw:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.10
     image: ghcr.io/openclaw/openclaw:latest
     container_name: openclaw
     restart: unless-stopped
@@ -16,6 +19,9 @@ services:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       TZ: ${TIME_ZONE:-Europe/Lisbon}
   hermes:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.11
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -34,6 +40,9 @@ services:
       OPENCODE_GO_API_KEY: ${OPENCODE_API_KEY}
       OPENCODE_ZEN_API_KEY: ${OPENCODE_API_KEY}
   npm:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.12
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
@@ -47,6 +56,9 @@ services:
       - 8088:80
       - 8181:81
   keycloak:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.13
     image: quay.io/keycloak/keycloak:26.7.1
     container_name: keycloak
     command: start-dev
@@ -75,6 +87,9 @@ services:
           memory: 2G
           cpus: 1.0
   kanbada-api:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.14
     image: ghcr.io/mouralx/kanbada-api:latest
     container_name: kanbada-api
     restart: unless-stopped
@@ -98,6 +113,9 @@ services:
     ports:
       - ${KANBADA_API_PORT:-5180}:5180
   kanbada-portal:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.15
     image: ghcr.io/mouralx/kanbada-portal:latest
     container_name: kanbada-portal
     restart: unless-stopped
@@ -109,6 +127,9 @@ services:
     ports:
       - ${KANBADA_PORTAL_PORT:-4173}:4173
   kanbada-worker:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.16
     image: ghcr.io/mouralx/kanbada-worker:latest
     container_name: kanbada-worker
     restart: unless-stopped
@@ -126,6 +147,9 @@ services:
     volumes:
       - ~/kanbada/data-protection:/app/.data-protection
   postgres:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.17
     container_name: postgres
     restart: unless-stopped
     image: pgvector/pgvector:pg15
@@ -151,14 +175,20 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
-    network_mode: host
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.18
     restart: unless-stopped
     volumes:
       - ~/prowlarr:/config
+    ports:
+      - 9696:9696
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
-    network_mode: host
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.19
     restart: unless-stopped
     volumes:
       - ~/radarr:/config
@@ -168,7 +198,12 @@ services:
         condition: service_started
       transmission:
         condition: service_started
+    ports:
+      - 7878:7878
   n8n:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.20
     image: n8nio/n8n:latest
     container_name: n8n
     restart: unless-stopped
@@ -189,7 +224,9 @@ services:
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
-    network_mode: host
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.21
     restart: unless-stopped
     environment:
       PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
@@ -197,16 +234,26 @@ services:
       - ~/transmission/config:/config
       - ~/transmission/downloads:/downloads
       - ~/transmission/watch:/watch
+    ports:
+      - 9091:9091
+      - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp
+      - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
-    # Use host networking to avoid Docker bridge egress issues for metadata providers.
-    # Host networking binds Jellyfin's ports directly; do not add ports here.
-    network_mode: host
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.22
     volumes:
       - ~/jellyfin:/config
       - ~/transmission/downloads/complete:/data:rw
+    ports:
+      - 8096:8096
+      - 7359:7359/udp
   portainer:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.23
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
@@ -219,6 +266,9 @@ services:
       - 9000:9000
       - 9443:9443
   pgadmin:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.24
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
@@ -233,12 +283,23 @@ services:
   homeassistant:
     container_name: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:stable"
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.25
     volumes:
       - ~/homeassistant/config:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
-    network_mode: host
     privileged: true
     environment:
       TZ: Europe/Lisbon
+    ports:
+      - 8123:8123
+networks:
+  lab_net:
+    name: homelab_static
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.203.0.0/24

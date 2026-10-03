@@ -8,7 +8,9 @@ The stack includes AI services (OpenClaw, Hermes, and Kanbada), shared infrastru
 
 All services run together on the Beelink. The Compose file has no workload profiles, so an unqualified `compose up` starts the full stack. Portainer manages the local Docker host through its mounted socket; no Portainer Agent is needed.
 
-Services share the Beelink's Compose network. Home Assistant uses host networking for device discovery. Keycloak and Kanbada use local `postgres:5432`; Kanbada uses its own database in the shared PostgreSQL instance. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
+Services share the user-defined Docker bridge network `homelab_static` (`10.203.0.0/24`). Every service has a reserved address, listed in [services.md](services.md#fixed-container-addresses). Check that this subnet does not overlap Beelink's LAN, VPN, or another Docker network before deployment. Keycloak and Kanbada use local `postgres:5432`; Kanbada uses its own database in the shared PostgreSQL instance. Hermes uses Keycloak's externally reachable HTTPS issuer URL.
+
+All services, including Home Assistant, use bridge networking so each can have a fixed container address. Home Assistant's mDNS and other broadcast-based device discovery may not cross the Docker bridge; use the Home Assistant UI to add integrations manually or configure a discovery relay if automatic discovery is needed. The former host-networked media and download services now publish their application ports explicitly.
 
 Persistent service data stays on Beelink under each service's home directory. Restarting the Beelink interrupts the full stack; there is no automatic failover.
 

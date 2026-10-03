@@ -4,6 +4,31 @@ All services are defined in [services/compose.yaml](../services/compose.yaml).
 
 All services run together on Beelink in the `lab` Compose project.
 
+## Fixed container addresses
+
+The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service calls can use these addresses or the Compose service names:
+
+| Service | Container IP |
+| --- | --- |
+| `openclaw` | `10.203.0.10` |
+| `hermes` | `10.203.0.11` |
+| `npm` | `10.203.0.12` |
+| `keycloak` | `10.203.0.13` |
+| `kanbada-api` | `10.203.0.14` |
+| `kanbada-portal` | `10.203.0.15` |
+| `kanbada-worker` | `10.203.0.16` |
+| `postgres` | `10.203.0.17` |
+| `prowlarr` | `10.203.0.18` |
+| `radarr` | `10.203.0.19` |
+| `n8n` | `10.203.0.20` |
+| `transmission` | `10.203.0.21` |
+| `jellyfin` | `10.203.0.22` |
+| `portainer` | `10.203.0.23` |
+| `pgadmin` | `10.203.0.24` |
+| `homeassistant` | `10.203.0.25` |
+
+Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
+
 ## AI services
 
 ### `openclaw`
@@ -52,7 +77,7 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 ### `homeassistant`
 - Image: `ghcr.io/home-assistant/home-assistant:stable`
 - Purpose: home automation and device management
-- Uses host networking for device discovery; exposed on host port `8123`
+- Uses bridge networking with fixed container address `10.203.0.25`, exposed on host port `8123`. Automatic mDNS/broadcast discovery may be limited; add integrations manually or configure a discovery relay.
 
 ### `prowlarr`
 - Image: `lscr.io/linuxserver/prowlarr:latest`
