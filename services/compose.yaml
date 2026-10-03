@@ -43,9 +43,9 @@ services:
       - ~/npm/data:/data
       - ~/npm/certs:/etc/letsencrypt
     ports:
-      - 443:443
-      - 80:80
-      - 81:81
+      - 8448:443
+      - 8088:80
+      - 8181:81
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.1
     container_name: keycloak

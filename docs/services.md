@@ -84,6 +84,7 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 ### `npm`
 - Image: `jc21/nginx-proxy-manager:latest`
 - Purpose: reverse proxy and HTTPS termination
+- Host ports: `8088` (HTTP), `8448` (HTTPS), and `8181` (admin UI, container port `81`). Open the admin UI at `http://<beelink-lan-address>:8181`.
 
 ### `portainer`
 
@@ -95,4 +96,4 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 - Image: `dpage/pgadmin4:latest`
 - Published ports: `4431/tcp` to container `443`, `8001/tcp` to container `80`
 
-Postgres publishes `5432/tcp`; Nginx Proxy Manager publishes `80/tcp`, `81/tcp`, and `443/tcp`. Jellyfin also publishes discovery on `7359/udp`. Transmission's TCP/UDP peer port follows `TRANSMISSION_PEER_PORT` (default `51413`).
+Postgres publishes `5432/tcp`; Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp` (container `81`), and `8448/tcp` (container `443`). Jellyfin also publishes discovery on `7359/udp`. Transmission's TCP/UDP peer port follows `TRANSMISSION_PEER_PORT` (default `51413`).

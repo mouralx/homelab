@@ -38,7 +38,7 @@ Local regression checks are available with `bash scripts/test-validate-compose.s
 
 The workflow changes containers only on Beelink. Before deploying the full stack, back up and copy each service's data from its old host to the corresponding directory under the Beelink home directory, preserving ownership. Stop and remove old containers on other hosts explicitly after verifying the migration; the workflow cannot reach or clean them up.
 
-Keep downloads and media directories together when copying. Update Nginx Proxy Manager routes to Beelink's LAN DNS/IP and published ports. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. The selected GitHub environment supplies runtime configuration; ensure values such as socket user IDs match Beelink.
+Keep downloads and media directories together when copying. Update Nginx Proxy Manager routes to Beelink's LAN DNS/IP and published ports. Because rootless Docker cannot bind privileged host ports, configure router port forwarding from external TCP `80` to Beelink TCP `8088` and external TCP `443` to Beelink TCP `8448`. Access the Nginx Proxy Manager admin UI on Beelink port `8181`. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. The selected GitHub environment supplies runtime configuration; ensure values such as socket user IDs match Beelink.
 
 ## Migration from the four previous projects
 
