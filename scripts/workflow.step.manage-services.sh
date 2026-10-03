@@ -8,21 +8,10 @@ for flag in DRY_RUN UPDATE_IMAGES BRING_DOWN_FIRST; do
   case "${!flag:-false}" in true|false) ;; *) echo "Invalid boolean: $flag" >&2; exit 1 ;; esac
 done
 
-# Inspect all profiles so uninstall protection sees installed dependents
-# outside the selection, including services from older deployments.
-config=$(COMPOSE_PROFILES='*' docker compose --env-file .env config --format json)
+config=$(docker compose --env-file .env config --format json)
 printf '%s\n' "$config" | bash scripts/validate-compose.sh
 project=$(jq -er '.name' <<< "$config")
-if [[ -n ${SELECTED_PROFILE:-} ]]; then
-  SELECTED_SERVICES=$(jq -er --arg profile "$SELECTED_PROFILE" '
-    [.services | to_entries[] | select((.value.profiles // []) | index($profile)) | .key]
-    | if length == 0 then error("Unknown or empty profile: " + $profile)
-      else join(" ") end' <<< "$config")
-  export COMPOSE_PROFILES=$SELECTED_PROFILE
-else
-  # Explicit service selection remains available for local maintenance.
-  export COMPOSE_PROFILES='*'
-fi
+SELECTED_SERVICES=${SELECTED_SERVICES:-all}
 
 # Include stopped containers and legacy projects when protecting dependencies.
 inventory=''
@@ -58,14 +47,6 @@ plan=$(jq -er --arg selection "${SELECTED_SERVICES:-}" --arg action "$action" \
   | .[]' <<< "$config")
 targets=()
 while IFS= read -r service; do targets+=("$service"); done <<< "$plan"
-if [[ -n ${SELECTED_PROFILE:-} ]]; then
-  jq -e --arg profile "$SELECTED_PROFILE" --arg plan "$plan" '
-    .services as $services
-    | [$plan | split("\n")[] | select(($services[.].profiles // [] | index($profile)) == null)] as $outside
-    | if ($outside | length) > 0 then
-        error("Dependencies must belong to profile " + $profile + ": " + ($outside | join(", ")))
-      else true end' <<< "$config" >/dev/null
-fi
 if [[ $action == install ]]; then
   # Moving a shared dependency to lab also changes its Compose network.
   # Require legacy dependents to move together rather than stranding them.
@@ -84,7 +65,7 @@ if [[ $action == install ]]; then
         error("Also select these legacy dependents to migrate together: " + ($blockers | join(", ")))
       else true end' <<< "$config" >/dev/null
 fi
-summary="$action (${SELECTED_PROFILE:-explicit services}): ${targets[*]} (dry run: ${DRY_RUN:-false})"
+summary="$action (full stack): ${targets[*]} (dry run: ${DRY_RUN:-false})"
 printf '%s\n' "$summary"
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"

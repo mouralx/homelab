@@ -2,13 +2,7 @@
 
 All services are defined in [services/compose.yaml](../services/compose.yaml).
 
-## Workload profiles
-
-- `ai`: `openclaw`, `hermes`, `postgres`, `keycloak`, `pgadmin`, `kanbada-api`, `kanbada-portal`, `kanbada-worker`, `portainer_agent`.
-- `home`: `homeassistant`, `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `transmission`, `portainer_agent`.
-- `management`: `npm`, `portainer`.
-
-Portainer Agent runs on both Beelink and Pi 5; all other services belong to one profile. Dependencies stay on the same machine.
+All services run together on Beelink in the `lab` Compose project.
 
 ## AI services
 
@@ -27,7 +21,7 @@ Before first startup, create both host directories and make them writable by the
 docker compose --env-file .env -f services/compose.yaml run --rm --no-deps --entrypoint node openclaw dist/index.js onboard --mode local --no-install-daemon
 ```
 
-Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for the exact HTTPS origin used to access the dashboard through Nginx Proxy Manager. Then start the `ai` profile. See the [official Docker setup documentation](https://docs.openclaw.ai/install/docker) for pairing and configuration details.
+Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for the exact HTTPS origin used to access the dashboard through Nginx Proxy Manager. Then start the stack. See the [official Docker setup documentation](https://docs.openclaw.ai/install/docker) for pairing and configuration details.
 
 ### `hermes`
 - Container: `nousresearch/hermes-agent:latest`
@@ -42,7 +36,7 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 ### Kanbada
 
-- `kanbada-api`, `kanbada-portal`, and `kanbada-worker` run on Beelink in the `ai` profile, using the published GHCR images.
+- `kanbada-api`, `kanbada-portal`, and `kanbada-worker` run on Beelink, using the published GHCR images.
 - The API and Jira worker use the existing `postgres` service on the private Compose network. On startup, the API creates the `kanbada` database if needed and applies pending EF migrations. `POSTGRES_USER` and `POSTGRES_PASSWORD` are shared with the existing stack; the PostgreSQL role must be allowed to create databases and tables. Override the database with `KANBADA_POSTGRES_DB` if needed.
 - The API is published on host port `5180` and the portal on `4173` by default. Set `KANBADA_API_PORT` and `KANBADA_PORTAL_PORT` to change them, and point Nginx Proxy Manager at the Beelink portal port.
 - ASP.NET host filtering allows `kanbada.mouras.me` by default. Set `KANBADA_ALLOWED_HOSTS` to a semicolon-separated host list if the public hostname changes or additional hostnames are used.

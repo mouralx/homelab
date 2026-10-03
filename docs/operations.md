@@ -5,8 +5,8 @@
 Run from the repository root with a configured `.env`:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml --profile '*' config --format json | bash scripts/validate-compose.sh
-docker compose --env-file .env -f services/compose.yaml --profile ai up -d --build
+docker compose --env-file .env -f services/compose.yaml config --format json | bash scripts/validate-compose.sh
+docker compose --env-file .env -f services/compose.yaml up -d --build
 ```
 
 The validator rejects duplicate container names and overlapping published ports, including overrides of `TRANSMISSION_PEER_PORT`. TCP and UDP may use the same number. It checks the Compose configuration; other processes on the target host can still occupy a published port.
@@ -14,33 +14,31 @@ The validator rejects duplicate container names and overlapping published ports,
 ## Logs and shutdown
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml --profile ai logs -f
-docker compose --env-file .env -f services/compose.yaml --profile ai down
+docker compose --env-file .env -f services/compose.yaml logs -f
+docker compose --env-file .env -f services/compose.yaml down
 ```
 
-Replace `ai` with `home` or `management` as needed. Append a service name to `logs` to inspect just that service.
+Append a service name to `logs` to inspect just that service.
 
 ## GitHub deployment
 
-Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`, then check **AI**, **Home**, and/or **Management**. All checkboxes start unchecked; select at least one. Service membership comes directly from Compose. See [the profile inventory](services.md#workload-profiles).
+Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`. The workflow manages the full Compose stack on Beelink.
 
-Profile names describe workloads. Runner routing is defined separately in `scripts/workflow.step.select-profiles.sh`: `ai` → `beelink`, `home` → `rpi5`, and `management` → `rpi4`. Each selected profile runs a job on its mapped host. Change that mapping to relocate a workload without renaming the Compose profile.
+The Beelink self-hosted runner must have the `self-hosted` and `beelink` labels and needs Docker Compose v2, Bash, and jq. The workflow has no GitHub-hosted runner or routing to other hosts. If Beelink is offline, the deployment remains queued.
 
-Assign distinct labels to your self-hosted runners: `beelink`, `rpi5`, and `rpi4`. The previous generic `rpi` label is no longer used for routing. Only give a machine its own host label; an offline or missing runner leaves its job queued. The selection/test job uses GitHub's `ubuntu-latest` runner. Deployments to each host are serialized, even if multiple profiles are mapped to it, and one machine failing does not cancel the other selected machines.
+Install manages all services and respects Compose startup and healthcheck conditions. Image updates, builds, and optional shutdown apply to the full stack.
 
-Install automatically includes all transitive `depends_on` dependencies from Compose and respects their startup/healthcheck conditions. For example, `keycloak` includes `postgres`. Image updates, builds, and optional shutdown apply to the selection including dependencies. Shared dependencies may therefore restart during an update.
-
-Uninstall stops and removes all containers in the selected profile, including that profile's dependencies, preserving stored data, images, and volumes. Removal is blocked if another installed service outside the profile still needs one of those dependencies, including stopped containers and services in legacy projects. Services outside the profile are left installed. Each workflow run is an action, not a saved desired-state list.
+Uninstall stops and removes all stack containers, preserving stored data, images, and volumes. Each workflow run is an action, not a saved desired-state list.
 
 A dry run generates the environment file, validates configuration and dependency safety, and displays the resolved selection in the job summary without changing containers. Real installs pull images when requested and build before removing selected legacy containers. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
 
-The runner needs Docker Compose v2, Bash, and jq. Local regression checks run with `bash scripts/test-select-profiles.sh`, `bash scripts/test-validate-compose.sh`, and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
+Local regression checks are available with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
 
-## Moving from a single host to three machines
+## Moving everything to the Beelink
 
-Profiles do not transfer data or remove services from their old hosts. Stop a service on its old host, back up and copy its data to the corresponding directory on the new host with ownership preserved, then install its new workload profile. Remove obsolete containers from the old host explicitly after verifying the migration; starting a profile does not remove other installed services.
+The workflow only changes containers on Beelink. Before deploying the full stack, back up and copy each service's data from the old host to the corresponding directory under the Beelink home directory, preserving ownership. Stop and remove old containers on other hosts explicitly after verifying the migration.
 
-Keep Postgres and Keycloak on Beelink. Keep downloads and media directories together on Pi 5. Update Nginx Proxy Manager routes to the destination host's LAN DNS/IP and published port. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. Add the Beelink and Pi 5 agent endpoints to Portainer on Pi 4. Use 64-bit Linux on both Pis and verify ARM64 image support before deployment. The selected GitHub environment supplies runtime configuration; make sure host-specific values such as socket user IDs match your runners.
+Keep downloads and media directories together when copying. Update Nginx Proxy Manager routes to Beelink's LAN DNS/IP and published ports. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. The selected GitHub environment supplies runtime configuration; ensure values such as socket user IDs match Beelink.
 
 ## Migration from the four previous projects
 
@@ -56,7 +54,7 @@ Stop the existing services before copying data, preserving ownership and permiss
 
 Keep a backup until the new stack is verified. Container mount targets remain unchanged, including the shared `/downloads` path and Jellyfin's `/data` path.
 
-For manual migration, stop and remove the containers belonging to those four previous projects before running the new profiles. Do not delete their volumes. Their old networks can remain unused. Nginx Proxy Manager routes across hosts must use host LAN DNS/IP addresses and published ports, rather than container IPs or Docker service names.
+For manual migration, stop and remove the containers belonging to those four previous projects before starting the full stack. Do not delete their volumes. Their old networks can remain unused.
 
 ## Transmission peer port
 

@@ -1,7 +1,6 @@
 name: lab
 services:
   openclaw:
-    profiles: [ai]
     image: ghcr.io/openclaw/openclaw:latest
     container_name: openclaw
     restart: unless-stopped
@@ -17,7 +16,6 @@ services:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       TZ: ${TIME_ZONE:-Europe/Lisbon}
   hermes:
-    profiles: [ai]
     image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
@@ -36,7 +34,6 @@ services:
       OPENCODE_GO_API_KEY: ${OPENCODE_API_KEY}
       OPENCODE_ZEN_API_KEY: ${OPENCODE_API_KEY}
   npm:
-    profiles: [management]
     container_name: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
@@ -50,7 +47,6 @@ services:
       - 80:80
       - 81:81
   keycloak:
-    profiles: [ai]
     image: quay.io/keycloak/keycloak:26.7.1
     container_name: keycloak
     command: start-dev
@@ -79,7 +75,6 @@ services:
           memory: 2G
           cpus: 1.0
   kanbada-api:
-    profiles: [ai]
     image: ghcr.io/mouralx/kanbada-api:latest
     container_name: kanbada-api
     restart: unless-stopped
@@ -103,7 +98,6 @@ services:
     ports:
       - ${KANBADA_API_PORT:-5180}:5180
   kanbada-portal:
-    profiles: [ai]
     image: ghcr.io/mouralx/kanbada-portal:latest
     container_name: kanbada-portal
     restart: unless-stopped
@@ -115,7 +109,6 @@ services:
     ports:
       - ${KANBADA_PORTAL_PORT:-4173}:4173
   kanbada-worker:
-    profiles: [ai]
     image: ghcr.io/mouralx/kanbada-worker:latest
     container_name: kanbada-worker
     restart: unless-stopped
@@ -133,7 +126,6 @@ services:
     volumes:
       - ~/kanbada/data-protection:/app/.data-protection
   postgres:
-    profiles: [ai]
     container_name: postgres
     restart: unless-stopped
     image: pgvector/pgvector:pg15
@@ -157,7 +149,6 @@ services:
     volumes:
       - ~/postgres:/var/lib/postgresql/data
   portainer_agent:
-    profiles: [ai, home]
     image: portainer/agent:2.39.6
     container_name: portainer_agent
     restart: always
@@ -167,7 +158,6 @@ services:
       - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
       - ~/portainer_agent:/data
   prowlarr:
-    profiles: [home]
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     network_mode: host
@@ -175,7 +165,6 @@ services:
     volumes:
       - ~/prowlarr:/config
   radarr:
-    profiles: [home]
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     network_mode: host
@@ -189,7 +178,6 @@ services:
       transmission:
         condition: service_started
   n8n:
-    profiles: [ai]
     image: n8nio/n8n:latest
     container_name: n8n
     restart: unless-stopped
@@ -208,7 +196,6 @@ services:
     ports:
       - 5678:5678
   transmission:
-    profiles: [home]
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
     network_mode: host
@@ -220,17 +207,15 @@ services:
       - ~/transmission/downloads:/downloads
       - ~/transmission/watch:/watch
   jellyfin:
-    profiles: [home]
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
-    # Bypass the rpi5 Docker bridge egress fault for metadata providers.
+    # Use host networking to avoid Docker bridge egress issues for metadata providers.
     # Host networking binds Jellyfin's ports directly; do not add ports here.
     network_mode: host
     volumes:
       - ~/jellyfin:/config
       - ~/transmission/downloads/complete:/data:rw
   portainer:
-    profiles: [management]
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
@@ -243,7 +228,6 @@ services:
       - 9000:9000
       - 9443:9443
   pgadmin:
-    profiles: [ai]
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     container_name: pgadmin
@@ -256,7 +240,6 @@ services:
       - 4431:443
       - 8001:80
   homeassistant:
-    profiles: [home]
     container_name: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:stable"
     volumes:

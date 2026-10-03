@@ -1,50 +1,35 @@
 # 🏠 Home Lab
 
-A compact, self-hosted stack for AI, home automation, media, and everyday infrastructure. Everything lives in one Compose project and is split into three workload profiles so each machine only runs what it needs.
+A compact, self-hosted stack for AI, home automation, media, and everyday infrastructure. All services run together in the `lab` Compose project on the Beelink.
 
-## 🧭 What's inside
+## What's inside
 
-- 🧩 [`services/compose.yaml`](services/compose.yaml) — the `lab` stack
-- 🛠️ [`scripts/`](scripts/) — deployment helpers and validation checks
-- 🚀 [`.github/workflows/deploy.yaml`](.github/workflows/deploy.yaml) — manual GitHub deployment
-- 📚 [`docs/`](docs/) — architecture, service inventory, and operations
+- [`services/compose.yaml`](services/compose.yaml) — the full stack
+- [`scripts/`](scripts/) — deployment helpers and validation checks
+- [`.github/workflows/deploy.yaml`](.github/workflows/deploy.yaml) — manual GitHub deployment to the Beelink runner
+- [`docs/`](docs/) — architecture, service inventory, and operations
 
-## 🧰 Workload profiles
-
-- 🤖 **AI** — Hermes, Postgres, Keycloak, Kanbada, pgAdmin, and Portainer Agent on Beelink
-- 🏡 **Home** — Home Assistant, Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, and Portainer Agent on Pi 5
-- 🧭 **Management** — Nginx Proxy Manager and Portainer on Pi 4
-
-Each profile has its own runner and persistent host storage. Services on different machines communicate through LAN addresses and published ports.
-
-## 🚀 Quick start
+## Quick start
 
 ### GitHub Actions
 
-Run **Actions → Deploy Home Lab** and choose `install` or `uninstall`, then select one or more profiles. Use `dry_run` to preview the selection. Uninstall preserves stored data and protects dependencies still used by installed services.
+Run **Actions → Deploy Home Lab** and choose `install` or `uninstall`. Use `dry_run` to validate the full stack without changing running services. The workflow runs on the self-hosted runner labeled `beelink`.
 
 ### Local Compose
 
-Create a local `.env` file with the required environment variables, then start a profile:
+Create a `.env` file with the required environment variables, then start or stop the full stack:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml --profile ai up -d --build
+docker compose --env-file .env -f services/compose.yaml up -d
+docker compose --env-file .env -f services/compose.yaml down
 ```
 
-Replace `ai` with `home` or `management` as needed. Stop a profile with:
+Home Assistant uses host networking for device discovery. Persistent data lives under `~/service-name` on the Beelink.
 
-```bash
-docker compose --env-file .env -f services/compose.yaml --profile ai down
-```
+For an existing multi-host installation, review the [migration instructions](docs/operations.md#moving-everything-to-the-beelink) before deployment.
 
-💡 Home Assistant uses host networking for device discovery. Other services share a Compose network on their host; networks do not span machines.
+## Documentation
 
-💾 Persistent data lives under `~/<service-name>` on the host running each service. Shared media lives in `~/transmission/downloads` on Pi 5.
-
-⚠️ For an existing installation, follow the [migration instructions](docs/operations.md#moving-from-a-single-host-to-three-machines) before starting the unified stack.
-
-## 📖 Documentation
-
-- 🗺️ [Architecture](docs/architecture.md)
-- 📦 [Services](docs/services.md)
-- 🔧 [Operations and migration](docs/operations.md)
+- [Architecture](docs/architecture.md)
+- [Services](docs/services.md)
+- [Operations and migration](docs/operations.md)

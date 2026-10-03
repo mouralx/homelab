@@ -3,24 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "Install/update or uninstall selected profiles"
+        description: "Install/update or uninstall the full stack"
         required: true
         type: choice
         options:
           - install
           - uninstall
-      ai:
-        description: "AI — Hermes, Postgres, Keycloak, pgAdmin, Portainer Agent"
-        type: boolean
-        default: false
-      home:
-        description: "Home — Home Assistant, Jellyfin, Sonarr, Radarr, Prowlarr, Transmission, Portainer Agent"
-        type: boolean
-        default: false
-      management:
-        description: "Management — Nginx Proxy Manager and Portainer"
-        type: boolean
-        default: false
       dry_run:
         required: true
         description: "Validate only, without changing running services"
@@ -34,7 +22,7 @@ on:
           - mouras-home-lab
         default: mouras-home-lab
       bring_down_first:
-        description: "Stop each selected profile before installing"
+        description: "Stop services before installing"
         required: true
         type: boolean
         default: false
@@ -46,34 +34,11 @@ on:
 permissions:
   contents: read
 jobs:
-  select:
-    name: Select profiles
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.profiles.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Resolve profile checkboxes
-        id: profiles
-        env:
-          WORKFLOW_INPUTS: ${{ toJson(inputs) }}
-        run: |
-          matrix=$(bash scripts/workflow.step.select-profiles.sh)
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
-      - name: Test workflow scripts
-        run: |
-          bash scripts/test-select-profiles.sh
-          bash scripts/test-manage-services.sh
-          bash scripts/test-validate-compose.sh
   deploy:
-    name: ${{ inputs.action }} ${{ matrix.profile }} on ${{ matrix.host }}
-    needs: select
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.select.outputs.matrix) }}
-    runs-on: [self-hosted, "${{ matrix.host }}"]
+    name: ${{ inputs.action }} full stack on Beelink
+    runs-on: [self-hosted, beelink]
     concurrency:
-      group: home-lab-${{ matrix.host }}
+      group: home-lab-beelink
       cancel-in-progress: false
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
     defaults:
@@ -81,7 +46,7 @@ jobs:
         shell: bash
     env:
       COMPOSE_FILE: services/compose.yaml
-      SELECTED_PROFILE: ${{ matrix.profile }}
+      SELECTED_SERVICES: all
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -90,7 +55,7 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
-      - name: Manage profile services and dependencies
+      - name: Manage all services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}
           DRY_RUN: ${{ inputs.dry_run }}
