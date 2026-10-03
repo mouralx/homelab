@@ -80,6 +80,12 @@ if [[ $action == install ]]; then
 fi
 
 # Migrate/remove only selected legacy services; leave their data in place.
+retired_agent_ids=$(docker ps -aq \
+  --filter 'label=com.docker.compose.project=agents' \
+  --filter 'label=com.docker.compose.service=portainer_agent')
+while IFS= read -r id; do
+  if [[ -n "$id" ]]; then docker rm -f "$id"; fi
+done <<< "$retired_agent_ids"
 for owner in agentic agents media tools; do
   for service in "${targets[@]}"; do
     ids=$(docker ps -aq --filter "label=com.docker.compose.project=$owner" \
@@ -96,5 +102,5 @@ else
   if [[ ${BRING_DOWN_FIRST:-false} == true ]]; then
     docker compose --env-file .env stop "${targets[@]}"
   fi
-  docker compose --env-file .env up -d "${targets[@]}"
+  docker compose --env-file .env up -d --remove-orphans "${targets[@]}"
 fi

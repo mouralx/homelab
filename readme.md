@@ -20,7 +20,7 @@ Run **Actions → Deploy Home Lab** and choose `install` or `uninstall`. Use `dr
 Create a `.env` file with the required environment variables, then start or stop the full stack:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml up -d
+docker compose --env-file .env -f services/compose.yaml up -d --remove-orphans
 docker compose --env-file .env -f services/compose.yaml down
 ```
 

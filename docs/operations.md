@@ -6,7 +6,7 @@ Run from the repository root with a configured `.env`:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml config --format json | bash scripts/validate-compose.sh
-docker compose --env-file .env -f services/compose.yaml up -d --build
+docker compose --env-file .env -f services/compose.yaml up -d --build --remove-orphans
 ```
 
 The validator rejects duplicate container names and overlapping published ports, including overrides of `TRANSMISSION_PEER_PORT`. TCP and UDP may use the same number. It checks the Compose configuration; other processes on the target host can still occupy a published port.
@@ -30,19 +30,19 @@ Install manages all services and respects Compose startup and healthcheck condit
 
 Uninstall stops and removes all stack containers, preserving stored data, images, and volumes. Each workflow run is an action, not a saved desired-state list.
 
-A dry run generates the environment file, validates configuration and dependency safety, and displays the resolved selection in the job summary without changing containers. Real installs pull images when requested and build before removing selected legacy containers. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
+A dry run generates the environment file, validates configuration and dependency safety, and displays the full service plan in the job summary without changing containers. Real installs pull images when requested, build the stack, remove matching legacy containers from the old projects on Beelink, remove a retired Portainer Agent from the old `agents` project there, then start the stack and remove Compose orphans such as an old `lab` Portainer Agent. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
 
 Local regression checks are available with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
 
 ## Moving everything to the Beelink
 
-The workflow only changes containers on Beelink. Before deploying the full stack, back up and copy each service's data from the old host to the corresponding directory under the Beelink home directory, preserving ownership. Stop and remove old containers on other hosts explicitly after verifying the migration.
+The workflow changes containers only on Beelink. Before deploying the full stack, back up and copy each service's data from its old host to the corresponding directory under the Beelink home directory, preserving ownership. Stop and remove old containers on other hosts explicitly after verifying the migration; the workflow cannot reach or clean them up.
 
 Keep downloads and media directories together when copying. Update Nginx Proxy Manager routes to Beelink's LAN DNS/IP and published ports. Set Hermes's Keycloak issuer to the externally reachable HTTPS URL. The selected GitHub environment supplies runtime configuration; ensure values such as socket user IDs match Beelink.
 
 ## Migration from the four previous projects
 
-Real workflow installs remove selected services (including their dependencies) carrying Compose project labels `agentic`, `agents`, `media`, or `tools` on the target host before starting them in `lab`. This causes a brief interruption. It does not relocate stored data or remove containers on other hosts. Partial migrations are blocked if an installed legacy dependent would be left behind when its dependency moves. Complete the storage migration below and any cross-host transfer before deployment so services do not start with empty data directories.
+Real workflow installs remove matching service containers carrying Compose project labels `agentic`, `agents`, `media`, or `tools` on Beelink before starting the full `lab` stack. They also remove the retired Portainer Agent from the old `agents` project on Beelink. This causes a brief interruption. It does not relocate stored data or remove containers on other hosts. Complete the storage migration below before deployment so services do not start with empty data directories. Existing PostgreSQL data must be copied intact; do not reset or delete its data directory.
 
 Stop the existing services before copying data, preserving ownership and permissions:
 
@@ -50,11 +50,10 @@ Stop the existing services before copying data, preserving ownership and permiss
 - Move `~/tools/portainer` and `~/tools/pgadmin` to `~/portainer` and `~/pgadmin`.
 - Move `~/media/prowlarr`, `~/media/sonarr`, `~/media/radarr`, and `~/media/jellyfin` to their corresponding `~/<service-name>` directories.
 - Move `~/media/transmission` to `~/transmission/config`, `~/media/data` to `~/transmission/downloads`, and `~/media/watch` to `~/transmission/watch`.
-- Copy the contents of the old `agents_portainer` Docker volume into `~/portainer_agent`.
 
 Keep a backup until the new stack is verified. Container mount targets remain unchanged, including the shared `/downloads` path and Jellyfin's `/data` path.
 
-For manual migration, stop and remove the containers belonging to those four previous projects before starting the full stack. Do not delete their volumes. Their old networks can remain unused.
+For manual migration, stop and remove the containers belonging to those four previous projects and any old Portainer Agent before starting the full stack. Do not delete their volumes. Their old networks can remain unused.
 
 ## Transmission peer port
 

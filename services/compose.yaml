@@ -148,15 +148,6 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - ~/postgres:/var/lib/postgresql/data
-  portainer_agent:
-    image: portainer/agent:2.39.6
-    container_name: portainer_agent
-    restart: always
-    ports:
-      - 9001:9001
-    volumes:
-      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
-      - ~/portainer_agent:/data
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr

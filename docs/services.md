@@ -85,13 +85,6 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 - Image: `jc21/nginx-proxy-manager:latest`
 - Purpose: reverse proxy and HTTPS termination
 
-### `portainer_agent`
-
-- Image: `portainer/agent:2.39.6`
-- Container name: `portainer_agent`
-- Published port: `9001/tcp`
-- Data directory: `~/portainer_agent`
-
 ### `portainer`
 
 - Image: `portainer/portainer-ce:latest`
