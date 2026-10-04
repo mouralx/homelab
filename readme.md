@@ -33,3 +33,4 @@ For an existing multi-host installation, review the [migration instructions](doc
 - [Architecture](docs/architecture.md)
 - [Services](docs/services.md)
 - [Operations and migration](docs/operations.md)
+- [Authentication options](docs/authentication.md)

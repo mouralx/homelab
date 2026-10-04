@@ -11,7 +11,7 @@ done
 config=$(docker compose --env-file .env config --format json)
 printf '%s\n' "$config" | bash scripts/validate-compose.sh
 project=$(jq -er '.name' <<< "$config")
-SELECTED_SERVICES=${SELECTED_SERVICES:-all}
+SELECTED_SERVICES=${SELECTED_SERVICES-all}
 
 # Include stopped containers and legacy projects when protecting dependencies.
 inventory=''
