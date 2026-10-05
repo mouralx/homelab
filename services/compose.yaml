@@ -6,6 +6,7 @@ services:
         ipv4_address: 10.203.0.10
     image: ghcr.io/openclaw/openclaw:latest
     container_name: openclaw
+    hostname: openclaw
     restart: unless-stopped
     init: true
     command: [node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured]
@@ -23,6 +24,7 @@ services:
       lab_net:
         ipv4_address: 10.203.0.12
     container_name: npm
+    hostname: npm
     image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
     environment:
@@ -40,6 +42,7 @@ services:
         ipv4_address: 10.203.0.20
     image: n8nio/n8n:latest
     container_name: n8n
+    hostname: n8n
     restart: unless-stopped
     environment:
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
@@ -58,6 +61,7 @@ services:
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
+    hostname: transmission
     networks:
       lab_net:
         ipv4_address: 10.203.0.21
@@ -75,6 +79,7 @@ services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
+    hostname: jellyfin
     networks:
       lab_net:
         ipv4_address: 10.203.0.22
@@ -90,6 +95,7 @@ services:
         ipv4_address: 10.203.0.23
     image: portainer/portainer-ce:latest
     container_name: portainer
+    hostname: portainer
     restart: unless-stopped
     volumes:
       - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
@@ -101,6 +107,7 @@ services:
       - 9443:9443
   homeassistant:
     container_name: homeassistant
+    hostname: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:stable"
     networks:
       lab_net:
