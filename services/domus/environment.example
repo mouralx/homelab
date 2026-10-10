@@ -1,0 +1,29 @@
+# Add to the mouras-home-lab GitHub environment or a local root .env.
+# Existing PostgreSQL credentials: use the SAME values as the current server.
+POSTGRES_USER=existing-postgresql-admin
+POSTGRES_PASSWORD=replace-with-existing-password
+POSTGRES_IMAGE=pgvector/pgvector:pg15
+POSTGRES_MAJOR=15
+DOMUS_POSTGRES_HOST=postgres
+DOMUS_POSTGRES_PORT=5432
+
+# Generate distinct application passwords, for example: openssl rand -hex 32.
+DOMUS_MEMBERSHIP_DB_PASSWORD=replace-with-generated-hex-password
+DOMUS_BOARDS_DB_PASSWORD=replace-with-generated-hex-password
+DOMUS_AUTOMATIONS_DB_PASSWORD=replace-with-generated-hex-password
+DOMUS_RABBITMQ_PASSWORD=replace-with-generated-password
+DOMUS_PUBLIC_URL=https://domus.mouras.me
+DOMUS_ALLOWED_HOSTS=domus.mouras.me;localhost;127.0.0.1
+DOMUS_PLATFORM_ADMIN_EMAILS=
+DOMUS_JIRA_ALLOWED_HOSTS=
+
+# Override each image independently: unchanged components may have older versions.
+DOMUS_PORTAL_TAG=stable
+DOMUS_MEMBERSHIP_TAG=stable
+DOMUS_BOARDS_TAG=stable
+DOMUS_AUTOMATIONS_TAG=stable
+DOMUS_BOARDS_WORKER_TAG=stable
+DOMUS_AUTOMATION_WORKER_TAG=stable
+# For private GHCR packages, grant homelab Actions access or configure a read:packages PAT.
+GHCR_USERNAME=mouralx
+# GHCR_TOKEN belongs in GitHub Secrets, never commit its value.

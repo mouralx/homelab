@@ -70,6 +70,15 @@ printf '%s\n' "$summary"
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
 fi
+if [[ $action == install ]] && jq -e '.services.postgres.volumes // [] | any(.target == "/var/lib/postgresql/data")' <<< "$config" >/dev/null && [[ " ${targets[*]} " == *" postgres "* ]]; then
+  # Avoid accidentally starting a different PostgreSQL major against existing data.
+  validation_file=$(mktemp)
+  printf '%s\n' "$config" > "$validation_file"
+  if ! bash scripts/validate-postgres-storage.sh "$validation_file"; then
+    rm -f "$validation_file"; exit 1
+  fi
+  rm -f "$validation_file"
+fi
 if [[ ${DRY_RUN:-false} == true ]]; then exit 0; fi
 
 if [[ $action == install ]]; then
@@ -102,5 +111,5 @@ else
   if [[ ${BRING_DOWN_FIRST:-false} == true ]]; then
     docker compose --env-file .env stop "${targets[@]}"
   fi
-  docker compose --env-file .env up -d --remove-orphans "${targets[@]}"
+  docker compose --env-file .env up -d --wait --wait-timeout 240 "${targets[@]}"
 fi

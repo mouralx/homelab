@@ -17,6 +17,14 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `jellyfin` | `10.203.0.22` |
 | `portainer` | `10.203.0.23` |
 | `homeassistant` | `10.203.0.25` |
+| `postgres` | `10.203.0.17` |
+| `domus-portal` | `10.203.0.30` |
+| `domus-membership` | `10.203.0.31` |
+| `domus-boards` | `10.203.0.32` |
+| `domus-automations` | `10.203.0.33` |
+| `domus-boards-worker` | `10.203.0.34` |
+| `domus-automation-worker` | `10.203.0.35` |
+| `domus-databases` (setup client) | `10.203.0.37` |
 
 Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
 
@@ -76,8 +84,14 @@ Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp`
 - Keep `~/n8n/data` mounted: it holds the default SQLite database, encryption key, and other instance settings.
 - Published port: `5678`.
 
+## PostgreSQL and domus
+
+PostgreSQL is restored at `10.203.0.17` using `pgvector/pgvector:pg15` and the existing `~/postgres` data directory. Its historical host port 5432 is retained; POSTGRES_BIND_HOST can restrict the binding if needed. Reuse existing administrator credentials and keep the major version matched to the stored data.
+
+Domus adds portal (.30), membership (.31), boards (.32), automations (.33), boards worker (.34), automation worker (.35) and the one-shot database setup client (.37). A dedicated internal network connects the portal/API aliases and RabbitMQ; RabbitMQ has no host port or lab address. The portal is served through Nginx Proxy Manager at domus-portal:80. See [Domus deployment](domus.md) for images, required settings and persistence.
+
 ## Database storage
 
-Nginx Proxy Manager, n8n, Home Assistant Recorder, and Jellyfin use their default SQLite databases. OpenClaw retains its local storage, Portainer uses BoltDB, and Transmission uses configuration and torrent state files. No external database service is deployed.
+Domus uses `membership`, `boards` and `automations` on the shared PostgreSQL server, with dedicated application roles. Nginx Proxy Manager, n8n, Home Assistant Recorder and Jellyfin keep their default SQLite databases. OpenClaw retains local storage, Portainer uses BoltDB, and Transmission uses configuration and torrent state files.
 
-For centralized user login, see [Authentication options](authentication.md).
+For authentication and optional centralized login, see [Authentication options](authentication.md).

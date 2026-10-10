@@ -122,6 +122,212 @@ services:
       TZ: Europe/Lisbon
     ports:
       - 8123:8123
+  postgres:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg15}
+    container_name: postgres
+    hostname: postgres
+    restart: unless-stopped
+    shm_size: 128mb
+    labels:
+      io.homelab.postgres.major: "${POSTGRES_MAJOR:-15}"
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.17
+    ports:
+      - "${POSTGRES_BIND_HOST:-0.0.0.0}:5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER:?Set the existing PostgreSQL administrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set the existing PostgreSQL password}
+    volumes:
+      - ~/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  domus-databases:
+    image: postgres:18-bookworm
+    container_name: domus-databases
+    restart: "no"
+    command: [sh, /setup/init-databases.sh]
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.37
+    environment:
+      PGHOST: ${DOMUS_POSTGRES_HOST:-postgres}
+      PGPORT: ${DOMUS_POSTGRES_PORT:-5432}
+      PGUSER: ${POSTGRES_USER:?Set the existing PostgreSQL administrator}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set the existing PostgreSQL password}
+      DOMUS_MEMBERSHIP_DATABASE: ${DOMUS_MEMBERSHIP_DATABASE:-membership}
+      DOMUS_BOARDS_DATABASE: ${DOMUS_BOARDS_DATABASE:-boards}
+      DOMUS_AUTOMATIONS_DATABASE: ${DOMUS_AUTOMATIONS_DATABASE:-automations}
+      DOMUS_MEMBERSHIP_DB_PASSWORD: ${DOMUS_MEMBERSHIP_DB_PASSWORD:?Set a dedicated membership password}
+      DOMUS_BOARDS_DB_PASSWORD: ${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}
+      DOMUS_AUTOMATIONS_DB_PASSWORD: ${DOMUS_AUTOMATIONS_DB_PASSWORD:?Set a dedicated automations password}
+    volumes:
+      - ./domus/init-databases.sh:/setup/init-databases.sh:ro
+  domus-portal:
+    image: ghcr.io/mouralx/domus-portal:${DOMUS_PORTAL_TAG:-stable}
+    container_name: domus-portal
+    hostname: domus-portal
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.30
+      domus_net: {}
+    depends_on:
+      domus-membership: {condition: service_healthy}
+      domus-boards: {condition: service_healthy}
+      domus-automations: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/]
+      interval: 5s
+      retries: 30
+  domus-boards:
+    image: ghcr.io/mouralx/domus-boards:${DOMUS_BOARDS_TAG:-stable}
+    container_name: domus-boards
+    hostname: domus-boards
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.32
+      domus_net:
+        aliases: [work-api]
+    environment: &domus-boards-environment
+      ASPNETCORE_URLS: http://+:5180
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__ApplyMigrationsOnStartup: "true"
+      AllowedHosts: "${DOMUS_ALLOWED_HOSTS:-domus.mouras.me;localhost;127.0.0.1}"
+      PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
+      DOMUS_MEMBERSHIP_URL: http://domus-membership:5190
+      ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
+      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-}
+      Jira__AllowedHosts: ${DOMUS_JIRA_ALLOWED_HOSTS:-}
+    volumes: [domus-work-keys:/app/.data-protection]
+    depends_on:
+      domus-databases: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, dotnet, Kanbada.Api.dll, --healthcheck]
+      interval: 5s
+      retries: 40
+  domus-membership:
+    image: ghcr.io/mouralx/domus-membership:${DOMUS_MEMBERSHIP_TAG:-stable}
+    container_name: domus-membership
+    hostname: domus-membership
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.31
+      domus_net:
+        aliases: [membership]
+    environment:
+      ASPNETCORE_URLS: http://+:5190
+      ASPNETCORE_ENVIRONMENT: Production
+      AllowedHosts: "${DOMUS_ALLOWED_HOSTS:-domus.mouras.me;localhost;127.0.0.1}"
+      PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
+      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-}
+      ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_MEMBERSHIP_DATABASE:-membership};Username=domus_membership;Password=${DOMUS_MEMBERSHIP_DB_PASSWORD:?Set a dedicated membership password}"
+      ConnectionStrings__Boards: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
+    volumes: [domus-work-keys:/app/.data-protection]
+    depends_on:
+      domus-databases: {condition: service_completed_successfully}
+      domus-boards: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, dotnet, Domus.Membership.Api.dll, --healthcheck]
+      interval: 5s
+      retries: 40
+  domus-boards-worker:
+    image: ghcr.io/mouralx/domus-boards-worker:${DOMUS_BOARDS_WORKER_TAG:-stable}
+    container_name: domus-boards-worker
+    hostname: domus-boards-worker
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.34
+      domus_net: {}
+    environment:
+      <<: *domus-boards-environment
+    volumes: [domus-work-keys:/app/.data-protection]
+    depends_on:
+      domus-boards: {condition: service_healthy}
+  domus-automations:
+    image: ghcr.io/mouralx/domus-automations:${DOMUS_AUTOMATIONS_TAG:-stable}
+    container_name: domus-automations
+    hostname: domus-automations
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.33
+      domus_net:
+        aliases: [automation-api]
+    environment: &domus-automation-environment
+      ASPNETCORE_URLS: http://+:4310
+      AUTOMATIONS_DATA_DIR: /data
+      DATABASE_HOST: ${DOMUS_POSTGRES_HOST:-postgres}
+      DATABASE_PORT: ${DOMUS_POSTGRES_PORT:-5432}
+      DATABASE_NAME: ${DOMUS_AUTOMATIONS_DATABASE:-automations}
+      DATABASE_USER: domus_automations
+      DATABASE_PASSWORD: ${DOMUS_AUTOMATIONS_DB_PASSWORD:?Set a dedicated automations password}
+      RABBITMQ_HOST: domus-rabbitmq
+      RABBITMQ_USER: domus
+      RABBITMQ_PASSWORD: ${DOMUS_RABBITMQ_PASSWORD:?Set a dedicated RabbitMQ password}
+      PORTAL_PUBLIC_URL: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
+      ENCRYPTION_KEY_DIR: /keys
+      DOMUS_MEMBERSHIP_URL: http://domus-membership:5190
+      DOMUS_WORK_API_URL: http://domus-boards:5180
+    volumes: [domus-automation-data:/data, domus-automation-keys:/keys]
+    depends_on:
+      domus-databases: {condition: service_completed_successfully}
+      domus-rabbitmq: {condition: service_healthy}
+      domus-automation-worker: {condition: service_healthy}
+      domus-boards: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, dotnet, Automations.Api.dll, --healthcheck]
+      interval: 5s
+      retries: 30
+  domus-automation-worker:
+    image: ghcr.io/mouralx/domus-automation-worker:${DOMUS_AUTOMATION_WORKER_TAG:-stable}
+    container_name: domus-automation-worker
+    hostname: domus-automation-worker
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.35
+      domus_net: {}
+    environment:
+      <<: *domus-automation-environment
+      ASPNETCORE_URLS: http://+:4320
+      INSTALL_API_URL: http://domus-automations:4310
+    volumes: [domus-automation-data:/data]
+    depends_on:
+      domus-databases: {condition: service_completed_successfully}
+      domus-rabbitmq: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, dotnet, Automations.Worker.dll, --healthcheck]
+      interval: 5s
+      retries: 30
+  domus-rabbitmq:
+    image: rabbitmq:4-management
+    container_name: domus-rabbitmq
+    hostname: domus-rabbitmq
+    restart: unless-stopped
+    networks: [domus_net]
+    environment:
+      RABBITMQ_DEFAULT_USER: domus
+      RABBITMQ_DEFAULT_PASS: ${DOMUS_RABBITMQ_PASSWORD:?Set a dedicated RabbitMQ password}
+    volumes:
+      - domus-rabbitmq-data:/var/lib/rabbitmq
+      - ./domus/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, check_port_connectivity]
+      interval: 5s
+      start_period: 15s
+      retries: 30
+
 networks:
   lab_net:
     name: homelab_static
@@ -129,3 +335,10 @@ networks:
     ipam:
       config:
         - subnet: 10.203.0.0/24
+  domus_net:
+    driver: bridge
+volumes:
+  domus-work-keys:
+  domus-automation-data:
+  domus-automation-keys:
+  domus-rabbitmq-data:

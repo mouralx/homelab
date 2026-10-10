@@ -72,7 +72,7 @@ assert_calls '. == [
   ["compose","--env-file",".env","pull","--ignore-buildable","frontend","honcho","jellyfin","postgres"],
   ["compose","--env-file",".env","build","frontend","honcho","jellyfin","postgres"],
   ["compose","--env-file",".env","stop","frontend","honcho","jellyfin","postgres"],
-  ["compose","--env-file",".env","up","-d","--remove-orphans","frontend","honcho","jellyfin","postgres"]]'
+  ["compose","--env-file",".env","up","-d","--wait","--wait-timeout","240","frontend","honcho","jellyfin","postgres"]]'
 
 for selection in '' ' , ' unknown all,honcho --help '$(touch /tmp/no)'; do
   run_case fail "SELECTED_SERVICES=$selection"
@@ -100,7 +100,7 @@ run_case pass SELECTED_SERVICES=jellyfin 'INSTALLED={"media":["jellyfin","sonarr
 assert_calls '. == [
   ["compose","--env-file",".env","build","jellyfin"],
   ["rm","-f","media-jellyfin"],
-  ["compose","--env-file",".env","up","-d","--remove-orphans","jellyfin"]]'
+  ["compose","--env-file",".env","up","-d","--wait","--wait-timeout","240","jellyfin"]]'
 run_case fail SERVICE_ACTION=uninstall SELECTED_SERVICES=all PS_FAIL=true
 run_case fail 'INSTALLED={"agentic":["postgres","keycloak"]}'
 [[ $(< "$test_dir/output") == *keycloak* ]]

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "pending-records",
+  "version": "1.0.0",
+  "name": "Verificar registos pendentes",
+  "description": "Consulta chaves no Predial Online, guarda PDFs e atualiza os coment\u00e1rios no Excel.",
+  "publisher": "mouralx",
+  "platform": {
+    "os": "win32",
+    "arch": "x64"
+  },
+  "execution": {
+    "executable": "fixture.sh",
+    "arguments": [],
+    "homeEnvironmentVariable": "PENDING_RECORDS_HOME",
+    "packagePaths": {},
+    "workspaceResources": [],
+    "isolation": "fresh-directory",
+    "browser": "headless-with-manual-login",
+    "statusProtocol": "stdio",
+    "stateDirectoryArgument": "--state-dir"
+  },
+  "authentication": {
+    "mode": "none",
+    "captcha": false
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "label": "C\u00f3pias de seguran\u00e7a",
+      "path": "backups/",
+      "description": "Originais preservados antes de sobrescrever ficheiros."
+    },
+    {
+      "label": "Documentos",
+      "path": "downloads/",
+      "description": "Documentos descarregados nesta execu\u00e7\u00e3o."
+    },
+    {
+      "label": "Falhas",
+      "path": "failed-rows.xlsx",
+      "description": "Linhas que exigem revis\u00e3o."
+    }
+  ],
+  "effects": {
+    "modifiesInput": false,
+    "publishesComments": false,
+    "createsPaidRequests": false
+  }
+}

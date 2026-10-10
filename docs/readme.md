@@ -7,6 +7,7 @@ This folder contains the documentation for the repository configuration and depl
 - [architecture.md](architecture.md) — service layout, networking, and deployment model
 - [services.md](services.md) — stack inventory and container descriptions
 - [authentication.md](authentication.md) — authentication compatibility and optional SSO requirements
+- [domus.md](domus.md) — published images, shared PostgreSQL, secrets, proxy and runtime validation
 - [operations.md](operations.md) — start, stop, rebuild, and maintenance tasks
 
 ## Quick links

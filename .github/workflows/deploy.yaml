@@ -33,6 +33,7 @@ on:
         default: false
 permissions:
   contents: read
+  packages: read
 jobs:
   deploy:
     name: ${{ inputs.action }} full stack on Beelink
@@ -55,6 +56,29 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
+      - name: Authenticate published images
+        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        env:
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
+        run: |
+          source_config=${DOCKER_CONFIG:-$HOME/.docker}
+          registry_config=$(mktemp -d "$RUNNER_TEMP/homelab-registry.XXXXXX")
+          chmod 700 "$registry_config"
+          if [[ -f "$source_config/config.json" ]]; then cp "$source_config/config.json" "$registry_config/config.json"; fi
+          if [[ -d "$source_config/contexts" ]]; then cp -R "$source_config/contexts" "$registry_config/contexts"; fi
+          printf 'HOMELAB_REGISTRY_CONFIG=%s\nDOCKER_CONFIG=%s\n' "$registry_config" "$registry_config" >> "$GITHUB_ENV"
+          export DOCKER_CONFIG="$registry_config"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
+      - name: Verify Domus published images
+        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        run: |
+          images=$(docker compose --env-file .env config --format json | jq -r '.services | to_entries[] | select(.key | startswith("domus-")) | .value.image | select(startswith("ghcr.io/"))')
+          while IFS= read -r image; do
+            [[ -n "$image" ]] || continue
+            echo "Checking $image"
+            docker manifest inspect "$image" >/dev/null
+          done <<< "$images"
       - name: Manage all services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}
@@ -64,4 +88,6 @@ jobs:
         run: bash scripts/workflow.step.manage-services.sh
       - name: Remove generated environment file
         if: ${{ always() }}
-        run: rm -f .env
+        run: |
+          rm -f .env
+          if [[ -n "${HOMELAB_REGISTRY_CONFIG:-}" ]]; then rm -rf "$HOMELAB_REGISTRY_CONFIG"; fi

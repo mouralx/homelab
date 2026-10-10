@@ -35,7 +35,7 @@ Before deployment, configure the selected GitHub environment:
 | `USER_ID` | Optional variable, default `1000` | Portainer Docker socket path |
 | `TRANSMISSION_PEER_PORT` | Optional variable, default `51413` | Transmission TCP/UDP peer port |
 
-The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. The workflow does not create databases or migrate SQLite records. Removed `lab` services are cleaned up by `--remove-orphans` on the next install; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
+The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. Domus has a one-shot client that creates its three databases on the shared PostgreSQL server. It does not migrate existing application records or SQLite data. Unmanaged `lab` containers are preserved; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
 
 Application SSO remains unconfigured; see [Authentication options](authentication.md) for separate setup requirements.
 
@@ -43,7 +43,7 @@ Install manages all services and respects Compose startup and healthcheck condit
 
 Uninstall stops and removes all stack containers, preserving stored data, images, and volumes. Each workflow run is an action, not a saved desired-state list.
 
-A dry run generates the environment file, validates configuration and dependency safety, and displays the full service plan in the job summary without changing containers. Real installs pull images when requested, build the stack, remove matching legacy containers from the old projects on Beelink, remove a retired Portainer Agent from the old `agents` project there, then start the stack and remove Compose orphans such as an old `lab` Portainer Agent. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
+A dry run generates the environment file, validates configuration and dependency safety, and displays the full service plan in the job summary without changing containers. Real installs pull images when requested, build the stack, remove matching legacy containers from the old projects on Beelink, remove a retired Portainer Agent from the old `agents` project there, then start the stack and wait for health checks. Unmanaged Compose orphans are retained. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
 
 Local regression checks are available with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
 
@@ -74,6 +74,14 @@ For manual migration, stop and remove the containers belonging to those four pre
 
 ## Retired services
 
-Hermes, Kanbada, Prowlarr, Radarr, Keycloak, PostgreSQL, pgAdmin, and Honcho are not part of the current stack. No remaining service requires an external database. The next workflow install removes their orphaned `lab` containers while preserving `~/postgres` and `~/pgadmin`. Containers from older projects or other hosts require manual cleanup. Unused `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
+Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, and Honcho are not part of the current stack. Domus now uses the shared PostgreSQL service; the original data directory and major are preserved. Workflow installs preserve orphaned containers and their data; retire unwanted services explicitly. Containers from older projects or other hosts require manual cleanup. Keep POSTGRES_USER and POSTGRES_PASSWORD for the existing shared server. Unused `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
 
 If the earlier Recorder PostgreSQL configuration was applied on Beelink, remove `recorder: !include recorder-postgres.yaml` or the PostgreSQL `db_url` override from Home Assistant configuration before deployment. Home Assistant will then use its default SQLite database.
+
+## domus and PostgreSQL
+
+Configure the additional variables/secrets in [services/domus/environment.example](../services/domus/environment.example), then follow [Domus deployment](domus.md). The existing PostgreSQL service/data directory is reused. Do not upgrade the PostgreSQL image's major as part of this install. Storage validation and authenticated GHCR manifest checks happen before container changes. The workflow preserves the runner's Docker context while isolating registry credentials.
+
+Add a Proxy Manager host for the configured DOMUS_PUBLIC_URL, forwarding to domus-portal:80 with HTTPS. No Domus host port is allocated. Four Domus named volumes retain files, keys and RabbitMQ; preserve them alongside database backups. Image tags are independently configurable and stable by default. To update them, run install with update_images enabled.
+
+Additional regression checks: `bash scripts/test-postgres-storage.sh` and `python3 scripts/test-domus-integration.py`. The latter tests published images against a temporary PostgreSQL 15 fixture and deletes only that test project; local-source validation can use DOMUS_TEST_LOCAL_IMAGES=true.
