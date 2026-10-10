@@ -24,6 +24,4 @@ DOMUS_BOARDS_TAG=stable
 DOMUS_AUTOMATIONS_TAG=stable
 DOMUS_BOARDS_WORKER_TAG=stable
 DOMUS_AUTOMATION_WORKER_TAG=stable
-# For private GHCR packages, grant homelab Actions access or configure a read:packages PAT.
-GHCR_USERNAME=mouralx
-# GHCR_TOKEN belongs in GitHub Secrets, never commit its value.
+# Domus images are public; no GHCR token or registry login is required.
