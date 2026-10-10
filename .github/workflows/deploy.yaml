@@ -57,10 +57,10 @@ jobs:
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
       - name: Authenticate published images
-        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        if: ${{ inputs.action == 'install' }}
         env:
-          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || github.actor }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GH_USER || github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || secrets.GH_PAT || github.token }}
         run: |
           source_config=${DOCKER_CONFIG:-$HOME/.docker}
           registry_config=$(mktemp -d "$RUNNER_TEMP/homelab-registry.XXXXXX")
@@ -71,7 +71,7 @@ jobs:
           export DOCKER_CONFIG="$registry_config"
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
       - name: Verify Domus published images
-        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        if: ${{ inputs.action == 'install' }}
         run: |
           images=$(docker compose --env-file .env config --format json | jq -r '.services | to_entries[] | select(.key | startswith("domus-")) | .value.image | select(startswith("ghcr.io/"))')
           while IFS= read -r image; do
