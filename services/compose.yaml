@@ -205,7 +205,7 @@ services:
       PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
       DOMUS_MEMBERSHIP_URL: http://domus-membership:5190
       ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
-      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-}
+      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-nuno.moura@outlook.com}
       Jira__AllowedHosts: ${DOMUS_JIRA_ALLOWED_HOSTS:-}
     volumes: [domus-work-keys:/app/.data-protection]
     depends_on:
@@ -229,7 +229,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       AllowedHosts: "${DOMUS_ALLOWED_HOSTS:-domus.mouras.me;localhost;127.0.0.1}"
       PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
-      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-}
+      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-nuno.moura@outlook.com}
       ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_MEMBERSHIP_DATABASE:-membership};Username=domus_membership;Password=${DOMUS_MEMBERSHIP_DB_PASSWORD:?Set a dedicated membership password}"
       ConnectionStrings__Boards: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
     volumes: [domus-work-keys:/app/.data-protection]
