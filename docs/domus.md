@@ -71,3 +71,9 @@ Register Domus in Microsoft Entra with a **Web** redirect URI of `https://domus.
 The membership container receives these as `Authentication__Microsoft__ClientId` and `Authentication__Microsoft__ClientSecret`. Redeploy Domus after saving or rotating the credentials; rebuilding application images is unnecessary. The provider button is enabled only when both values are present. Registration credentials stay server-side.
 
 Microsoft sign-in currently creates a separate provider identity; matching an existing email/password account does not automatically link the accounts or transfer workspace memberships.
+
+## Stable platform administrator identities
+
+Configure `DOMUS_PLATFORM_ADMIN_USER_IDS` as a comma-separated list of existing account UUIDs in GitHub environment variables. Boards and membership validate those IDs in their own identity tables. This takes precedence over legacy `DOMUS_PLATFORM_ADMIN_EMAILS`, so a separate Microsoft/Google identity with the same email does not prevent startup or inherit administrator access. Preserve the original account ID when enabling social sign-in; account linking remains a separate operation.
+
+The manually invoked **Diagnose Domus** workflow can resolve the unique existing password account ID for a specified email. It reads membership metadata on the runner and prints only the account ID and matching identity count, never password hashes or credentials. Normal diagnostics do not run this lookup unless explicitly selected.
