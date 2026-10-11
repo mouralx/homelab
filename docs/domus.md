@@ -63,3 +63,11 @@ Real installation first stops Domus writers, creates private database and volume
 Direct subscription OAuth is disabled by default at the remote HTTPS hostname because the OSS callback runs on the browser's local computer. The AI settings now support OpenAI's documented self-hosted transfer route: connect ChatGPT in local Domus, expand **Move connection to another Domus**, enter `https://domus.mouras.me`, then choose **Export and disconnect here**. In the homelab AI settings, upload the encrypted JSON file and enter its separate transfer code within 30 minutes. The source disconnects so the homelab owns future refreshes. Import is authenticated, destination-bound, replay-protected and stored encrypted for the current Domus member; the server's own host ID is retained. Each member imports their own account and the workspace owner enables AI. No API keys or Domus monthly cap are needed. A separately approved OAuth client can still use its registered remote callback.
 
 See [OpenAI's self-hosted VM guide](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms). Do not put a connection file or transfer code in git, workflow inputs or chat messages.
+
+## Microsoft sign-in
+
+Register Domus in Microsoft Entra with a **Web** redirect URI of `https://domus.mouras.me/api/auth/microsoft/callback`. Choose an audience including personal Microsoft accounts if Outlook/Hotmail sign-in is required. Store the Application (client) ID as `DOMUS_MICROSOFT_CLIENT_ID` and the client secret **Value** as `DOMUS_MICROSOFT_CLIENT_SECRET` in the `mouras-home-lab` GitHub environment secrets. Record the secret expiry and rotate it before expiry.
+
+The membership container receives these as `Authentication__Microsoft__ClientId` and `Authentication__Microsoft__ClientSecret`. Redeploy Domus after saving or rotating the credentials; rebuilding application images is unnecessary. The provider button is enabled only when both values are present. Registration credentials stay server-side.
+
+Microsoft sign-in currently creates a separate provider identity; matching an existing email/password account does not automatically link the accounts or transfer workspace memberships.
