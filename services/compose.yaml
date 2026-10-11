@@ -210,6 +210,7 @@ services:
       DOMUS_IDENTITY_SYNC_SECRET: ${DOMUS_IDENTITY_SYNC_SECRET:?Set an internal identity signing secret}
       ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
       Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS-nuno.moura@outlook.com}
+      Platform__AdminUserIds: ${DOMUS_PLATFORM_ADMIN_USER_IDS:-}
       Jira__AllowedHosts: ${DOMUS_JIRA_ALLOWED_HOSTS:-}
     volumes: [domus-work-keys:/app/.data-protection]
     depends_on:
@@ -234,6 +235,7 @@ services:
       AllowedHosts: "${DOMUS_ALLOWED_HOSTS:-domus.mouras.me;localhost;127.0.0.1}"
       PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
       Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS-nuno.moura@outlook.com}
+      Platform__AdminUserIds: ${DOMUS_PLATFORM_ADMIN_USER_IDS:-}
       DOMUS_BOARDS_URL: http://domus-boards:5180
       DOMUS_IDENTITY_SYNC_SECRET: ${DOMUS_IDENTITY_SYNC_SECRET:?Set an internal identity signing secret}
       Authentication__Microsoft__ClientId: "${DOMUS_MICROSOFT_CLIENT_ID:-}"
