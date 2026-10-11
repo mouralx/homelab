@@ -236,6 +236,8 @@ services:
       Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS-nuno.moura@outlook.com}
       DOMUS_BOARDS_URL: http://domus-boards:5180
       DOMUS_IDENTITY_SYNC_SECRET: ${DOMUS_IDENTITY_SYNC_SECRET:?Set an internal identity signing secret}
+      Authentication__Microsoft__ClientId: "${DOMUS_MICROSOFT_CLIENT_ID:-}"
+      Authentication__Microsoft__ClientSecret: "${DOMUS_MICROSOFT_CLIENT_SECRET:-}"
       ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_MEMBERSHIP_DATABASE:-membership};Username=domus_membership;Password=${DOMUS_MEMBERSHIP_DB_PASSWORD:?Set a dedicated membership password}"
     volumes: [domus-work-keys:/app/.data-protection]
     depends_on:

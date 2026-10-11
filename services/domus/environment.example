@@ -34,3 +34,8 @@ DOMUS_MCP_TAG=stable
 DOMUS_AI_OPENAI_OAUTH_MODE=
 DOMUS_AI_OPENAI_CLIENT_ID=
 DOMUS_AI_OPENAI_CLIENT_SECRET=
+
+# Optional Microsoft sign-in. Store both values in GitHub environment secrets.
+# Register Web redirect: https://domus.mouras.me/api/auth/microsoft/callback
+DOMUS_MICROSOFT_CLIENT_ID=
+DOMUS_MICROSOFT_CLIENT_SECRET=
