@@ -39,3 +39,7 @@ DOMUS_AI_OPENAI_CLIENT_SECRET=
 # Register Web redirect: https://domus.mouras.me/api/auth/microsoft/callback
 DOMUS_MICROSOFT_CLIENT_ID=
 DOMUS_MICROSOFT_CLIENT_SECRET=
+
+# Prefer stable account UUIDs for administrators when social sign-in is enabled.
+# Comma-separated existing account IDs; takes precedence over email selection.
+DOMUS_PLATFORM_ADMIN_USER_IDS=
