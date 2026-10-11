@@ -1,6 +1,6 @@
 # domus deployment
 
-Domus joins the existing `lab` Compose project using six published GHCR images. There are no application builds and no separate Domus PostgreSQL server. Defaults use `stable`; select `preview`, a version such as `v0.1.0` / `prev-v0.1.0`, or a per-image digest through the image reference when pinning.
+Domus joins the existing `lab` Compose project using eight published GHCR images. There are no application builds and no separate Domus PostgreSQL server. Defaults use `stable`; select `preview`, a version such as `v0.1.0` / `prev-v0.1.0`, or a per-image digest through the image reference when pinning.
 
 | Service | Image | Lab address |
 | --- | --- | --- |
@@ -20,18 +20,18 @@ The historical PostgreSQL service is restored with the original container name `
 
 `domus-databases` starts only after PostgreSQL is healthy. It connects as a client and creates `membership`, `boards` and `automations` with separate roles (`domus_membership`, `domus_boards`, `domus_automations`). It updates passwords only for those dedicated roles, and preserves databases and data on repeated runs. Existing databases owned by other roles cause setup to fail rather than taking ownership. Names can be changed with `DOMUS_MEMBERSHIP_DATABASE`, `DOMUS_BOARDS_DATABASE`, `DOMUS_AUTOMATIONS_DATABASE`.
 
-Application containers receive only their dedicated credentials. Membership also receives the boards connection to provision workspaces, accept invitations and maintain public identity projections. Administrator credentials are mounted into the database setup client, not the APIs or workers. Other homelab applications retain their existing database configurations.
+Application containers receive only their dedicated credentials. Membership delivers public identity projections through an authenticated HTTP outbox; it has no boards database credentials. Invitations are owned by boards. Administrator credentials are mounted into the database setup client, not the APIs or workers. Other homelab applications retain their existing database configurations.
 
 ## GitHub configuration and images
 
-Copy the settings from [environment.example](../services/domus/environment.example) into the `mouras-home-lab` GitHub environment. Store the existing `POSTGRES_PASSWORD`, three `DOMUS_*_DB_PASSWORD` values and `DOMUS_RABBITMQ_PASSWORD` as secrets. Generate application database passwords as hex strings (`openssl rand -hex 32`) so they can be used directly in the .NET connection strings. Store hostnames, public URL and image tags as variables. Existing server credentials must match its stored roles; changing POSTGRES_PASSWORD alone does not reset an existing server password.
+Copy the settings from [environment.example](../services/domus/environment.example) into the `mouras-home-lab` GitHub environment. Store the existing `POSTGRES_PASSWORD`, four `DOMUS_*_DB_PASSWORD` values and `DOMUS_RABBITMQ_PASSWORD` as secrets. Generate application database passwords as hex strings (`openssl rand -hex 32`) so they can be used directly in the .NET connection strings. Store hostnames, public URL and image tags as variables. Existing server credentials must match its stored roles; changing POSTGRES_PASSWORD alone does not reset an existing server password.
 
-The Domus GHCR images are public and are pulled anonymously. No GH_PAT, GHCR_TOKEN or registry login is required. The workflow prepares a temporary Docker configuration, removing GHCR credentials and the default global credential helper so stale tokens cannot block public pulls. It preserves the runner's Docker context and unrelated explicit registry settings, and removes the temporary configuration at the end. All six selected image manifests are checked before any containers are managed, including during dry runs.
+The Domus GHCR images are public and are pulled anonymously. No GH_PAT, GHCR_TOKEN or registry login is required. The workflow prepares a temporary Docker configuration, removing GHCR credentials and the default global credential helper so stale tokens cannot block public pulls. It preserves the runner's Docker context and unrelated explicit registry settings, and removes the temporary configuration at the end. All eight selected image manifests are checked before any containers are managed, including during dry runs.
 
 
-The six image tags can be configured independently: `DOMUS_PORTAL_TAG`, `DOMUS_MEMBERSHIP_TAG`, `DOMUS_BOARDS_TAG`, `DOMUS_AUTOMATIONS_TAG`, `DOMUS_BOARDS_WORKER_TAG`, `DOMUS_AUTOMATION_WORKER_TAG`. Do not assume one version tag exists for every component: Domus publishes only changed images. Defaults use each image's current `stable` alias.
+The eight image tags can be configured independently: `DOMUS_PORTAL_TAG`, `DOMUS_MEMBERSHIP_TAG`, `DOMUS_BOARDS_TAG`, `DOMUS_AUTOMATIONS_TAG`, `DOMUS_BOARDS_WORKER_TAG`, `DOMUS_AUTOMATIONS_WORKER_TAG`. Do not assume one version tag exists for every component: Domus publishes only changed images. Defaults use each image's current `stable` alias.
 
-Run **Actions → Deploy Home Lab**, choose `install`, and enable `update_images` when applying newly published stable/preview images. Start with `dry_run` to validate settings, PostgreSQL storage and anonymous access to all six selected image tags without changing containers. Real installation waits for healthy services. Uninstall preserves PostgreSQL data and named volumes. Orphan containers are not automatically removed, protecting externally managed services.
+Run **Actions → Deploy Home Lab**, choose `install`, and enable `update_images` when applying newly published stable/preview images. Start with `dry_run` to validate settings, PostgreSQL storage and anonymous access to all eight selected image tags without changing containers. Real installation waits for healthy services. Uninstall preserves PostgreSQL data and named volumes. Orphan containers are not automatically removed, protecting externally managed services.
 
 ## Public access
 
@@ -41,7 +41,7 @@ Register a Domus account, select an avatar and configure 2FA. Leave DOMUS_PLATFO
 
 ## Persistence and verification
 
-PostgreSQL data remains in `~/postgres`. Four named volumes retain Domus account/Jira keys, shared automation files, API-only PAT keys and RabbitMQ state: `lab_domus-work-keys`, `lab_domus-automation-data`, `lab_domus-automation-keys`, `lab_domus-rabbitmq-data`. Back up all of these alongside the three databases. Do not use `down -v`; preserve encryption keys when moving existing Domus data. This configuration starts a fresh Domus installation unless its databases and key/file volumes are migrated together.
+PostgreSQL data remains in `~/postgres`. Four named volumes retain Domus account/Jira keys, shared automation files, API-only PAT keys and RabbitMQ state: `lab_domus-work-keys`, `lab_domus-automation-data`, `lab_domus-automation-keys`, `lab_domus-rabbitmq-data`. Back up all of these alongside the four databases. Do not use `down -v`; preserve encryption keys when moving existing Domus data. This configuration starts a fresh Domus installation unless its databases and key/file volumes are migrated together.
 
 ```sh
 bash scripts/test-validate-compose.sh
@@ -51,3 +51,13 @@ DOCKER_CONTEXT=your-context python3 scripts/test-domus-integration.py
 ```
 
 The integration test pulls the configured published images by default and runs only Domus against an isolated PostgreSQL 15 fixture, separate ports, networks and volumes. It checks database setup/ownership, registration, 2FA, API authorization, execution, ZIP downloads and revocation. It removes only its temporary test project. For source-image testing before publication, `DOMUS_TEST_LOCAL_IMAGES=true` uses already-built local Domus images and does not establish that GHCR access is configured. The Beelink deployment and Nginx Proxy Manager/DNS setup are separate from this local test.
+
+## AI, MCP and upgrading this version
+
+Add the dedicated `DOMUS_AI_DB_PASSWORD` and a random `DOMUS_IDENTITY_SYNC_SECRET` (at least 32 characters) to environment secrets. `domus-ai` owns the fourth database and `lab_domus-ai-data` encryption-key volume. `domus-mcp-server` exposes authenticated tools for boards, membership, automations and AI settings; it has no database or public port. The portal proxies `/ai-api/` through the AI network alias. Model credentials never go to MCP.
+
+The eight current image tags include `DOMUS_AI_TAG`, `DOMUS_MCP_TAG` and the plural `DOMUS_AUTOMATIONS_WORKER_TAG`. The deployment removes only the retired singular automation worker container, preserving its data volume. Choose `scope=domus` to avoid updating unrelated applications or pulling a new shared PostgreSQL server image. Leave `bring_down_first=false`.
+
+Real installation first stops Domus writers, creates private database and volume backups under `~/domus-backups/<UTC timestamp>/`, then starts the selected stack. A backup failure restarts the previous writers and aborts installation. This release renames Jira fields, moves unassigned cards to configured defaults, and removes workspace covers; restore backups with matching prior images for rollback. A failed later installation requires checking the logs and restoring matching backups before reverting images after migrations. Do not upload these backups as public Actions artifacts.
+
+Subscription OAuth is disabled by default at the remote HTTPS hostname. The current open-source loopback sign-in flow cannot authenticate a remote homelab browser session. Secure local registration transfer is not yet implemented. Existing Domus login, boards, automations and MCP functions work independently of that provider connection. A separately approved OAuth client can use its registered remote callback.

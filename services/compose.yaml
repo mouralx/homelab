@@ -165,9 +165,11 @@ services:
       DOMUS_MEMBERSHIP_DATABASE: ${DOMUS_MEMBERSHIP_DATABASE:-membership}
       DOMUS_BOARDS_DATABASE: ${DOMUS_BOARDS_DATABASE:-boards}
       DOMUS_AUTOMATIONS_DATABASE: ${DOMUS_AUTOMATIONS_DATABASE:-automations}
+      DOMUS_AI_DATABASE: ${DOMUS_AI_DATABASE:-ai}
       DOMUS_MEMBERSHIP_DB_PASSWORD: ${DOMUS_MEMBERSHIP_DB_PASSWORD:?Set a dedicated membership password}
       DOMUS_BOARDS_DB_PASSWORD: ${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}
       DOMUS_AUTOMATIONS_DB_PASSWORD: ${DOMUS_AUTOMATIONS_DB_PASSWORD:?Set a dedicated automations password}
+      DOMUS_AI_DB_PASSWORD: ${DOMUS_AI_DB_PASSWORD:?Set a dedicated AI password}
     volumes:
       - ./domus/init-databases.sh:/setup/init-databases.sh:ro
   domus-portal:
@@ -183,6 +185,7 @@ services:
       domus-membership: {condition: service_healthy}
       domus-boards: {condition: service_healthy}
       domus-automations: {condition: service_healthy}
+      domus-ai: {condition: service_healthy}
     healthcheck:
       test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/]
       interval: 5s
@@ -196,7 +199,7 @@ services:
       lab_net:
         ipv4_address: 10.203.0.32
       domus_net:
-        aliases: [work-api]
+        aliases: [boards]
     environment: &domus-boards-environment
       ASPNETCORE_URLS: http://+:5180
       ASPNETCORE_ENVIRONMENT: Production
@@ -204,14 +207,15 @@ services:
       AllowedHosts: "${DOMUS_ALLOWED_HOSTS:-domus.mouras.me;localhost;127.0.0.1}"
       PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
       DOMUS_MEMBERSHIP_URL: http://domus-membership:5190
+      DOMUS_IDENTITY_SYNC_SECRET: ${DOMUS_IDENTITY_SYNC_SECRET:?Set an internal identity signing secret}
       ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
-      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-nuno.moura@outlook.com}
+      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS-nuno.moura@outlook.com}
       Jira__AllowedHosts: ${DOMUS_JIRA_ALLOWED_HOSTS:-}
     volumes: [domus-work-keys:/app/.data-protection]
     depends_on:
       domus-databases: {condition: service_completed_successfully}
     healthcheck:
-      test: [CMD, dotnet, Kanbada.Api.dll, --healthcheck]
+      test: [CMD, dotnet, Domus.Boards.Api.dll, --healthcheck]
       interval: 5s
       retries: 40
   domus-membership:
@@ -229,9 +233,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       AllowedHosts: "${DOMUS_ALLOWED_HOSTS:-domus.mouras.me;localhost;127.0.0.1}"
       PortalOrigin: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
-      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS:-nuno.moura@outlook.com}
+      Platform__AdminEmails: ${DOMUS_PLATFORM_ADMIN_EMAILS-nuno.moura@outlook.com}
+      DOMUS_BOARDS_URL: http://domus-boards:5180
+      DOMUS_IDENTITY_SYNC_SECRET: ${DOMUS_IDENTITY_SYNC_SECRET:?Set an internal identity signing secret}
       ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_MEMBERSHIP_DATABASE:-membership};Username=domus_membership;Password=${DOMUS_MEMBERSHIP_DB_PASSWORD:?Set a dedicated membership password}"
-      ConnectionStrings__Boards: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_BOARDS_DATABASE:-boards};Username=domus_boards;Password=${DOMUS_BOARDS_DB_PASSWORD:?Set a dedicated boards password}"
     volumes: [domus-work-keys:/app/.data-protection]
     depends_on:
       domus-databases: {condition: service_completed_successfully}
@@ -263,7 +268,7 @@ services:
       lab_net:
         ipv4_address: 10.203.0.33
       domus_net:
-        aliases: [automation-api]
+        aliases: [automations]
     environment: &domus-automation-environment
       ASPNETCORE_URLS: http://+:4310
       AUTOMATIONS_DATA_DIR: /data
@@ -283,16 +288,16 @@ services:
     depends_on:
       domus-databases: {condition: service_completed_successfully}
       domus-rabbitmq: {condition: service_healthy}
-      domus-automation-worker: {condition: service_healthy}
+      domus-automations-worker: {condition: service_healthy}
       domus-boards: {condition: service_healthy}
     healthcheck:
       test: [CMD, dotnet, Automations.Api.dll, --healthcheck]
       interval: 5s
       retries: 30
-  domus-automation-worker:
-    image: ghcr.io/mouralx/domus-automation-worker:${DOMUS_AUTOMATION_WORKER_TAG:-stable}
-    container_name: domus-automation-worker
-    hostname: domus-automation-worker
+  domus-automations-worker:
+    image: ghcr.io/mouralx/domus-automations-worker:${DOMUS_AUTOMATIONS_WORKER_TAG:-stable}
+    container_name: domus-automations-worker
+    hostname: domus-automations-worker
     restart: unless-stopped
     networks:
       lab_net:
@@ -308,6 +313,56 @@ services:
       domus-rabbitmq: {condition: service_healthy}
     healthcheck:
       test: [CMD, dotnet, Automations.Worker.dll, --healthcheck]
+      interval: 5s
+      retries: 30
+  domus-mcp-server:
+    image: ghcr.io/mouralx/domus-mcp:${DOMUS_MCP_TAG:-stable}
+    container_name: domus-mcp-server
+    restart: unless-stopped
+    networks:
+      domus_net:
+        aliases: [mcp-server]
+    environment:
+      ASPNETCORE_URLS: http://+:4340
+      PORTAL_PUBLIC_URL: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
+      DOMUS_WORK_API_URL: http://domus-boards:5180
+      DOMUS_MEMBERSHIP_URL: http://domus-membership:5190
+      DOMUS_AUTOMATIONS_URL: http://domus-automations:4310
+      DOMUS_AI_URL: http://domus-ai:4330
+    depends_on:
+      domus-boards: {condition: service_healthy}
+      domus-membership: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, dotnet, Domus.Mcp.Server.dll, --healthcheck]
+      interval: 5s
+      retries: 30
+  domus-ai:
+    image: ghcr.io/mouralx/domus-ai:${DOMUS_AI_TAG:-stable}
+    container_name: domus-ai
+    restart: unless-stopped
+    networks:
+      lab_net: {}
+      domus_net:
+        aliases: [ai]
+    environment:
+      ASPNETCORE_URLS: http://+:4330
+      AI_DATA_DIR: /data
+      ConnectionStrings__Postgres: "Host=${DOMUS_POSTGRES_HOST:-postgres};Port=${DOMUS_POSTGRES_PORT:-5432};Database=${DOMUS_AI_DATABASE:-ai};Username=domus_ai;Password=${DOMUS_AI_DB_PASSWORD:?Set a dedicated AI password}"
+      DOMUS_MCP_URL: http://domus-mcp-server:4340/mcp
+      DOMUS_MEMBERSHIP_URL: http://domus-membership:5190
+      DOMUS_WORK_API_URL: http://domus-boards:5180
+      PORTAL_PUBLIC_URL: ${DOMUS_PUBLIC_URL:-https://domus.mouras.me}
+      AI_OPENAI_OAUTH_MODE: "${DOMUS_AI_OPENAI_OAUTH_MODE:-}"
+      AI_OPENAI_CLIENT_ID: "${DOMUS_AI_OPENAI_CLIENT_ID:-}"
+      AI_OPENAI_CLIENT_SECRET: "${DOMUS_AI_OPENAI_CLIENT_SECRET:-}"
+    volumes: [domus-ai-data:/data]
+    depends_on:
+      domus-databases: {condition: service_completed_successfully}
+      domus-mcp-server: {condition: service_healthy}
+      domus-membership: {condition: service_healthy}
+      domus-boards: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, dotnet, Domus.Ai.Api.dll, --healthcheck]
       interval: 5s
       retries: 30
   domus-rabbitmq:
@@ -342,3 +397,4 @@ volumes:
   domus-automation-data:
   domus-automation-keys:
   domus-rabbitmq-data:
+  domus-ai-data:
