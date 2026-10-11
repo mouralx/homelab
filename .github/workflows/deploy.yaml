@@ -26,6 +26,12 @@ on:
         required: true
         type: boolean
         default: false
+      scope:
+        description: "Update all services or only Domus and its dependencies"
+        type: choice
+        required: true
+        default: all
+        options: [all, domus]
       update_images:
         description: "Pull remote image updates before installation"
         required: true
@@ -47,7 +53,7 @@ jobs:
         shell: bash
     env:
       COMPOSE_FILE: services/compose.yaml
-      SELECTED_SERVICES: all
+      SELECTED_SERVICES: ${{ inputs.scope == 'domus' && 'domus-portal,domus-membership,domus-boards,domus-boards-worker,domus-automations,domus-automations-worker,domus-ai,domus-mcp-server' || 'all' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -68,7 +74,10 @@ jobs:
             echo "Checking $image"
             docker manifest inspect "$image" >/dev/null
           done <<< "$images"
-      - name: Manage all services and dependencies
+      - name: Back up Domus databases and persistent volumes
+        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        run: bash scripts/workflow.step.backup-domus.sh
+      - name: Manage selected services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}
           DRY_RUN: ${{ inputs.dry_run }}

@@ -32,7 +32,7 @@ with socket.socket() as listener:
 ORIGIN = f'http://localhost:{PORT}'
 ENV = dict(os.environ, TIME_ZONE='Europe/Lisbon', POSTGRES_USER='postgres', POSTGRES_PASSWORD=secrets.token_hex(24),
            DOMUS_MEMBERSHIP_DB_PASSWORD=secrets.token_hex(24), DOMUS_BOARDS_DB_PASSWORD=secrets.token_hex(24),
-           DOMUS_AUTOMATIONS_DB_PASSWORD=secrets.token_hex(24), DOMUS_RABBITMQ_PASSWORD=secrets.token_hex(24),
+           DOMUS_AUTOMATIONS_DB_PASSWORD=secrets.token_hex(24), DOMUS_RABBITMQ_PASSWORD=secrets.token_hex(24), DOMUS_AI_DB_PASSWORD=secrets.token_hex(24), DOMUS_IDENTITY_SYNC_SECRET=secrets.token_hex(32),
            DOMUS_PUBLIC_URL=ORIGIN, DOMUS_ALLOWED_HOSTS='localhost;127.0.0.1', DOMUS_PLATFORM_ADMIN_EMAILS='',
            DOMUS_POSTGRES_HOST='postgres', DOMUS_POSTGRES_PORT='5432', DOMUS_MEMBERSHIP_DATABASE='membership',
            DOMUS_BOARDS_DATABASE='boards', DOMUS_AUTOMATIONS_DATABASE='automations')
@@ -51,7 +51,7 @@ class Client:
         self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
 
     def call(self, path, payload=None, raw=None, workspace=None, expected=200):
-        headers = {'Origin': ORIGIN, 'X-Kanbada-Request': '1'}
+        headers = {'Origin': ORIGIN, 'X-Domus-Request': '1'}
         if workspace:
             headers['X-Domus-Workspace'] = workspace
         data = raw
@@ -93,9 +93,9 @@ with tempfile.TemporaryDirectory() as directory:
     for network in config['networks'].values():
         network.pop('name', None)
         network.pop('ipam', None)
-    local = {'domus-portal': 'domus-portal', 'domus-membership': 'domus-membership', 'domus-boards': 'domus-work-api',
-             'domus-automations': 'domus-automation-api', 'domus-boards-worker': 'domus-jira-worker',
-             'domus-automation-worker': 'domus-automation-worker'}
+    local = {'domus-portal': 'domus-portal', 'domus-membership': 'domus-membership', 'domus-boards': 'domus-boards',
+             'domus-automations': 'domus-automations', 'domus-boards-worker': 'domus-boards-worker',
+             'domus-automations-worker': 'domus-automations-worker', 'domus-ai': 'domus-ai', 'domus-mcp-server': 'domus-mcp-server'}
     for name, service in config['services'].items():
         service.pop('container_name', None)
         service.pop('hostname', None)
@@ -169,6 +169,9 @@ with tempfile.TemporaryDirectory() as directory:
         assert sql('automations', 'SELECT count(*) FROM executions') == '1'
         assert sql('postgres', "SELECT has_database_privilege('domus_boards','membership','CONNECT')") == 'f'
         assert sql('postgres', "SELECT has_database_privilege('domus_automations','boards','CONNECT')") == 'f'
+        assert sql('postgres', "SELECT has_database_privilege('domus_membership','boards','CONNECT')") == 'f'
+        client.call('/ai-api/api/workspace', workspace=workspace)
+        assert sql('postgres', "SELECT has_database_privilege('domus_ai','boards','CONNECT')") == 'f'
         client.call('/api/auth/logout', {}, expected=204)
         client.call('/automations-api/api/status', workspace=workspace, expected=401)
         # Database-name collision must fail without changing unrelated databases.

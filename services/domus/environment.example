@@ -23,5 +23,14 @@ DOMUS_MEMBERSHIP_TAG=stable
 DOMUS_BOARDS_TAG=stable
 DOMUS_AUTOMATIONS_TAG=stable
 DOMUS_BOARDS_WORKER_TAG=stable
-DOMUS_AUTOMATION_WORKER_TAG=stable
+DOMUS_AUTOMATIONS_WORKER_TAG=stable
 # Domus images are public; no GHCR token or registry login is required.
+
+DOMUS_AI_DB_PASSWORD=replace-with-generated-hex-password
+DOMUS_IDENTITY_SYNC_SECRET=replace-with-generated-hex-secret
+DOMUS_AI_TAG=stable
+DOMUS_MCP_TAG=stable
+# Remote OSS OAuth is unavailable until the protected transfer flow is implemented.
+DOMUS_AI_OPENAI_OAUTH_MODE=
+DOMUS_AI_OPENAI_CLIENT_ID=
+DOMUS_AI_OPENAI_CLIENT_SECRET=
