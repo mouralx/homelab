@@ -16,6 +16,7 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `transmission` | `10.203.0.21` |
 | `jellyfin` | `10.203.0.22` |
 | `portainer` | `10.203.0.23` |
+| `digger` | `10.203.0.24` |
 | `homeassistant` | `10.203.0.25` |
 | `postgres` | `10.203.0.17` |
 | `domus-portal` | `10.203.0.30` |
@@ -63,6 +64,26 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 - Image: `lscr.io/linuxserver/jellyfin:latest`
 - Purpose: media playback
 - Exposed on port `8096`
+
+### `digger`
+
+- Image: `ghcr.io/mouralx/digger:stable`; override with `DIGGER_TAG` for a version or preview.
+- Purpose: discover movies, download through Transmission, and manage a movie storage budget. No published ports.
+- SQLite persists in `digger-data`. Digger and Transmission both mount `/mnt/ssd/transmission/downloads/complete/digger` at `/movies`; Jellyfin already sees this directory under `/data/digger`.
+- The dedicated `digger` directory keeps existing completed downloads outside Digger's cleanup and quota management. Exclude its `.downloads` and `.state` directories from Jellyfin scans.
+- Defaults for the 1 TB SSD (about 931 GiB usable before filesystem overhead): 750 GiB movie budget and 51200 MiB (50 GiB) free-space reserve. The budget includes partial downloads; the reserve protects free space across the drive when other services use it. Override with `DIGGER_MAX_LIBRARY_SIZE_GB` and `DIGGER_DISK_RESERVE_MB`; `DIGGER_YTS_API_URL` overrides discovery and must retain the `{0}` page placeholder.
+- If Transmission RPC uses authentication, set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to its existing credentials. Its RPC allowlists must admit Digger on `homelab_static`.
+
+Before starting, create the dedicated media directory with write access for Digger (UID 1654) and Transmission's existing user. `DIGGER_MEDIA_GID` defaults to the LinuxServer image's default group 911; set it to Transmission's actual group if different. Use that shared group, group-write permissions, and setgid on the directory, and configure Transmission's file umask to preserve group-write access. Account for host UID/GID mappings if Docker runs rootless. The named SQLite volume uses the image's UID 1654.
+
+After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
+
+```bash
+docker compose --env-file .env -f services/compose.yaml config --quiet
+docker compose --env-file .env -f services/compose.yaml pull digger
+docker compose --env-file .env -f services/compose.yaml up -d digger
+docker compose --env-file .env -f services/compose.yaml logs --tail 100 digger
+```
 
 ## Platform services
 
