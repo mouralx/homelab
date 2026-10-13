@@ -108,6 +108,10 @@ else
   if [[ ${BRING_DOWN_FIRST:-false} == true ]]; then
     docker compose --env-file .env stop "${targets[@]}"
   fi
+  if [[ " ${targets[*]} " == *" transmission "* ]]; then
+    # Remount the current startup hook even when only its file contents changed.
+    docker compose --env-file .env up -d --no-deps --force-recreate transmission
+  fi
   docker compose --env-file .env up -d --wait --wait-timeout 240 "${targets[@]}"
   if [[ " ${targets[*]} " == *" transmission "* ]]; then
     bash scripts/workflow.step.reload-transmission-settings.sh

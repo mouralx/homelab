@@ -53,6 +53,9 @@ if args[0] == '--config':
 if args[:4] == ['compose', '--env-file', '.env', 'config']:
     sys.exit(subprocess.call([os.environ['REAL_DOCKER'], *args]))
 if args[0] == 'inspect':
+    if '--format' in args:
+        print(json.dumps(['PUID=911']))
+        sys.exit(0)
     print(json.dumps([
         {'Name': '/digger', 'Config': {'Env': ['TRANSMISSION_RPC_URL=http://transmission:9091/transmission/rpc', 'TRANSMISSION_USERNAME=fixture-user', 'TRANSMISSION_PASSWORD=fixture-password']}},
         {'Name': '/transmission', 'Config': {'Image': 'fixture-transmission'}}
@@ -192,8 +195,9 @@ if args[0] == 'run' and args[-2:] == ['--config', '-']:
             else:
                 if down:
                     expected.append(["compose", "--env-file", ".env", "stop", *SERVICES])
+                expected.append(["compose", "--env-file", ".env", "up", "-d", "--no-deps", "--force-recreate", "transmission"])
                 expected.append(["compose", "--env-file", ".env", "up", "-d", "--wait", "--wait-timeout", "240", *SERVICES])
-                expected.append(["exec", "transmission", "sh", "-c", "pidof transmission-daemon | xargs -r kill -HUP"])
+                expected.append(["exec", "--user", "911", "transmission", "sh", "-c", "pidof transmission-daemon | xargs -r kill -HUP"])
             assert calls == expected, calls
         elif failure in ["pull", "build", "stop", "run"]:
             assert all(call[0] == "compose" for call in calls), calls

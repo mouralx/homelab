@@ -38,7 +38,7 @@ for _attempt in {1..30}; do
   sleep 1
 done
 [[ "$ready" == true ]] || { echo 'Test Transmission daemon did not become ready' >&2; exit 1; }
-docker exec "$server" sh -c 'pidof transmission-daemon | xargs -r kill -HUP'
+docker exec --user 911 "$server" sh -c 'pidof transmission-daemon | xargs -r kill -HUP'
 DIGGER_CONTAINER="$client" TRANSMISSION_CONTAINER="$server" python3 scripts/workflow.step.verify-digger-rpc.py
 docker exec "$server" jq -e '.rpc_whitelist == "*" and .rpc_whitelist_enabled == false and .rpc_authentication_required == true and (.rpc_host_whitelist | contains("transmission"))' /config/settings.json >/dev/null
 echo 'Transmission integration passed: all-IP whitelist, authenticated RPC and session negotiation from another container IP.'

@@ -68,10 +68,12 @@ services:
     restart: unless-stopped
     environment:
       PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
+      TZ: ${TIME_ZONE:-Europe/Lisbon}
       UMASK: "002"
       PUID: ${TRANSMISSION_PUID:-911}
       PGID: ${DIGGER_MEDIA_GID:-911}
-      WHITELIST: "*"
+      # LinuxServer disables RPC IP filtering when WHITELIST is empty (allow all IPs).
+      WHITELIST: ""
       USER: ${TRANSMISSION_USERNAME:-}
       PASS: ${TRANSMISSION_PASSWORD:-}
     volumes:
