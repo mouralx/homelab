@@ -71,6 +71,7 @@ services:
     volumes:
       - ~/transmission/config:/config
       - /mnt/ssd/transmission/downloads:/downloads
+      - /mnt/ssd/transmission/downloads/complete:/movies
       - ~/transmission/watch:/watch
     ports:
       - 9091:9091
@@ -95,13 +96,19 @@ services:
       MOVIES_DIR: /movies
       YTS_API_URL: "${DIGGER_YTS_API_URL:-https://movies-api.accel.li/api/v2/list_movies.json?quality=2160p&sort_by=year,rating,date_added&order_by=desc&limit=50&page={0}}"
       TRANSMISSION_RPC_URL: http://transmission:9091/transmission/rpc
-      TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME:-}
-      TRANSMISSION_PASSWORD: ${DIGGER_TRANSMISSION_PASSWORD:-}
+      TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME:-${TRANSMISSION_USERNAME:-}}
+      TRANSMISSION_PASSWORD: ${DIGGER_TRANSMISSION_PASSWORD:-${TRANSMISSION_PASSWORD:-}}
       MAX_LIBRARY_SIZE_GB: ${DIGGER_MAX_LIBRARY_SIZE_GB:-750}
       DISK_RESERVE_MB: ${DIGGER_DISK_RESERVE_MB:-51200}
     volumes:
       - ~/digger:/data
       - /mnt/ssd/transmission/downloads/complete:/movies
+    healthcheck:
+      test: [CMD-SHELL, 'test -f /data/digger.db && test -w /data/digger.db && test -w /movies/.digger.lock']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin

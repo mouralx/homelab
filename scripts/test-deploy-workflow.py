@@ -91,14 +91,19 @@ if command == os.environ['FAIL_COMMAND']:
                      "a\\b", "ending\\", "a\\'b", 'a"b', "${MISSING}", "$$double", r"\$BACKSLASH"]
     for value in secret_values:
         env = base.copy()
-        env["ENVIRONMENT_VARS"] = json.dumps({"TIME_ZONE": "Europe/Lisbon", "OPENCLAW_GATEWAY_TOKEN": "overridden"})
-        env["ENVIRONMENT_SECRETS"] = json.dumps({"OPENCLAW_GATEWAY_TOKEN": value, "GITHUB_TOKEN": "excluded"})
+        env["ENVIRONMENT_VARS"] = json.dumps({"TIME_ZONE": "Europe/Lisbon", "OPENCLAW_GATEWAY_TOKEN": "overridden", "TRANSMISSION_USERNAME": "fixture-user"})
+        env["ENVIRONMENT_SECRETS"] = json.dumps({"OPENCLAW_GATEWAY_TOKEN": value, "GITHUB_TOKEN": "excluded", "TRANSMISSION_PASSWORD": "fixture-password"})
         subprocess.run(steps[1]["run"].split(), cwd=fixture, env=env, check=True)
         config = json.loads(subprocess.check_output(
             [env["REAL_DOCKER"], "compose", "--env-file", ".env", "config", "--format", "json"],
             cwd=fixture, env=env, text=True))
         # Compose escapes literal dollars when serializing resolved config.
         assert config["services"]["openclaw"]["environment"]["OPENCLAW_GATEWAY_TOKEN"] == value.replace("$", "$$")
+        digger = config["services"]["digger"]
+        transmission = config["services"]["transmission"]
+        assert next(v["source"] for v in digger["volumes"] if v["target"] == "/movies") == next(v["source"] for v in transmission["volumes"] if v["target"] == "/movies")
+        assert digger["environment"]["TRANSMISSION_USERNAME"] == "fixture-user"
+        assert digger["environment"]["TRANSMISSION_PASSWORD"] == "fixture-password"
         assert "GITHUB_TOKEN" not in (fixture / ".env").read_text()
     print(f"All {len(secret_values)} special-character secret values survived real Compose parsing.")
     checks = 0

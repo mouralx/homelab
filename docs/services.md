@@ -61,10 +61,10 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 - Image: `ghcr.io/mouralx/digger:stable`; override with `DIGGER_TAG` for a version or preview.
 - Purpose: discover movies, download through Transmission, and manage a movie storage budget. No published ports.
-- SQLite persists in `~/digger`. Digger mounts `/mnt/ssd/transmission/downloads/complete` at `/movies`; Transmission sees it at `/downloads/complete`, and Jellyfin sees it at `/data`.
+- SQLite persists in `~/digger`. Digger and Transmission both mount `/mnt/ssd/transmission/downloads/complete` at `/movies`; Transmission also sees it at `/downloads/complete`, and Jellyfin sees it at `/data`. The matching `/movies` paths let Digger submit download directories directly to Transmission.
 - Exclude Digger's `.downloads` and `.state` directories from Jellyfin scans.
 - Defaults for the 1 TB SSD (about 931 GiB usable before filesystem overhead): 750 GiB movie budget and 51200 MiB (50 GiB) free-space reserve. The budget includes partial downloads; the reserve protects free space across the drive when other services use it. Override with `DIGGER_MAX_LIBRARY_SIZE_GB` and `DIGGER_DISK_RESERVE_MB`; `DIGGER_YTS_API_URL` overrides discovery and must retain the `{0}` page placeholder.
-- If Transmission RPC uses authentication, set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to its existing credentials. Its RPC allowlists must admit Digger on `homelab_static`.
+- Digger uses existing `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD` environment settings for RPC authentication. Set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to override them. Its RPC allowlists must admit Digger on `homelab_static`.
 
 The deployment workflow prepares Digger storage before installing: it grants UID 1654 access to the SQLite directory, gives the media root and existing `.digger.lock` write access through the shared media group, and checks both mounts using the image's normal non-root user. It preserves existing files and lock-file inodes and does not recursively change movie ownership. The temporary preparation container uses Docker's own UID mapping, including rootless Docker. If the host mount is owned by another host account and Docker cannot change its permissions, fix that directory's permissions on Beelink first.
 
