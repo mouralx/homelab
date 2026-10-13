@@ -76,6 +76,32 @@ services:
       - 9091:9091
       - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp
       - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp
+  digger:
+    image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
+    container_name: digger
+    hostname: digger
+    restart: unless-stopped
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.24
+    depends_on:
+      transmission: {condition: service_started}
+    group_add:
+      - "${DIGGER_MEDIA_GID:-911}"
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      TZ: ${TIME_ZONE:-Europe/Lisbon}
+      DATABASE_URL: Data Source=/data/digger.db
+      MOVIES_DIR: /movies
+      YTS_API_URL: "${DIGGER_YTS_API_URL:-https://movies-api.accel.li/api/v2/list_movies.json?quality=2160p&sort_by=year,rating,date_added&order_by=desc&limit=50&page={0}}"
+      TRANSMISSION_RPC_URL: http://transmission:9091/transmission/rpc
+      TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME:-}
+      TRANSMISSION_PASSWORD: ${DIGGER_TRANSMISSION_PASSWORD:-}
+      MAX_LIBRARY_SIZE_GB: ${DIGGER_MAX_LIBRARY_SIZE_GB:-750}
+      DISK_RESERVE_MB: ${DIGGER_DISK_RESERVE_MB:-51200}
+    volumes:
+      - ~/digger:/data
+      - /mnt/ssd/transmission/downloads/complete:/movies
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -386,7 +412,6 @@ services:
       interval: 5s
       start_period: 15s
       retries: 30
-
 networks:
   lab_net:
     name: homelab_static
@@ -397,6 +422,7 @@ networks:
   domus_net:
     driver: bridge
 volumes:
+  digger-data:
   domus-work-keys:
   domus-automation-data:
   domus-automation-keys:
