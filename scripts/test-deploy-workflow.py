@@ -113,7 +113,7 @@ if command == os.environ['FAIL_COMMAND']:
         for dry in [False, True]
         for update in [False, True]
         for down in [False, True]
-    ] + [("install", False, True, True, failure) for failure in ["login", "manifest", "inventory", "pull", "build", "up"]]
+    ] + [("install", False, True, True, failure) for failure in ["login", "manifest", "inventory", "pull", "build", "run", "up"]]
     for action, dry, update, down, failure in cases:
         env = base.copy()
         env.update({"SERVICE_ACTION": action, "DRY_RUN": str(dry).lower(),
@@ -148,13 +148,15 @@ if command == os.environ['FAIL_COMMAND']:
         assert not (fixture / ".env").exists()
         assert not list((fixture / "runner").iterdir())
         calls = [json.loads(line) for line in (fixture / "docker-log").read_text().splitlines()]
-        preparation_calls = [call for call in calls if call[:4] == ["compose", "--env-file", ".env", "run"]]
+        preparation_calls = [call for call in calls if call[0] == "run"]
         calls = [call for call in calls if call not in preparation_calls]
+        assert all(call[call.index("--network") + 1] == "none" for call in preparation_calls)
         if action == "install" and not dry and not failure:
             assert len(preparation_calls) == 2
             assert preparation_calls[0][-1] == "prepare" and preparation_calls[1][-1] == "check"
             assert preparation_calls[0][preparation_calls[0].index("--user") + 1] == "0:0"
             assert "--user" not in preparation_calls[1]
+            assert all(call[call.index("--network") + 1] == "none" for call in preparation_calls)
         registry_calls = [call for call in calls if call[0] in ["--config", "manifest"]]
         calls = [call for call in calls if call[0] not in ["--config", "manifest"]]
         if action == "install" and not failure:
@@ -176,7 +178,7 @@ if command == os.environ['FAIL_COMMAND']:
                     expected.append(["compose", "--env-file", ".env", "stop", *SERVICES])
                 expected.append(["compose", "--env-file", ".env", "up", "-d", "--wait", "--wait-timeout", "240", *SERVICES])
             assert calls == expected, calls
-        elif failure in ["pull", "build"]:
+        elif failure in ["pull", "build", "run"]:
             assert all(call[0] == "compose" for call in calls), calls
         assert all("unmanaged" not in " ".join(call) and "domus" not in " ".join(call) and "postgres" not in " ".join(call) for call in calls)
         checks += 1

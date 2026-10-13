@@ -68,7 +68,7 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 The deployment workflow prepares Digger storage before installing: it grants UID 1654 access to the SQLite directory, gives the media root and existing `.digger.lock` write access through the shared media group, and checks both mounts using the image's normal non-root user. It preserves existing files and lock-file inodes and does not recursively change movie ownership. The temporary preparation container uses Docker's own UID mapping, including rootless Docker. If the host mount is owned by another host account and Docker cannot change its permissions, fix that directory's permissions on Beelink first.
 
-`DIGGER_MEDIA_GID` defaults to the LinuxServer image's default group 911; set it to Transmission's actual group if different. Configure Transmission's file umask to preserve group-write access. For local installation, run `bash scripts/workflow.step.prepare-digger-storage.sh` with the stack's `.env` before starting Digger.
+`DIGGER_MEDIA_GID` defaults to the LinuxServer image's default group 911; set it to Transmission's actual group if different. Digger starts with umask `0002`, and Transmission uses `UMASK=002`, so new download directories and files remain writable by the shared group. Existing Digger staging directories are repaired during preparation. For local installation, run `bash scripts/workflow.step.prepare-digger-storage.sh` with the stack's `.env` before starting Digger.
 
 After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
 

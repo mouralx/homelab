@@ -9,6 +9,21 @@ case "${1:-}" in
     chmod u+rwx /data
     chgrp "$DIGGER_STORAGE_GID" /movies
     chmod g+rwx,g+s /movies
+    if [ -L /movies/.downloads ]; then
+      echo 'Refusing to change a symlink: /movies/.downloads' >&2; exit 1
+    fi
+    mkdir -p /movies/.downloads
+    chgrp "$DIGGER_STORAGE_GID" /movies/.downloads
+    chmod g+rwx,g+s /movies/.downloads
+    for directory in /movies/.downloads/tt[0-9]*; do
+      id=${directory##*/tt}
+      case "$id" in ''|*[!0-9]*) continue ;; esac
+      if [ -L "$directory" ]; then echo "Refusing to change a symlink: $directory" >&2; exit 1; fi
+      if [ -d "$directory" ]; then
+        chgrp "$DIGGER_STORAGE_GID" "$directory"
+        chmod g+rwx,g+s "$directory"
+      fi
+    done
     for file in /data/digger.db /data/digger.db.lock /data/digger.db-wal /data/digger.db-shm /movies/.digger.lock; do
       if [ -L "$file" ]; then
         echo "Refusing to change a symlink: $file" >&2; exit 1

@@ -38,9 +38,6 @@ jobs:
   deploy:
     name: ${{ inputs.action }} full stack on Beelink
     runs-on: [self-hosted, beelink]
-    concurrency:
-      group: home-lab-beelink
-      cancel-in-progress: false
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
     defaults:
       run:

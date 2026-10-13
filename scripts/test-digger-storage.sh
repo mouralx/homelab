@@ -12,7 +12,7 @@ docker volume create "$data_volume" >/dev/null
 docker volume create "$media_volume" >/dev/null
 trap cleanup EXIT
 mounts=(-v "$data_volume:/data" -v "$media_volume:/movies" -v "$PWD/scripts/digger-storage.sh:/setup.sh:ro")
-docker run --rm "${mounts[@]}" busybox:1.37 sh -c '
+docker run --rm --network none "${mounts[@]}" busybox:1.37 sh -c '
   chmod 755 /data /movies
   printf database > /data/digger.db
   printf lock > /movies/.digger.lock
@@ -20,14 +20,18 @@ docker run --rm "${mounts[@]}" busybox:1.37 sh -c '
   chmod 644 /data/digger.db /movies/.digger.lock /movies/unrelated.mkv
   stat -c "%i %u %g %a" /movies/.digger.lock > /data/lock-before
   stat -c "%u %g %a" /movies/unrelated.mkv > /data/movie-before
+  mkdir -p /movies/.downloads/tt123
+  chmod 755 /movies/.downloads /movies/.downloads/tt123
 '
-if docker run --rm --user 1654:1654 --group-add 911 "${mounts[@]}" busybox:1.37 sh /setup.sh check >/dev/null 2>&1; then
+if docker run --rm --network none --user 1654:1654 --group-add 911 "${mounts[@]}" busybox:1.37 sh /setup.sh check >/dev/null 2>&1; then
   echo 'Accepted unwritable storage' >&2; exit 1
 fi
-docker run --rm -e DIGGER_STORAGE_UID=1654 -e DIGGER_STORAGE_GID=911 "${mounts[@]}" busybox:1.37 sh /setup.sh prepare
-docker run --rm --user 1654:1654 --group-add 911 "${mounts[@]}" busybox:1.37 sh /setup.sh check
-docker run --rm --user 911:911 "${mounts[@]}" busybox:1.37 sh -c 'touch /movies/transmission-check; rm /movies/transmission-check'
-docker run --rm "${mounts[@]}" busybox:1.37 sh -c '
+docker run --rm --network none -e DIGGER_STORAGE_UID=1654 -e DIGGER_STORAGE_GID=911 "${mounts[@]}" busybox:1.37 sh /setup.sh prepare
+docker run --rm --network none --user 1654:1654 --group-add 911 "${mounts[@]}" busybox:1.37 sh /setup.sh check
+docker run --rm --network none --user 1654:1654 --group-add 911 "${mounts[@]}" busybox:1.37 sh -c 'umask 0002; mkdir /movies/.downloads/tt456'
+docker run --rm --network none --user 911:911 "${mounts[@]}" busybox:1.37 sh -c 'umask 0002; touch /movies/.downloads/tt123/transmission-check /movies/.downloads/tt456/transmission-check'
+docker run --rm --network none --user 1654:1654 --group-add 911 "${mounts[@]}" busybox:1.37 sh -c 'rm /movies/.downloads/tt123/transmission-check /movies/.downloads/tt456/transmission-check'
+docker run --rm --network none "${mounts[@]}" busybox:1.37 sh -c '
   test "$(cat /data/digger.db)" = database
   test "$(cat /movies/.digger.lock)" = lock
   test "$(stat -c %i /movies/.digger.lock)" = "$(cut -d " " -f 1 /data/lock-before)"
