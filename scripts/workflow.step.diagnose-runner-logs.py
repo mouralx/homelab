@@ -90,3 +90,7 @@ if inspection.returncode == 0:
     permissions = subprocess.run(["docker", "exec", "transmission", "stat", "-c", "%u %g %a", "/config/settings.json"], capture_output=True, text=True)
     if permissions.returncode == 0:
         print("settings.json owner/group/mode:", permissions.stdout.strip(), flush=True)
+    dns = subprocess.run(["docker", "exec", "digger", "getent", "hosts", "transmission"], capture_output=True, text=True)
+    print("Transmission DNS from Digger:", dns.stdout.strip(), flush=True)
+    print("Current Digger RPC probe:", flush=True)
+    subprocess.run(["python3", str(Path(__file__).with_name("workflow.step.verify-digger-rpc.py"))])

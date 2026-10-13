@@ -29,10 +29,10 @@ for attempt in range(10):
     if session:
         configuration += "header = " + json.dumps("X-Transmission-Session-Id: " + session) + "\n"
     configuration += "".join(key + " = " + json.dumps(value, ensure_ascii=False) + "\n" for key, value in options.items())
-    configuration += 'write-out = "\\n%{http_code}"\n'
+    configuration += 'write-out = "%{stderr}\\nREMOTE-IP:%{remote_ip}\\n%{stdout}\\n%{http_code}"\n'
     # Share Digger's namespace so Transmission sees its actual source IP.
     result = subprocess.run(
-        ["docker", "run", "--rm", "--network", "container:" + digger, "--interactive", "--entrypoint", "curl", image, "--config", "-"],
+        ["docker", "run", "--rm", "--network", "container:" + digger, "--interactive", "--entrypoint", "curl", image, "--noproxy", "*", "--config", "-"],
         input=configuration, text=True, capture_output=True)
     if result.returncode:
         if attempt < 9:
@@ -46,6 +46,11 @@ for attempt in range(10):
             session = header.group(1)
             continue
     if status != "200":
+        address = re.search(r"REMOTE-IP:([0-9a-fA-F:.]+)", result.stderr)
+        if address:
+            print("RPC responding IP:", address.group(1), flush=True)
+        if "Unauthorized IP Address" in body:
+            print("Transmission explicitly rejected the client IP.", flush=True)
         hint = {"401": "Check Transmission credentials.", "403": "Check Transmission's IP whitelist and saved configuration permissions.",
                 "421": "Check Transmission's hostname whitelist."}.get(status, "Check Transmission RPC availability.")
         raise SystemExit("Digger RPC verification failed: HTTP " + status + ". " + hint)
