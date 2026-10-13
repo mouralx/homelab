@@ -65,6 +65,16 @@ print("Transmission effective access settings:", flush=True)
 inspection = subprocess.run(["docker", "inspect", "transmission"], capture_output=True, text=True)
 if inspection.returncode == 0:
     state = json.loads(inspection.stdout)[0]
+    hook = "/custom-cont-init.d/20-homelab-rpc.sh"
+    print("RPC startup hook mounted:", any(mount["Destination"] == hook for mount in state.get("Mounts", [])), flush=True)
+    hook_check = subprocess.run(["docker", "exec", "transmission", "sh", "-c", "stat -c '%a' /custom-cont-init.d/20-homelab-rpc.sh; if [ -x /custom-cont-init.d/20-homelab-rpc.sh ]; then echo executable=yes; else echo executable=no; fi"], capture_output=True, text=True)
+    print("RPC startup hook mode/status:", hook_check.stdout.strip(), flush=True)
+    logs = subprocess.run(["docker", "logs", "--tail", "200", "transmission"], capture_output=True, text=True)
+    for line in (logs.stdout + logs.stderr).splitlines():
+        if "[custom-init] 20-homelab-rpc.sh:" in line:
+            print("RPC startup hook:", line.strip(), flush=True)
+        if "Transmission RPC settings synchronized:" in line:
+            print("RPC startup hook reported settings synchronization.", flush=True)
     environment = dict(value.split("=", 1) for value in state["Config"]["Env"] if "=" in value)
     print(json.dumps({key: environment.get(key) for key in ["PUID", "PGID", "WHITELIST", "HOST_WHITELIST"]}), flush=True)
     user = environment.get("PUID", "911") + ":" + environment.get("PGID", "911")
