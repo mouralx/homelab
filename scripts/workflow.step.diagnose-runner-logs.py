@@ -75,12 +75,20 @@ if inspection.returncode == 0:
             print("RPC startup hook:", line.strip(), flush=True)
         if "Transmission RPC settings synchronized:" in line:
             print("RPC startup hook reported settings synchronization.", flush=True)
+    print("Recent brute-force lockout rejections:", sum("brute force protection active" in line for line in (logs.stdout + logs.stderr).splitlines()), flush=True)
     environment = dict(value.split("=", 1) for value in state["Config"]["Env"] if "=" in value)
+    digger_state = subprocess.run(["docker", "inspect", "digger"], capture_output=True, text=True)
+    if digger_state.returncode == 0:
+        digger_environment = dict(value.split("=", 1) for value in json.loads(digger_state.stdout)[0]["Config"]["Env"] if "=" in value)
+        print("Digger username matches Transmission USER:", digger_environment.get("TRANSMISSION_USERNAME") == environment.get("USER"), flush=True)
+        print("Digger password matches Transmission PASS:", digger_environment.get("TRANSMISSION_PASSWORD") == environment.get("PASS"), flush=True)
+        print("Configured password has Transmission's hash-marker prefix:", environment.get("PASS", "").startswith("{"), flush=True)
     print(json.dumps({key: environment.get(key) for key in ["PUID", "PGID", "WHITELIST", "HOST_WHITELIST"]}), flush=True)
     user = environment.get("PUID", "911") + ":" + environment.get("PGID", "911")
     keys = ["rpc-whitelist", "rpc-whitelist-enabled", "rpc_whitelist", "rpc_whitelist_enabled",
             "rpc-host-whitelist", "rpc-host-whitelist-enabled", "rpc_host_whitelist", "rpc_host_whitelist_enabled",
-            "rpc-authentication-required", "rpc_authentication_required"]
+            "rpc-authentication-required", "rpc_authentication_required", "anti-brute-force-enabled", "anti_brute_force_enabled",
+            "anti-brute-force-threshold", "anti_brute_force_threshold"]
     query = "with_entries(select(.key as $key | " + json.dumps(keys) + " | index($key)))"
     settings = subprocess.run(["docker", "exec", "--user", user, "transmission", "jq", query, "/config/settings.json"], capture_output=True, text=True)
     if settings.returncode == 0:
