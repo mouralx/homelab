@@ -19,43 +19,14 @@ jobs:
       group: home-lab-beelink
       cancel-in-progress: false
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
       - name: Resolve existing local account without exposing credentials
         if: ${{ inputs.resolve_account }}
         env:
           ACCOUNT_EMAIL: ${{ inputs.email }}
         shell: bash
-        run: |
-          python3 - <<'PY'
-          import json, os, subprocess
-          state = json.loads(subprocess.check_output(['docker', 'inspect', 'postgres']))[0]
-          environment = dict(value.split('=', 1) for value in state['Config']['Env'] if '=' in value)
-          query = "SELECT id::text, password_hash IS NOT NULL FROM users WHERE lower(email) = lower(:'email');"
-          result = subprocess.run(['docker', 'exec', '-i', '-e', 'PGPASSWORD=' + environment['POSTGRES_PASSWORD'], 'postgres', 'psql', '--no-psqlrc', '-U', environment.get('POSTGRES_USER', 'admin'), '-d', 'membership', '-At', '--set=email=' + os.environ['ACCOUNT_EMAIL']], input=query, text=True, capture_output=True)
-          if result.returncode:
-              raise SystemExit("Account lookup failed; check database access on the runner.")
-          rows = [line.split('|') for line in result.stdout.splitlines() if '|' in line]
-          local = [row[0] for row in rows if row[1] == 't']
-          print('Matching identity count:', len(rows))
-          if len(local) != 1:
-              raise SystemExit('Cannot uniquely identify the existing password account.')
-          print('Original local account ID:', local[0])
-          PY
+        run: python3 scripts/workflow.step.resolve-domus-account.py
       - name: Read sanitized authentication exceptions
         shell: bash
-        run: |
-          python3 - <<'PY'
-          import re, subprocess
-          for service in ['domus-membership', 'domus-boards']:
-              print('Service:', service)
-              result = subprocess.run(['docker', 'logs', '--since', '12h', '--tail', '3000', service], capture_output=True, text=True)
-              lines = (result.stdout + result.stderr).splitlines()
-              remaining = 0
-              for line in lines:
-                  if re.search(r'Exception|fail:|error:|could not|key.*not found|permission denied', line, re.I):
-                      remaining = 12
-                  if remaining:
-                      line = re.sub(r'(?i)(password|secret|token|authorization)\s*[=:]\s*[^;\s]+', r'\1=[redacted]', line)
-                      line = re.sub(r'[\w.+-]+@[\w.-]+', '[email]', line)
-                      print(line[:1500])
-                      remaining -= 1
-          PY
+        run: python3 scripts/workflow.step.read-domus-authentication-exceptions.py
