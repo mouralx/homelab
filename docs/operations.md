@@ -47,6 +47,8 @@ A dry run generates the environment file, validates configuration and dependency
 
 Local regression checks are available with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
 
+Run `python3 scripts/test-deploy-workflow.py` to exercise the actual workflow steps across all action/boolean input combinations, simulated Docker failures, secret quoting, and cleanup. It requires Python 3, Ruby, Bash, jq, and Docker Compose locally; container changes are simulated. Use `actionlint` and `shellcheck scripts/workflow.step.*.sh scripts/validate-compose.sh` for static checks. The custom `beelink` runner label is declared in `.github/actionlint.yaml`.
+
 ## Moving everything to the Beelink
 
 The workflow changes containers only on Beelink. Before deploying the full stack, back up and copy each service's data from its old host to the corresponding directory under the Beelink home directory, preserving ownership. Stop and remove old containers on other hosts explicitly after verifying the migration; the workflow cannot reach or clean them up.

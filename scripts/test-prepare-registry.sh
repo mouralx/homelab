@@ -3,7 +3,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-mkdir -p "$fixture/source/contexts/meta/example" "$fixture/runner"
+mkdir -p "$fixture/source/contexts/meta/example" "$fixture/source/cli-plugins" "$fixture/runner"
+printf '#!/usr/bin/env bash\necho compose-plugin-fixture\n' > "$fixture/source/cli-plugins/docker-compose"
+chmod +x "$fixture/source/cli-plugins/docker-compose"
 printf 'context fixture' > "$fixture/source/contexts/meta/example/meta.json"
 cat > "$fixture/source/config.json" <<'JSON'
 {"currentContext":"rootless","credsStore":"pass","credHelpers":{"ghcr.io":"pass","another.example":"pass"},"auths":{"ghcr.io":{"auth":"synthetic-invalid-token"},"https://ghcr.io/v1/":{"auth":"synthetic-invalid-token"},"another.example":{"auth":"synthetic-other-token"}}}
@@ -12,6 +14,7 @@ RUNNER_TEMP="$fixture/runner" GITHUB_ENV="$fixture/environment" DOCKER_CONFIG="$
 config=$(sed -n 's/^DOCKER_CONFIG=//p' "$fixture/environment")
 jq -e '.currentContext == "rootless" and .credsStore == null and .auths["ghcr.io"] == null and .auths["https://ghcr.io/v1/"] == null and .credHelpers["ghcr.io"] == null and .auths["another.example"].auth == "synthetic-other-token" and .credHelpers["another.example"] == "pass"' "$config/config.json" >/dev/null
 cmp "$fixture/source/contexts/meta/example/meta.json" "$config/contexts/meta/example/meta.json"
+[[ $("$config/cli-plugins/docker-compose") == compose-plugin-fixture ]]
 jq -e '.auths["ghcr.io"].auth == "synthetic-invalid-token"' "$fixture/source/config.json" >/dev/null
 RUNNER_TEMP="$fixture/runner" GITHUB_ENV="$fixture/environment-empty" DOCKER_CONFIG="$fixture/missing" bash scripts/workflow.step.prepare-registry.sh
 config=$(sed -n 's/^DOCKER_CONFIG=//p' "$fixture/environment-empty")

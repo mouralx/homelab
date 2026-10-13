@@ -4,5 +4,12 @@ set -euo pipefail
 : "${ENVIRONMENT_SECRETS:?ENVIRONMENT_SECRETS is required}"
 
 umask 077
-jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > .env
-jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> .env
+# Quoted Compose dotenv values preserve comments, newlines and literal dollars.
+write_values() {
+  jq -r '
+    to_entries[] | select(.key != "GITHUB_TOKEN")
+    | "\(.key)=\(.value | tostring | tojson | gsub("\\$"; "\\$"))"
+  '
+}
+write_values <<< "$ENVIRONMENT_VARS" > .env
+write_values <<< "$ENVIRONMENT_SECRETS" >> .env

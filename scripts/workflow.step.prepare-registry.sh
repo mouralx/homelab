@@ -21,4 +21,8 @@ fi
 if [[ -d "$source_config/contexts" ]]; then
   cp -R "$source_config/contexts" "$registry_config/contexts"
 fi
+if [[ -d "$source_config/cli-plugins" ]]; then
+  # Keep Compose available when it is installed in the runner's Docker config.
+  ln -s "$source_config/cli-plugins" "$registry_config/cli-plugins"
+fi
 echo 'Public GHCR images will be checked and pulled anonymously.'
