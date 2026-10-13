@@ -77,6 +77,9 @@ if [[ $action == install ]]; then
     docker compose --env-file .env pull --ignore-buildable "${targets[@]}"
   fi
   docker compose --env-file .env build "${targets[@]}"
+  if [[ " ${targets[*]} " == *" digger "* ]]; then
+    bash scripts/workflow.step.prepare-digger-storage.sh
+  fi
 fi
 
 # Migrate/remove only selected legacy services; leave their data in place.

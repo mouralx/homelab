@@ -118,7 +118,7 @@ if command == os.environ['FAIL_COMMAND']:
             path.write_text("")
         failed = False
         for step in steps[1:-1]:
-            if step.get("if") and action != "install":
+            if step.get("if") and (action != "install" or ("!inputs.dry_run" in step["if"] and dry)):
                 continue
             if "GHCR_TOKEN" in step.get("env", {}):
                 assert step["env"]["GHCR_TOKEN"] == "${{ secrets.GH_PAT || github.token }}"
@@ -143,6 +143,13 @@ if command == os.environ['FAIL_COMMAND']:
         assert not (fixture / ".env").exists()
         assert not list((fixture / "runner").iterdir())
         calls = [json.loads(line) for line in (fixture / "docker-log").read_text().splitlines()]
+        preparation_calls = [call for call in calls if call[:4] == ["compose", "--env-file", ".env", "run"]]
+        calls = [call for call in calls if call not in preparation_calls]
+        if action == "install" and not dry and not failure:
+            assert len(preparation_calls) == 2
+            assert preparation_calls[0][-1] == "prepare" and preparation_calls[1][-1] == "check"
+            assert preparation_calls[0][preparation_calls[0].index("--user") + 1] == "0:0"
+            assert "--user" not in preparation_calls[1]
         registry_calls = [call for call in calls if call[0] in ["--config", "manifest"]]
         calls = [call for call in calls if call[0] not in ["--config", "manifest"]]
         if action == "install" and not failure:

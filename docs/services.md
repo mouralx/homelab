@@ -61,18 +61,21 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 - Image: `ghcr.io/mouralx/digger:stable`; override with `DIGGER_TAG` for a version or preview.
 - Purpose: discover movies, download through Transmission, and manage a movie storage budget. No published ports.
-- SQLite persists in `digger-data`. Digger and Transmission both mount `/mnt/ssd/transmission/downloads/complete/digger` at `/movies`; Jellyfin already sees this directory under `/data/digger`.
-- The dedicated `digger` directory keeps existing completed downloads outside Digger's cleanup and quota management. Exclude its `.downloads` and `.state` directories from Jellyfin scans.
+- SQLite persists in `~/digger`. Digger mounts `/mnt/ssd/transmission/downloads/complete` at `/movies`; Transmission sees it at `/downloads/complete`, and Jellyfin sees it at `/data`.
+- Exclude Digger's `.downloads` and `.state` directories from Jellyfin scans.
 - Defaults for the 1 TB SSD (about 931 GiB usable before filesystem overhead): 750 GiB movie budget and 51200 MiB (50 GiB) free-space reserve. The budget includes partial downloads; the reserve protects free space across the drive when other services use it. Override with `DIGGER_MAX_LIBRARY_SIZE_GB` and `DIGGER_DISK_RESERVE_MB`; `DIGGER_YTS_API_URL` overrides discovery and must retain the `{0}` page placeholder.
 - If Transmission RPC uses authentication, set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to its existing credentials. Its RPC allowlists must admit Digger on `homelab_static`.
 
-Before starting, create the dedicated media directory with write access for Digger (UID 1654) and Transmission's existing user. `DIGGER_MEDIA_GID` defaults to the LinuxServer image's default group 911; set it to Transmission's actual group if different. Use that shared group, group-write permissions, and setgid on the directory, and configure Transmission's file umask to preserve group-write access. Account for host UID/GID mappings if Docker runs rootless. The named SQLite volume uses the image's UID 1654.
+The deployment workflow prepares Digger storage before installing: it grants UID 1654 access to the SQLite directory, gives the media root and existing `.digger.lock` write access through the shared media group, and checks both mounts using the image's normal non-root user. It preserves existing files and lock-file inodes and does not recursively change movie ownership. The temporary preparation container uses Docker's own UID mapping, including rootless Docker. If the host mount is owned by another host account and Docker cannot change its permissions, fix that directory's permissions on Beelink first.
+
+`DIGGER_MEDIA_GID` defaults to the LinuxServer image's default group 911; set it to Transmission's actual group if different. Configure Transmission's file umask to preserve group-write access. For local installation, run `bash scripts/workflow.step.prepare-digger-storage.sh` with the stack's `.env` before starting Digger.
 
 After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml config --quiet
 docker compose --env-file .env -f services/compose.yaml pull digger
+bash scripts/workflow.step.prepare-digger-storage.sh
 docker compose --env-file .env -f services/compose.yaml up -d digger
 docker compose --env-file .env -f services/compose.yaml logs --tail 100 digger
 ```
