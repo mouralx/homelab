@@ -112,12 +112,6 @@ services:
     volumes:
       - ~/digger:/data
       - /mnt/ssd/transmission/downloads/complete:/movies
-    healthcheck:
-      test: [CMD-SHELL, 'test -f /data/digger.db && test -w /data/digger.db && test -w /movies/.digger.lock']
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
