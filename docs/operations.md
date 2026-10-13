@@ -24,7 +24,7 @@ Append a service name to `logs` to inspect just that service.
 
 Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`. The workflow manages the full Compose stack on Beelink. All workflow scripts are maintained in `scripts/`; the workflows invoke these files instead of embedding script bodies.
 
-The Beelink self-hosted runner must have the `self-hosted` and `beelink` labels and needs Docker Compose v2, Bash, and jq. The workflow has no GitHub-hosted runner or routing to other hosts. If Beelink is offline, the deployment remains queued.
+The Beelink self-hosted runner must have the `self-hosted` and `beelink` labels and needs Docker Compose v2, Bash, jq, and Python 3. The workflow has no GitHub-hosted runner or routing to other hosts. If Beelink is offline, the deployment remains queued.
 
 Before deployment, configure the selected GitHub environment:
 
@@ -81,3 +81,5 @@ For manual migration, stop and remove the containers belonging to those four pre
 Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, Honcho, and PostgreSQL are not part of the current stack. Workflow installs preserve orphaned containers and their data; retire unwanted services explicitly. Containers from older projects or other hosts require manual cleanup. Unused `POSTGRES_*`, `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
 
 If the earlier Recorder PostgreSQL configuration was applied on Beelink, remove `recorder: !include recorder-postgres.yaml` or the PostgreSQL `db_url` override from Home Assistant configuration before deployment. Home Assistant will then use its default SQLite database.
+
+Install prepares Transmission configuration ownership and creates missing download directories while its daemon is stopped. The first repair preserves `settings.json.permissions-backup` beside its original settings. The IP whitelist permits all addresses (`WHITELIST=*`); RPC authentication uses `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD`. After startup, a read-only `torrent-get` RPC request runs from Digger's actual network namespace; authentication, whitelist or connectivity failures fail deployment.

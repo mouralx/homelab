@@ -52,6 +52,12 @@ if args[0] == '--config':
     assert sys.stdin.read() == 'fixture-registry-token'
 if args[:4] == ['compose', '--env-file', '.env', 'config']:
     sys.exit(subprocess.call([os.environ['REAL_DOCKER'], *args]))
+if args[0] == 'inspect':
+    print(json.dumps([
+        {'Name': '/digger', 'Config': {'Env': ['TRANSMISSION_RPC_URL=http://transmission:9091/transmission/rpc', 'TRANSMISSION_USERNAME=fixture-user', 'TRANSMISSION_PASSWORD=fixture-password']}},
+        {'Name': '/transmission', 'Config': {'Image': 'fixture-transmission'}}
+    ]))
+    sys.exit(0)
 if args[0] == 'ps':
     if os.environ['FAIL_COMMAND'] == 'inventory':
         sys.exit(1)
@@ -69,6 +75,10 @@ with open(os.environ['DOCKER_LOG'], 'a') as log:
 command = args[3] if args[0] == 'compose' else ('login' if args[0] == '--config' else args[0])
 if command == os.environ['FAIL_COMMAND']:
     sys.exit(1)
+if args[0] == 'run' and args[-2:] == ['--config', '-']:
+    sys.stdin.read()
+    print('{"result":"success","arguments":{"torrents":[]}}')
+    print('403' if os.environ['FAIL_COMMAND'] == 'rpc' else '200', end='')
 """)
     wrapper.chmod(0o755)
     base = os.environ.copy()
@@ -114,7 +124,7 @@ if command == os.environ['FAIL_COMMAND']:
         for dry in [False, True]
         for update in [False, True]
         for down in [False, True]
-    ] + [("install", False, True, True, failure) for failure in ["login", "manifest", "inventory", "pull", "build", "run", "up"]]
+    ] + [("install", False, True, True, failure) for failure in ["login", "manifest", "inventory", "pull", "build", "stop", "run", "up", "rpc"]]
     for action, dry, update, down, failure in cases:
         env = base.copy()
         env.update({"SERVICE_ACTION": action, "DRY_RUN": str(dry).lower(),
@@ -149,15 +159,19 @@ if command == os.environ['FAIL_COMMAND']:
         assert not (fixture / ".env").exists()
         assert not list((fixture / "runner").iterdir())
         calls = [json.loads(line) for line in (fixture / "docker-log").read_text().splitlines()]
+        rpc_calls = [call for call in calls if call[0] == "run" and call[-2:] == ["--config", "-"]]
+        calls = [call for call in calls if call not in rpc_calls]
         preparation_calls = [call for call in calls if call[0] == "run"]
         calls = [call for call in calls if call not in preparation_calls]
         assert all(call[call.index("--network") + 1] == "none" for call in preparation_calls)
         if action == "install" and not dry and not failure:
-            assert len(preparation_calls) == 2
+            assert len(preparation_calls) == 4
             assert preparation_calls[0][-1] == "prepare" and preparation_calls[1][-1] == "check"
             assert preparation_calls[0][preparation_calls[0].index("--user") + 1] == "0:0"
-            assert "--user" not in preparation_calls[1]
+            assert preparation_calls[1][preparation_calls[1].index("--user") + 1] == "911:911"
+            assert "--user" not in preparation_calls[3]
             assert all(call[call.index("--network") + 1] == "none" for call in preparation_calls)
+            assert len(rpc_calls) == 1 and rpc_calls[0][rpc_calls[0].index("--network") + 1] == "container:digger"
         registry_calls = [call for call in calls if call[0] in ["--config", "manifest"]]
         calls = [call for call in calls if call[0] not in ["--config", "manifest"]]
         if action == "install" and not failure:
@@ -171,6 +185,7 @@ if command == os.environ['FAIL_COMMAND']:
                 if update:
                     expected.append(["compose", "--env-file", ".env", "pull", "--ignore-buildable", *SERVICES])
                 expected.append(["compose", "--env-file", ".env", "build", *SERVICES])
+                expected.append(["compose", "--env-file", ".env", "stop", "transmission"])
             expected += [["rm", "-f", "agents-portainer_agent"], ["rm", "-f", "media-transmission"]]
             if action == "uninstall":
                 expected.append(["compose", "--env-file", ".env", "rm", "--stop", "--force", *SERVICES])
@@ -179,7 +194,7 @@ if command == os.environ['FAIL_COMMAND']:
                     expected.append(["compose", "--env-file", ".env", "stop", *SERVICES])
                 expected.append(["compose", "--env-file", ".env", "up", "-d", "--wait", "--wait-timeout", "240", *SERVICES])
             assert calls == expected, calls
-        elif failure in ["pull", "build", "run"]:
+        elif failure in ["pull", "build", "stop", "run"]:
             assert all(call[0] == "compose" for call in calls), calls
         assert all("unmanaged" not in " ".join(call) and "domus" not in " ".join(call) and "postgres" not in " ".join(call) for call in calls)
         checks += 1

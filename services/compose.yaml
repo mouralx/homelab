@@ -69,6 +69,11 @@ services:
     environment:
       PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
       UMASK: "002"
+      PUID: ${TRANSMISSION_PUID:-911}
+      PGID: ${DIGGER_MEDIA_GID:-911}
+      WHITELIST: "*"
+      USER: ${TRANSMISSION_USERNAME:-}
+      PASS: ${TRANSMISSION_PASSWORD:-}
     volumes:
       - ~/transmission/config:/config
       - /mnt/ssd/transmission/downloads:/downloads

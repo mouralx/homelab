@@ -77,6 +77,9 @@ if [[ $action == install ]]; then
     docker compose --env-file .env pull --ignore-buildable "${targets[@]}"
   fi
   docker compose --env-file .env build "${targets[@]}"
+  if [[ " ${targets[*]} " == *" transmission "* ]]; then
+    bash scripts/workflow.step.prepare-transmission-storage.sh
+  fi
   if [[ " ${targets[*]} " == *" digger "* ]]; then
     bash scripts/workflow.step.prepare-digger-storage.sh
   fi
@@ -106,4 +109,7 @@ else
     docker compose --env-file .env stop "${targets[@]}"
   fi
   docker compose --env-file .env up -d --wait --wait-timeout 240 "${targets[@]}"
+  if [[ " ${targets[*]} " == *" digger "* ]]; then
+    python3 scripts/workflow.step.verify-digger-rpc.py
+  fi
 fi
