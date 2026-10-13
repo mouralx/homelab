@@ -109,6 +109,9 @@ else
     docker compose --env-file .env stop "${targets[@]}"
   fi
   docker compose --env-file .env up -d --wait --wait-timeout 240 "${targets[@]}"
+  if [[ " ${targets[*]} " == *" transmission "* ]]; then
+    bash scripts/workflow.step.reload-transmission-settings.sh
+  fi
   if [[ " ${targets[*]} " == *" digger "* ]]; then
     python3 scripts/workflow.step.verify-digger-rpc.py
   fi

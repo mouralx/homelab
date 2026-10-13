@@ -7,7 +7,7 @@ settings_temp=$(mktemp /config/.homelab-rpc.XXXXXX)
 trap 'rm -f "$settings_temp"' EXIT
 jq '
   .["rpc-whitelist"] = "*" | .rpc_whitelist = "*"
-  | .["rpc-whitelist-enabled"] = true | .rpc_whitelist_enabled = true
+  | .["rpc-whitelist-enabled"] = false | .rpc_whitelist_enabled = false
   | ((.rpc_host_whitelist // .["rpc-host-whitelist"] // "")
       | split(",") + ["transmission", "localhost"]
       | map(select(length > 0)) | unique | join(",")) as $hosts

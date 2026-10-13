@@ -46,6 +46,9 @@ for attempt in range(10):
             session = header.group(1)
             continue
     if status != "200":
+        if status in ["401", "403", "421"] and attempt < 9:
+            time.sleep(2)
+            continue
         address = re.search(r"REMOTE-IP:([0-9a-fA-F:.]+)", result.stderr)
         if address:
             print("RPC responding IP:", address.group(1), flush=True)
