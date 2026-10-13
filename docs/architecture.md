@@ -1,6 +1,6 @@
 # Architecture
 
-All 16 services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
+All nine services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
 
 ## Services and networking
 
@@ -16,11 +16,9 @@ Persistent service data stays on Beelink under each service's home directory. Re
 
 Published host ports are distinct per protocol. Portainer server uses container name `portainer`.
 
-Domus uses three databases in the shared PostgreSQL service. Its initialization client exits successfully before the APIs/workers start; the portal waits for the APIs to be healthy. Other application services retain their default local database/file storage. Domus also has a dedicated network for internal aliases and RabbitMQ.
-
 ## Storage and builds
 
-Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `~/transmission/downloads`, and `~/transmission/watch`. Jellyfin mounts `~/transmission/downloads/complete` at `/data`. Domus uses four persistent named volumes for its shared files, encryption keys and broker state; PostgreSQL retains its existing ~/postgres bind mount. Docker socket mounts retain their system paths.
+Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `~/transmission/downloads`, and `~/transmission/watch`. Jellyfin mounts `~/transmission/downloads/complete` at `/data`. PostgreSQL retains its existing `~/postgres` bind mount. Docker socket mounts retain their system paths.
 
 The stack uses published images and bind-mounted configuration directories; no local image build is required.
 
@@ -31,7 +29,3 @@ Runtime variables come from a repository-root `.env` file. GitHub Actions genera
 ## Authentication
 
 No centralized identity provider is deployed, and application SSO has not been enabled. See [authentication.md](authentication.md) for supported integrations, licensing requirements, and setup steps. Database credentials remain separate from user authentication.
-
-## domus
-
-The six Domus components use published GHCR images with per-component tags, defaulting to stable. PostgreSQL remains one shared server on its historical image/data path. A PostgreSQL client creates only Domus databases and refuses unrelated database-name collisions. The deployment preflight checks the existing data major and verifies authenticated GHCR image access before changing containers. Detailed boundaries and setup are in [domus.md](domus.md).

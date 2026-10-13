@@ -33,9 +33,12 @@ Before deployment, configure the selected GitHub environment:
 | `TIME_ZONE` | Variable, for example `Europe/Lisbon` | Nginx Proxy Manager |
 | `OPENCLAW_GATEWAY_TOKEN` | Secret | OpenClaw; required when bootstrapping a LAN-bound gateway without saved authentication |
 | `USER_ID` | Optional variable, default `1000` | Portainer Docker socket path |
+| `POSTGRES_USER` | Secret | Existing PostgreSQL administrator |
+| `POSTGRES_PASSWORD` | Secret | Existing PostgreSQL password |
+| `POSTGRES_IMAGE` / `POSTGRES_MAJOR` | Optional variables, defaults `pgvector/pgvector:pg15` / `15` | PostgreSQL image and storage compatibility check |
 | `TRANSMISSION_PEER_PORT` | Optional variable, default `51413` | Transmission TCP/UDP peer port |
 
-The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. Domus has a one-shot client that creates its three databases on the shared PostgreSQL server. It does not migrate existing application records or SQLite data. Unmanaged `lab` containers are preserved; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
+The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. Unmanaged `lab` containers are preserved; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
 
 Application SSO remains unconfigured; see [Authentication options](authentication.md) for separate setup requirements.
 
@@ -74,14 +77,8 @@ For manual migration, stop and remove the containers belonging to those four pre
 
 ## Retired services
 
-Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, and Honcho are not part of the current stack. Domus now uses the shared PostgreSQL service; the original data directory and major are preserved. Workflow installs preserve orphaned containers and their data; retire unwanted services explicitly. Containers from older projects or other hosts require manual cleanup. Keep POSTGRES_USER and POSTGRES_PASSWORD for the existing shared server. Unused `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
+Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, and Honcho are not part of the current stack. The PostgreSQL data directory and major version are preserved. Workflow installs preserve orphaned containers and their data; retire unwanted services explicitly. Containers from older projects or other hosts require manual cleanup. Keep POSTGRES_USER and POSTGRES_PASSWORD for the existing shared server. Unused `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
 
 If the earlier Recorder PostgreSQL configuration was applied on Beelink, remove `recorder: !include recorder-postgres.yaml` or the PostgreSQL `db_url` override from Home Assistant configuration before deployment. Home Assistant will then use its default SQLite database.
 
-## domus and PostgreSQL
-
-Configure the additional variables/secrets in [services/domus/environment.example](../services/domus/environment.example), then follow [Domus deployment](domus.md). The existing PostgreSQL service/data directory is reused. Do not upgrade the PostgreSQL image's major as part of this install. Storage validation and authenticated GHCR manifest checks happen before container changes. The workflow preserves the runner's Docker context while isolating registry credentials.
-
-Add a Proxy Manager host for the configured DOMUS_PUBLIC_URL, forwarding to domus-portal:80 with HTTPS. No Domus host port is allocated. Four Domus named volumes retain files, keys and RabbitMQ; preserve them alongside database backups. Image tags are independently configurable and stable by default. To update them, run install with update_images enabled.
-
-Additional regression checks: `bash scripts/test-postgres-storage.sh` and `python3 scripts/test-domus-integration.py`. The latter tests published images against a temporary PostgreSQL 15 fixture and deletes only that test project; local-source validation can use DOMUS_TEST_LOCAL_IMAGES=true.
+PostgreSQL storage validation runs before install, including dry runs, to ensure the configured major version matches existing data. Run `bash scripts/test-postgres-storage.sh` for its regression checks.

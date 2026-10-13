@@ -83,20 +83,9 @@ if [[ ${DRY_RUN:-false} == true ]]; then exit 0; fi
 
 if [[ $action == install ]]; then
   if [[ ${UPDATE_IMAGES:-false} == true ]]; then
-    pull_targets=("${targets[@]}")
-    if [[ "$SELECTED_SERVICES" != all && "$SELECTED_SERVICES" == *domus-* ]]; then
-      pull_targets=()
-      for service in "${targets[@]}"; do [[ "$service" == postgres ]] || pull_targets+=("$service"); done
-    fi
-    docker compose --env-file .env pull --ignore-buildable "${pull_targets[@]}"
+    docker compose --env-file .env pull --ignore-buildable "${targets[@]}"
   fi
   docker compose --env-file .env build "${targets[@]}"
-fi
-
-# Retire only the renamed Domus worker; preserve its named data volumes.
-if [[ $action == install && " ${targets[*]} " == *" domus-automations-worker "* ]]; then
-  retired=$(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter 'label=com.docker.compose.service=domus-automation-worker')
-  while IFS= read -r id; do [[ -z "$id" ]] || docker rm -f "$id"; done <<< "$retired"
 fi
 
 # Migrate/remove only selected legacy services; leave their data in place.
