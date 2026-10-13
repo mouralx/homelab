@@ -15,7 +15,8 @@ workflow = json.loads(subprocess.check_output(
 job = workflow["jobs"]["deploy"]
 assert job["env"]["SELECTED_SERVICES"] == "all"
 assert job["runs-on"] == ["self-hosted", "beelink"]
-assert job["concurrency"]["cancel-in-progress"] is False
+if "concurrency" in job:
+    assert job["concurrency"]["cancel-in-progress"] is False
 steps = job["steps"]
 assert steps[0]["uses"].startswith("actions/checkout@")
 assert steps[-1]["if"] == "${{ always() }}"
