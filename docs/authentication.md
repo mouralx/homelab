@@ -26,6 +26,6 @@ Retain a local administrator recovery path while testing SSO. Verify login, logo
 
 ## GitHub deployment
 
-The existing workflow generates `.env` from all variables and secrets in the selected GitHub environment, so no explicit per-variable mapping is needed. No identity-provider client secrets are currently consumed by Compose. Add secrets to that environment only when their corresponding application configuration is implemented.
+The workflow maps required variables and secrets explicitly from the selected GitHub environment. Add a workflow environment mapping when introducing a new setting. No identity-provider client secrets are currently consumed by Compose. Add secrets to that environment only when their corresponding application configuration is implemented.
 
 The workflow deploys repository configuration, but it does not provision an identity provider or its clients, configure Portainer through its UI, install Jellyfin plugins, or edit Home Assistant's host configuration. These actions remain separate from container deployment.

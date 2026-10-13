@@ -5,11 +5,9 @@
 Run from the repository root with a configured `.env`:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml config --format json | bash scripts/validate-compose.sh
+docker compose --env-file .env -f services/compose.yaml config --quiet
 docker compose --env-file .env -f services/compose.yaml up -d --build --remove-orphans
 ```
-
-The validator rejects duplicate container names and overlapping published ports, including overrides of `TRANSMISSION_PEER_PORT`. TCP and UDP may use the same number. It checks the Compose configuration; other processes on the target host can still occupy a published port.
 
 ## Logs and shutdown
 
@@ -22,34 +20,13 @@ Append a service name to `logs` to inspect just that service.
 
 ## GitHub deployment
 
-Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`. The workflow manages the full Compose stack on Beelink. All workflow scripts are maintained in `scripts/`; the workflows invoke these files instead of embedding script bodies.
+Open **Actions → Deploy Home Lab → Run workflow** and choose `install` or `uninstall`. The workflow runs direct Docker Compose commands on the self-hosted runner labeled `beelink`, which needs Docker Compose v2. Deployments to that host are serialized.
 
-The Beelink self-hosted runner must have the `self-hosted` and `beelink` labels and needs Docker Compose v2, Bash, jq, and Python 3. The workflow has no GitHub-hosted runner or routing to other hosts. If Beelink is offline, the deployment remains queued.
+Configure the selected GitHub environment with the variables mapped in the workflow, including `TIME_ZONE`, `USER_ID`, `TRANSMISSION_PEER_PORT`, `TRANSMISSION_PUID`, `DIGGER_MEDIA_GID`, and optional `DIGGER_*` settings. Store `OPENCLAW_GATEWAY_TOKEN`, `TRANSMISSION_USERNAME`, `TRANSMISSION_PASSWORD`, and optional Digger RPC credential overrides as secrets. `GH_PAT` and `GH_USER` optionally override the workflow token and actor for GHCR login; the token must have access to the Digger package.
 
-Before deployment, configure the selected GitHub environment:
+A dry run validates Compose configuration without changing containers. Install optionally pulls images and stops services, then starts the full stack and waits for health checks. Uninstall runs `docker compose down`, preserving bind-mounted data and named volumes. Runtime values are passed directly through workflow environment mappings; no environment file is generated.
 
-| Setting | Where to store it | Used by |
-| --- | --- | --- |
-| `TIME_ZONE` | Variable, for example `Europe/Lisbon` | Nginx Proxy Manager |
-| `OPENCLAW_GATEWAY_TOKEN` | Secret | OpenClaw; required when bootstrapping a LAN-bound gateway without saved authentication |
-| `USER_ID` | Optional variable, default `1000` | Portainer Docker socket path |
-| `GH_PAT` | Secret | GHCR login; needs `read:packages` and access to the Digger package. If absent or rejected during login, falls back to the workflow token, which requires package access for this repository. |
-| `GH_USER` | Optional secret | GitHub username for GHCR login; defaults to the workflow actor |
-| `TRANSMISSION_PEER_PORT` | Optional variable, default `51413` | Transmission TCP/UDP peer port |
-
-The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. Unmanaged `lab` containers are preserved; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
-
-Application SSO remains unconfigured; see [Authentication options](authentication.md) for separate setup requirements.
-
-Install manages all services and respects Compose startup and healthcheck conditions. Image updates, builds, and optional shutdown apply to the full stack.
-
-Uninstall stops and removes all stack containers, preserving stored data, images, and volumes. Each workflow run is an action, not a saved desired-state list.
-
-A dry run generates the environment file, authenticates to GHCR, verifies all published image manifests, validates configuration and dependency safety, and displays the full service plan in the job summary without changing containers. Real installs pull images when requested, build the stack, remove matching legacy containers from the old projects on Beelink, remove a retired Portainer Agent from the old `agents` project there, then start the stack and wait for health checks. Unmanaged Compose orphans are retained. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
-
-Local regression checks are available with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
-
-Run `python3 scripts/test-deploy-workflow.py` to exercise the actual workflow steps across all action/boolean input combinations, simulated Docker failures, secret quoting, and cleanup. It requires Python 3, Ruby, Bash, jq, and Docker Compose locally; container changes are simulated. Use `actionlint` and `shellcheck scripts/workflow.step.*.sh scripts/validate-compose.sh` for static checks. The custom `beelink` runner label is declared in `.github/actionlint.yaml`.
+Prepare host storage ownership and permissions before installation. Cleanup of previous Compose projects is manual. Application SSO remains unconfigured; see [Authentication options](authentication.md).
 
 ## Moving everything to the Beelink
 
@@ -59,7 +36,7 @@ Keep downloads and media directories together when copying. Update Nginx Proxy M
 
 ## Migration from the four previous projects
 
-Real workflow installs remove matching service containers carrying Compose project labels `agentic`, `agents`, `media`, or `tools` on Beelink before starting the full `lab` stack. They also remove the retired Portainer Agent from the old `agents` project on Beelink. This causes a brief interruption. It does not relocate stored data or remove containers on other hosts. Complete the storage migration below before deployment so services do not start with empty data directories.
+Stop and remove old service containers on Beelink manually before starting the full `lab` stack. Complete storage migration before deployment.
 
 Stop the existing services before copying data, preserving ownership and permissions:
 
@@ -74,7 +51,7 @@ For manual migration, stop and remove the containers belonging to those four pre
 
 ## Transmission peer port
 
-`TRANSMISSION_PEER_PORT` defaults to `51413` and controls both the internal listener and the published TCP/UDP ports. Choose a value not published by another service; validation rejects collisions.
+`TRANSMISSION_PEER_PORT` defaults to `51413` and controls both the internal listener and the published TCP/UDP ports. Choose a value not published by another service; avoid collisions with other published ports.
 
 ## Retired services
 
@@ -82,4 +59,4 @@ Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, Honcho, and PostgreSQL are
 
 If the earlier Recorder PostgreSQL configuration was applied on Beelink, remove `recorder: !include recorder-postgres.yaml` or the PostgreSQL `db_url` override from Home Assistant configuration before deployment. Home Assistant will then use its default SQLite database.
 
-Install prepares Transmission configuration ownership and creates missing download directories while its daemon is stopped. The first repair preserves `settings.json.permissions-backup` beside its original settings. The IP whitelist permits all addresses (`WHITELIST` is explicitly empty, which disables IP filtering per the LinuxServer image documentation). A startup hook disables IP filtering in both legacy hyphenated and modern underscored RPC keys and synchronizes authentication and the internal Transmission hostname. The daemon reloads these settings before RPC verification; RPC authentication uses `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD`. After startup, a read-only `torrent-get` RPC request runs from Digger's actual network namespace; authentication, whitelist or connectivity failures fail deployment.
+Transmission allows all client IPs and hostnames through explicitly empty `WHITELIST` and `HOST_WHITELIST` environment variables. The LinuxServer image configures access and authentication directly; credentials come from `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD`.

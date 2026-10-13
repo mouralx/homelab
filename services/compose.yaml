@@ -74,6 +74,7 @@ services:
       PGID: ${DIGGER_MEDIA_GID:-911}
       # LinuxServer disables RPC IP filtering when WHITELIST is empty (allow all IPs).
       WHITELIST: ""
+      HOST_WHITELIST: ""
       USER: ${TRANSMISSION_USERNAME:-}
       PASS: ${TRANSMISSION_PASSWORD:-}
     volumes:
@@ -81,14 +82,12 @@ services:
       - /mnt/ssd/transmission/downloads:/downloads
       - /mnt/ssd/transmission/downloads/complete:/movies
       - ~/transmission/watch:/watch
-      - ../scripts/transmission-rpc-init.sh:/custom-cont-init.d/20-homelab-rpc.sh:ro
     ports:
       - 9091:9091
       - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp
       - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp
   digger:
     image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
-    entrypoint: [sh, /setup/digger-entrypoint.sh]
     container_name: digger
     hostname: digger
     restart: unless-stopped
@@ -113,7 +112,6 @@ services:
     volumes:
       - ~/digger:/data
       - /mnt/ssd/transmission/downloads/complete:/movies
-      - ../scripts/digger-entrypoint.sh:/setup/digger-entrypoint.sh:ro
     healthcheck:
       test: [CMD-SHELL, 'test -f /data/digger.db && test -w /data/digger.db && test -w /movies/.digger.lock']
       interval: 10s

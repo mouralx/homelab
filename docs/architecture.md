@@ -24,7 +24,7 @@ The stack uses published images and bind-mounted configuration directories; no l
 
 ## Environment and deployment
 
-Runtime variables come from a repository-root `.env` file. GitHub Actions generates it from the selected environment and runs the full install or uninstall on the self-hosted runner labeled `beelink`. The workflow validates configuration and dependencies before changing services, and serializes deployments to that host. Installs remove obsolete containers from the previous `agentic`, `agents`, `media`, and `tools` Compose projects on Beelink, and preserve unmanaged/orphaned containers in the `lab` project. They do not move data from other machines.
+Local runtime variables come from a repository-root `.env` file. GitHub Actions maps selected environment variables and secrets directly into the deployment job and runs Docker Compose commands on the self-hosted runner labeled `beelink`. The workflow validates Compose configuration and serializes deployments. Storage preparation and cleanup of previous Compose projects are manual host operations.
 
 ## Authentication
 

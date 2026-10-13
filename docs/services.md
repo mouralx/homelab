@@ -66,16 +66,13 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 - Defaults for the 1 TB SSD (about 931 GiB usable before filesystem overhead): 750 GiB movie budget and 51200 MiB (50 GiB) free-space reserve. The budget includes partial downloads; the reserve protects free space across the drive when other services use it. Override with `DIGGER_MAX_LIBRARY_SIZE_GB` and `DIGGER_DISK_RESERVE_MB`; `DIGGER_YTS_API_URL` overrides discovery and must retain the `{0}` page placeholder.
 - Digger uses existing `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD` environment settings for RPC authentication. Set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to override them. Its RPC allowlists must admit Digger on `homelab_static`.
 
-The deployment workflow prepares Digger storage before installing: it grants UID 1654 access to the SQLite directory, gives the media root and existing `.digger.lock` write access through the shared media group, and checks both mounts using the image's normal non-root user. It preserves existing files and lock-file inodes and does not recursively change movie ownership. The temporary preparation container uses Docker's own UID mapping, including rootless Docker. If the host mount is owned by another host account and Docker cannot change its permissions, fix that directory's permissions on Beelink first.
-
-`DIGGER_MEDIA_GID` defaults to the LinuxServer image's default group 911; set it to Transmission's actual group if different. Digger starts with umask `0002`, and Transmission uses `UMASK=002`, so new download directories and files remain writable by the shared group. Existing Digger staging directories are repaired during preparation. For local installation, run `bash scripts/workflow.step.prepare-digger-storage.sh` with the stack's `.env` before starting Digger.
+Prepare host directory ownership and permissions before installation. Digger's image user (UID 1654) must be able to write to its SQLite and media directories. `DIGGER_MEDIA_GID` defaults to 911, matching Transmission's default group. Digger uses the image's default entrypoint; Transmission uses `UMASK=002`.
 
 After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml config --quiet
 docker compose --env-file .env -f services/compose.yaml pull digger
-bash scripts/workflow.step.prepare-digger-storage.sh
 docker compose --env-file .env -f services/compose.yaml up -d digger
 docker compose --env-file .env -f services/compose.yaml logs --tail 100 digger
 ```

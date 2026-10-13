@@ -39,38 +39,46 @@ jobs:
     name: ${{ inputs.action }} full stack on Beelink
     runs-on: [self-hosted, beelink]
     environment: ${{ inputs.environment || 'mouras-home-lab' }}
-    defaults:
-      run:
-        shell: bash
+    concurrency:
+      group: home-lab-beelink
+      cancel-in-progress: false
     env:
       COMPOSE_FILE: services/compose.yaml
-      SELECTED_SERVICES: all
+      TIME_ZONE: ${{ vars.TIME_ZONE || 'Europe/Lisbon' }}
+      OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+      USER_ID: ${{ vars.USER_ID || '1000' }}
+      TRANSMISSION_PEER_PORT: ${{ vars.TRANSMISSION_PEER_PORT || '51413' }}
+      TRANSMISSION_PUID: ${{ vars.TRANSMISSION_PUID || '911' }}
+      DIGGER_MEDIA_GID: ${{ vars.DIGGER_MEDIA_GID || '911' }}
+      TRANSMISSION_USERNAME: ${{ secrets.TRANSMISSION_USERNAME || vars.TRANSMISSION_USERNAME }}
+      TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
+      DIGGER_TRANSMISSION_USERNAME: ${{ secrets.DIGGER_TRANSMISSION_USERNAME || vars.DIGGER_TRANSMISSION_USERNAME }}
+      DIGGER_TRANSMISSION_PASSWORD: ${{ secrets.DIGGER_TRANSMISSION_PASSWORD }}
+      DIGGER_TAG: ${{ vars.DIGGER_TAG || 'stable' }}
+      DIGGER_YTS_API_URL: ${{ vars.DIGGER_YTS_API_URL }}
+      DIGGER_MAX_LIBRARY_SIZE_GB: ${{ vars.DIGGER_MAX_LIBRARY_SIZE_GB || '750' }}
+      DIGGER_DISK_RESERVE_MB: ${{ vars.DIGGER_DISK_RESERVE_MB || '51200' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Create .env file from selected environment
-        env:
-          ENVIRONMENT_VARS: ${{ toJson(vars) }}
-          ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
-        run: bash scripts/workflow.step.create-environment-file.sh
-      - name: Prepare image registry access
-        if: ${{ inputs.action == 'install' }}
-        env:
-          GHCR_USERNAME: ${{ secrets.GH_USER || github.actor }}
-          GHCR_TOKEN: ${{ secrets.GH_PAT || github.token }}
-          GHCR_FALLBACK_USERNAME: ${{ github.actor }}
-          GHCR_FALLBACK_TOKEN: ${{ github.token }}
-        run: bash scripts/workflow.step.prepare-registry.sh
-      - name: Verify published images
-        if: ${{ inputs.action == 'install' }}
-        run: bash scripts/workflow.step.verify-images.sh
-      - name: Manage selected services and dependencies
-        env:
-          SERVICE_ACTION: ${{ inputs.action }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          UPDATE_IMAGES: ${{ inputs.update_images }}
-          BRING_DOWN_FIRST: ${{ inputs.bring_down_first }}
-        run: bash scripts/workflow.step.manage-services.sh
-      - name: Remove generated environment file
-        if: ${{ always() }}
-        run: bash scripts/workflow.step.cleanup-environment.sh
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Log in to GHCR
+        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_USER || github.actor }}
+          password: ${{ secrets.GH_PAT || github.token }}
+      - name: Pull images
+        if: ${{ inputs.action == 'install' && !inputs.dry_run && inputs.update_images }}
+        run: docker compose pull
+      - name: Stop services before installation
+        if: ${{ inputs.action == 'install' && !inputs.dry_run && inputs.bring_down_first }}
+        run: docker compose stop
+      - name: Install or update services
+        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        run: docker compose up -d --wait --wait-timeout 240
+      - name: Uninstall services
+        if: ${{ inputs.action == 'uninstall' && !inputs.dry_run }}
+        run: docker compose down

@@ -5,7 +5,6 @@ A compact, self-hosted stack for AI, home automation, media, and everyday infras
 ## What's inside
 
 - [`services/compose.yaml`](services/compose.yaml) — the full stack
-- [`scripts/`](scripts/) — deployment helpers and validation checks
 - [`.github/workflows/deploy.yaml`](.github/workflows/deploy.yaml) — manual GitHub deployment to the Beelink runner
 - [`docs/`](docs/) — architecture, service inventory, and operations
 
