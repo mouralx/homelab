@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import time
 
 digger = os.environ.get("DIGGER_CONTAINER", "digger")
 transmission = os.environ.get("TRANSMISSION_CONTAINER", "transmission")
@@ -22,7 +23,7 @@ options = {
 if environment.get("TRANSMISSION_USERNAME"):
     options["user"] = environment["TRANSMISSION_USERNAME"] + ":" + environment.get("TRANSMISSION_PASSWORD", "")
 session = None
-for attempt in range(3):
+for attempt in range(10):
     configuration = "silent\nshow-error\nconnect-timeout = 5\nmax-time = 15\ndump-header = /dev/stderr\n"
     configuration += 'header = "Content-Type: application/json"\n'
     if session:
@@ -34,6 +35,9 @@ for attempt in range(3):
         ["docker", "run", "--rm", "--network", "container:" + digger, "--interactive", "--entrypoint", "curl", image, "--config", "-"],
         input=configuration, text=True, capture_output=True)
     if result.returncode:
+        if attempt < 9:
+            time.sleep(2)
+            continue
         raise SystemExit("Digger RPC verification failed: cannot connect to Transmission.")
     body, _, status = result.stdout.rpartition("\n")
     if status == "409":

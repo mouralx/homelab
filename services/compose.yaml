@@ -79,6 +79,7 @@ services:
       - /mnt/ssd/transmission/downloads:/downloads
       - /mnt/ssd/transmission/downloads/complete:/movies
       - ~/transmission/watch:/watch
+      - ../scripts/transmission-rpc-init.sh:/custom-cont-init.d/20-homelab-rpc.sh:ro
     ports:
       - 9091:9091
       - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp
