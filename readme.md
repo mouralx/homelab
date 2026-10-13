@@ -24,7 +24,7 @@ docker compose --env-file .env -f services/compose.yaml up -d --wait --wait-time
 docker compose --env-file .env -f services/compose.yaml down
 ```
 
-Public services and PostgreSQL clients have fixed container addresses on the `10.203.0.0/24` Docker network. Existing services keep their `~/service-name` bind mounts. Home Assistant uses bridge networking to keep a fixed address, which can limit automatic mDNS/broadcast discovery.
+Services have fixed container addresses on the `10.203.0.0/24` Docker network. Existing services keep their `~/service-name` bind mounts. Home Assistant uses bridge networking to keep a fixed address, which can limit automatic mDNS/broadcast discovery.
 
 For an existing multi-host installation, review the [migration instructions](docs/operations.md#moving-everything-to-the-beelink) before deployment.
 

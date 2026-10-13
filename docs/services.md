@@ -18,7 +18,6 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `portainer` | `10.203.0.23` |
 | `digger` | `10.203.0.24` |
 | `homeassistant` | `10.203.0.25` |
-| `postgres` | `10.203.0.17` |
 
 Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
 
@@ -97,10 +96,6 @@ Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp`
 - Image: `n8nio/n8n:latest`
 - Keep `~/n8n/data` mounted: it holds the default SQLite database, encryption key, and other instance settings.
 - Published port: `5678`.
-
-## PostgreSQL
-
-PostgreSQL is restored at `10.203.0.17` using `pgvector/pgvector:pg15` and the existing `~/postgres` data directory. Its historical host port 5432 is retained; POSTGRES_BIND_HOST can restrict the binding if needed. Reuse existing administrator credentials and keep the major version matched to the stored data.
 
 ## Database storage
 

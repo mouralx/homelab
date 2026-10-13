@@ -33,9 +33,6 @@ Before deployment, configure the selected GitHub environment:
 | `TIME_ZONE` | Variable, for example `Europe/Lisbon` | Nginx Proxy Manager |
 | `OPENCLAW_GATEWAY_TOKEN` | Secret | OpenClaw; required when bootstrapping a LAN-bound gateway without saved authentication |
 | `USER_ID` | Optional variable, default `1000` | Portainer Docker socket path |
-| `POSTGRES_USER` | Secret | Existing PostgreSQL administrator |
-| `POSTGRES_PASSWORD` | Secret | Existing PostgreSQL password |
-| `POSTGRES_IMAGE` / `POSTGRES_MAJOR` | Optional variables, defaults `pgvector/pgvector:pg15` / `15` | PostgreSQL image and storage compatibility check |
 | `TRANSMISSION_PEER_PORT` | Optional variable, default `51413` | Transmission TCP/UDP peer port |
 
 The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. Unmanaged `lab` containers are preserved; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
@@ -77,8 +74,6 @@ For manual migration, stop and remove the containers belonging to those four pre
 
 ## Retired services
 
-Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, and Honcho are not part of the current stack. The PostgreSQL data directory and major version are preserved. Workflow installs preserve orphaned containers and their data; retire unwanted services explicitly. Containers from older projects or other hosts require manual cleanup. Keep POSTGRES_USER and POSTGRES_PASSWORD for the existing shared server. Unused `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
+Hermes, Kanbada, Prowlarr, Radarr, Keycloak, pgAdmin, Honcho, and PostgreSQL are not part of the current stack. Workflow installs preserve orphaned containers and their data; retire unwanted services explicitly. Containers from older projects or other hosts require manual cleanup. Unused `POSTGRES_*`, `HERMES_*`, `KANBADA_*`, `KC_*`, `OPENCODE_API_KEY`, `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, and `HOMEASSISTANT_DB_URL` settings can be removed from the selected GitHub environment if no other workflow uses them. Preserve retired service data until you decide it is no longer needed.
 
 If the earlier Recorder PostgreSQL configuration was applied on Beelink, remove `recorder: !include recorder-postgres.yaml` or the PostgreSQL `db_url` override from Home Assistant configuration before deployment. Home Assistant will then use its default SQLite database.
-
-PostgreSQL storage validation runs before install, including dry runs, to ensure the configured major version matches existing data. Run `bash scripts/test-postgres-storage.sh` for its regression checks.

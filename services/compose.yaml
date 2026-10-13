@@ -148,31 +148,6 @@ services:
       TZ: Europe/Lisbon
     ports:
       - 8123:8123
-  postgres:
-    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg15}
-    container_name: postgres
-    hostname: postgres
-    restart: unless-stopped
-    shm_size: 128mb
-    labels:
-      io.homelab.postgres.major: "${POSTGRES_MAJOR:-15}"
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.17
-    ports:
-      - "${POSTGRES_BIND_HOST:-0.0.0.0}:5432:5432"
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: ${POSTGRES_USER:?Set the existing PostgreSQL administrator}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set the existing PostgreSQL password}
-    volumes:
-      - ~/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 30s
 networks:
   lab_net:
     name: homelab_static
