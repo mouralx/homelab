@@ -33,6 +33,8 @@ Before deployment, configure the selected GitHub environment:
 | `TIME_ZONE` | Variable, for example `Europe/Lisbon` | Nginx Proxy Manager |
 | `OPENCLAW_GATEWAY_TOKEN` | Secret | OpenClaw; required when bootstrapping a LAN-bound gateway without saved authentication |
 | `USER_ID` | Optional variable, default `1000` | Portainer Docker socket path |
+| `GH_PAT` | Secret | GHCR login; needs `read:packages` and access to the Digger package. Falls back to the workflow token, which requires package access for this repository. |
+| `GH_USER` | Optional secret | GitHub username for GHCR login; defaults to the workflow actor |
 | `TRANSMISSION_PEER_PORT` | Optional variable, default `51413` | Transmission TCP/UDP peer port |
 
 The environment-file step already includes every selected environment variable and secret except `GITHUB_TOKEN`; no workflow mapping changes are needed. Unmanaged `lab` containers are preserved; stored data and retired application databases are preserved. Obsolete `KC_*` settings can be removed from the selected GitHub environment.
@@ -43,7 +45,7 @@ Install manages all services and respects Compose startup and healthcheck condit
 
 Uninstall stops and removes all stack containers, preserving stored data, images, and volumes. Each workflow run is an action, not a saved desired-state list.
 
-A dry run generates the environment file, validates configuration and dependency safety, and displays the full service plan in the job summary without changing containers. Real installs pull images when requested, build the stack, remove matching legacy containers from the old projects on Beelink, remove a retired Portainer Agent from the old `agents` project there, then start the stack and wait for health checks. Unmanaged Compose orphans are retained. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
+A dry run generates the environment file, authenticates to GHCR, verifies all published image manifests, validates configuration and dependency safety, and displays the full service plan in the job summary without changing containers. Real installs pull images when requested, build the stack, remove matching legacy containers from the old projects on Beelink, remove a retired Portainer Agent from the old `agents` project there, then start the stack and wait for health checks. Unmanaged Compose orphans are retained. The workflow removes its generated `.env` file even on failure and does not prune Docker volumes or unrelated containers.
 
 Local regression checks are available with `bash scripts/test-validate-compose.sh` and `bash scripts/test-manage-services.sh` (uses a fake Docker CLI).
 

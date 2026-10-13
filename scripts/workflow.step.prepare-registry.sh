@@ -8,7 +8,7 @@ chmod 700 "$registry_config"
 printf 'HOMELAB_REGISTRY_CONFIG=%s\nDOCKER_CONFIG=%s\n' "$registry_config" "$registry_config" >> "$GITHUB_ENV"
 umask 077
 if [[ -f "$source_config/config.json" ]]; then
-  # Public GHCR images must not inherit an expired token or a global helper.
+  # GHCR images must not inherit an expired token or a global helper.
   # Keep the runner context and unrelated file-based registry credentials.
   jq 'def ghcr: test("^(https?://)?ghcr\\.io(/.*)?$");
       del(.credsStore)
@@ -25,4 +25,11 @@ if [[ -d "$source_config/cli-plugins" ]]; then
   # Keep Compose available when it is installed in the runner's Docker config.
   ln -s "$source_config/cli-plugins" "$registry_config/cli-plugins"
 fi
-echo 'Public GHCR images will be checked and pulled anonymously.'
+if [[ -n "${GHCR_TOKEN:-}" ]]; then
+  : "${GHCR_USERNAME:?GHCR_USERNAME is required when GHCR_TOKEN is set}"
+  printf '%s' "$GHCR_TOKEN" | docker --config "$registry_config" login ghcr.io \
+    --username "$GHCR_USERNAME" --password-stdin >/dev/null
+  echo 'GHCR credentials configured in the temporary Docker configuration.'
+else
+  echo 'No GHCR token configured; only public images can be accessed.'
+fi

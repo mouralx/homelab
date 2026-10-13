@@ -56,9 +56,15 @@ jobs:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
         run: bash scripts/workflow.step.create-environment-file.sh
-      - name: Prepare anonymous image access
+      - name: Prepare image registry access
         if: ${{ inputs.action == 'install' }}
+        env:
+          GHCR_USERNAME: ${{ secrets.GH_USER || github.actor }}
+          GHCR_TOKEN: ${{ secrets.GH_PAT || github.token }}
         run: bash scripts/workflow.step.prepare-registry.sh
+      - name: Verify published images
+        if: ${{ inputs.action == 'install' }}
+        run: bash scripts/workflow.step.verify-images.sh
       - name: Manage selected services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}

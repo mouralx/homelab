@@ -46,6 +46,9 @@ with tempfile.TemporaryDirectory(prefix="homelab-workflow-") as directory:
     wrapper.write_text(r"""#!/usr/bin/env python3
 import json, os, subprocess, sys
 args = sys.argv[1:]
+if args[0] == '--config':
+    assert args[2:] == ['login', 'ghcr.io', '--username', 'fixture-user', '--password-stdin']
+    assert sys.stdin.read() == 'fixture-registry-token'
 if args[:4] == ['compose', '--env-file', '.env', 'config']:
     sys.exit(subprocess.call([os.environ['REAL_DOCKER'], *args]))
 if args[0] == 'ps':
@@ -62,7 +65,7 @@ if args[0] == 'ps':
     sys.exit(0)
 with open(os.environ['DOCKER_LOG'], 'a') as log:
     log.write(json.dumps(args) + '\n')
-command = args[3] if args[0] == 'compose' else args[0]
+command = args[3] if args[0] == 'compose' else ('login' if args[0] == '--config' else args[0])
 if command == os.environ['FAIL_COMMAND']:
     sys.exit(1)
 """)
@@ -105,7 +108,7 @@ if command == os.environ['FAIL_COMMAND']:
         for dry in [False, True]
         for update in [False, True]
         for down in [False, True]
-    ] + [("install", False, True, True, failure) for failure in ["inventory", "pull", "build", "up"]]
+    ] + [("install", False, True, True, failure) for failure in ["login", "manifest", "inventory", "pull", "build", "up"]]
     for action, dry, update, down, failure in cases:
         env = base.copy()
         env.update({"SERVICE_ACTION": action, "DRY_RUN": str(dry).lower(),
@@ -117,6 +120,9 @@ if command == os.environ['FAIL_COMMAND']:
         for step in steps[1:-1]:
             if step.get("if") and action != "install":
                 continue
+            if "GHCR_TOKEN" in step.get("env", {}):
+                assert step["env"]["GHCR_TOKEN"] == "${{ secrets.GH_PAT || github.token }}"
+                env.update(GHCR_TOKEN="fixture-registry-token", GHCR_USERNAME="fixture-user")
             result = subprocess.run(step["run"].split(), cwd=fixture, env=env, capture_output=True, text=True)
             if result.returncode:
                 failed = True
@@ -137,7 +143,12 @@ if command == os.environ['FAIL_COMMAND']:
         assert not (fixture / ".env").exists()
         assert not list((fixture / "runner").iterdir())
         calls = [json.loads(line) for line in (fixture / "docker-log").read_text().splitlines()]
-        if dry or failure == "inventory":
+        registry_calls = [call for call in calls if call[0] in ["--config", "manifest"]]
+        calls = [call for call in calls if call[0] not in ["--config", "manifest"]]
+        if action == "install" and not failure:
+            assert sum(call[0] == "manifest" for call in registry_calls) == 8
+            assert sum(call[0] == "--config" for call in registry_calls) == 1
+        if dry or failure in ["login", "manifest", "inventory"]:
             assert calls == [], calls
         elif not failure:
             expected = []

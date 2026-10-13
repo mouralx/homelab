@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
+unset GHCR_TOKEN GHCR_USERNAME
 mkdir -p "$fixture/source/contexts/meta/example" "$fixture/source/cli-plugins" "$fixture/runner"
 printf '#!/usr/bin/env bash\necho compose-plugin-fixture\n' > "$fixture/source/cli-plugins/docker-compose"
 chmod +x "$fixture/source/cli-plugins/docker-compose"
@@ -19,4 +20,21 @@ jq -e '.auths["ghcr.io"].auth == "synthetic-invalid-token"' "$fixture/source/con
 RUNNER_TEMP="$fixture/runner" GITHUB_ENV="$fixture/environment-empty" DOCKER_CONFIG="$fixture/missing" bash scripts/workflow.step.prepare-registry.sh
 config=$(sed -n 's/^DOCKER_CONFIG=//p' "$fixture/environment-empty")
 jq -e '. == {}' "$config/config.json" >/dev/null
-echo 'Registry preparation checks passed: anonymous GHCR, preserved source/context and clean empty configuration.'
+mkdir -p "$fixture/bin"
+cat > "$fixture/bin/docker" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$*" == "--config "*" login ghcr.io --username fixture-user --password-stdin" ]]
+[[ $(cat) == fixture-token ]]
+[[ -f "$2/config.json" ]]
+[[ ${LOGIN_FAIL:-false} == false ]]
+MOCK
+chmod +x "$fixture/bin/docker"
+PATH="$fixture/bin:$PATH" GHCR_USERNAME=fixture-user GHCR_TOKEN=fixture-token RUNNER_TEMP="$fixture/runner" GITHUB_ENV="$fixture/environment-auth" DOCKER_CONFIG="$fixture/source" bash scripts/workflow.step.prepare-registry.sh
+if PATH="$fixture/bin:$PATH" LOGIN_FAIL=true GHCR_USERNAME=fixture-user GHCR_TOKEN=fixture-token RUNNER_TEMP="$fixture/runner" GITHUB_ENV="$fixture/environment-fail" DOCKER_CONFIG="$fixture/source" bash scripts/workflow.step.prepare-registry.sh; then
+  echo 'Ignored failed registry login' >&2; exit 1
+fi
+config=$(sed -n 's/^DOCKER_CONFIG=//p' "$fixture/environment-fail")
+HOMELAB_REGISTRY_CONFIG="$config" bash scripts/workflow.step.cleanup-environment.sh
+[[ ! -d "$config" ]]
+echo 'Registry checks passed: anonymous/authenticated access, login failure, cleanup, preserved context and CLI plugins.'
