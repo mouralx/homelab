@@ -27,8 +27,17 @@ if [[ -d "$source_config/cli-plugins" ]]; then
 fi
 if [[ -n "${GHCR_TOKEN:-}" ]]; then
   : "${GHCR_USERNAME:?GHCR_USERNAME is required when GHCR_TOKEN is set}"
-  printf '%s' "$GHCR_TOKEN" | docker --config "$registry_config" login ghcr.io \
-    --username "$GHCR_USERNAME" --password-stdin >/dev/null
+  if ! printf '%s' "$GHCR_TOKEN" | docker --config "$registry_config" login ghcr.io \
+      --username "$GHCR_USERNAME" --password-stdin >/dev/null; then
+    if [[ -z "${GHCR_FALLBACK_TOKEN:-}" || "$GHCR_FALLBACK_TOKEN" == "$GHCR_TOKEN" ]]; then
+      echo 'GHCR login failed. Replace GH_PAT with a valid token that has read:packages access.' >&2
+      exit 1
+    fi
+    : "${GHCR_FALLBACK_USERNAME:?GHCR_FALLBACK_USERNAME is required}"
+    echo 'Configured GHCR credentials were rejected; trying the workflow token.'
+    printf '%s' "$GHCR_FALLBACK_TOKEN" | docker --config "$registry_config" login ghcr.io \
+      --username "$GHCR_FALLBACK_USERNAME" --password-stdin >/dev/null
+  fi
   echo 'GHCR credentials configured in the temporary Docker configuration.'
 else
   echo 'No GHCR token configured; only public images can be accessed.'

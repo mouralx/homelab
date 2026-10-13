@@ -61,6 +61,8 @@ jobs:
         env:
           GHCR_USERNAME: ${{ secrets.GH_USER || github.actor }}
           GHCR_TOKEN: ${{ secrets.GH_PAT || github.token }}
+          GHCR_FALLBACK_USERNAME: ${{ github.actor }}
+          GHCR_FALLBACK_TOKEN: ${{ github.token }}
         run: bash scripts/workflow.step.prepare-registry.sh
       - name: Verify published images
         if: ${{ inputs.action == 'install' }}

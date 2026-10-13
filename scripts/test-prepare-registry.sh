@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-unset GHCR_TOKEN GHCR_USERNAME
+unset GHCR_TOKEN GHCR_USERNAME GHCR_FALLBACK_TOKEN GHCR_FALLBACK_USERNAME
 mkdir -p "$fixture/source/contexts/meta/example" "$fixture/source/cli-plugins" "$fixture/runner"
 printf '#!/usr/bin/env bash\necho compose-plugin-fixture\n' > "$fixture/source/cli-plugins/docker-compose"
 chmod +x "$fixture/source/cli-plugins/docker-compose"
@@ -25,8 +25,10 @@ cat > "$fixture/bin/docker" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "$*" == "--config "*" login ghcr.io --username fixture-user --password-stdin" ]]
-[[ $(cat) == fixture-token ]]
+token=$(cat)
+[[ "$token" == fixture-token || "$token" == fallback-token ]]
 [[ -f "$2/config.json" ]]
+if [[ "$token" == fallback-token ]]; then exit 0; fi
 [[ ${LOGIN_FAIL:-false} == false ]]
 MOCK
 chmod +x "$fixture/bin/docker"
@@ -37,4 +39,5 @@ fi
 config=$(sed -n 's/^DOCKER_CONFIG=//p' "$fixture/environment-fail")
 HOMELAB_REGISTRY_CONFIG="$config" bash scripts/workflow.step.cleanup-environment.sh
 [[ ! -d "$config" ]]
+PATH="$fixture/bin:$PATH" LOGIN_FAIL=true GHCR_USERNAME=fixture-user GHCR_TOKEN=fixture-token GHCR_FALLBACK_USERNAME=fixture-user GHCR_FALLBACK_TOKEN=fallback-token RUNNER_TEMP="$fixture/runner" GITHUB_ENV="$fixture/environment-fallback" DOCKER_CONFIG="$fixture/source" bash scripts/workflow.step.prepare-registry.sh
 echo 'Registry checks passed: anonymous/authenticated access, login failure, cleanup, preserved context and CLI plugins.'
