@@ -22,7 +22,7 @@ Append a service name to `logs` to inspect just that service.
 
 ## GitHub deployment
 
-Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`. The workflow manages the full Compose stack on Beelink.
+Open **Actions → Deploy Home Lab → Run workflow**. Choose the environment and `install` (also updates existing services) or `uninstall`. The workflow manages the full Compose stack on Beelink. Deployment commands and validation checks are defined inline in the workflow; it does not execute repository scripts.
 
 The Beelink self-hosted runner must have the `self-hosted` and `beelink` labels and needs Docker Compose v2, Bash, and jq. The workflow has no GitHub-hosted runner or routing to other hosts. If Beelink is offline, the deployment remains queued.
 

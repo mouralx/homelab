@@ -61,10 +61,40 @@ jobs:
         env:
           ENVIRONMENT_VARS: ${{ toJson(vars) }}
           ENVIRONMENT_SECRETS: ${{ toJson(secrets) }}
-        run: bash scripts/workflow.step.create-environment-file.sh
+        run: |
+          set -euo pipefail
+          : "${ENVIRONMENT_VARS:?ENVIRONMENT_VARS is required}"
+          : "${ENVIRONMENT_SECRETS:?ENVIRONMENT_SECRETS is required}"
+
+          umask 077
+          jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_VARS" > .env
+          jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | "\(.key)=\(.value | tostring)"' <<< "$ENVIRONMENT_SECRETS" >> .env
       - name: Prepare anonymous image access
         if: ${{ inputs.action == 'install' }}
-        run: bash scripts/workflow.step.prepare-registry.sh
+        run: |
+          set -euo pipefail
+          : "${RUNNER_TEMP:?RUNNER_TEMP is required}"
+          : "${GITHUB_ENV:?GITHUB_ENV is required}"
+          source_config=${DOCKER_CONFIG:-$HOME/.docker}
+          registry_config=$(mktemp -d "$RUNNER_TEMP/homelab-registry.XXXXXX")
+          chmod 700 "$registry_config"
+          printf 'HOMELAB_REGISTRY_CONFIG=%s\nDOCKER_CONFIG=%s\n' "$registry_config" "$registry_config" >> "$GITHUB_ENV"
+          umask 077
+          if [[ -f "$source_config/config.json" ]]; then
+            # Public GHCR images must not inherit an expired token or a global helper.
+            # Keep the runner context and unrelated file-based registry credentials.
+            jq 'def ghcr: test("^(https?://)?ghcr\\.io(/.*)?$");
+                del(.credsStore)
+                | .auths = ((.auths // {}) | with_entries(select(.key | ghcr | not)))
+                | .credHelpers = ((.credHelpers // {}) | with_entries(select(.key | ghcr | not)))' \
+                "$source_config/config.json" > "$registry_config/config.json"
+          else
+            printf '{}\n' > "$registry_config/config.json"
+          fi
+          if [[ -d "$source_config/contexts" ]]; then
+            cp -R "$source_config/contexts" "$registry_config/contexts"
+          fi
+          echo 'Public GHCR images will be checked and pulled anonymously.'
       - name: Verify Domus published images
         if: ${{ inputs.action == 'install' }}
         run: |
@@ -76,14 +106,252 @@ jobs:
           done <<< "$images"
       - name: Back up Domus databases and persistent volumes
         if: ${{ inputs.action == 'install' && !inputs.dry_run }}
-        run: bash scripts/workflow.step.backup-domus.sh
+        run: |
+          set -euo pipefail
+          umask 077
+          config=$(docker compose --env-file .env config --format json)
+          project=$(jq -r '.name' <<< "$config")
+          backup_dir="${DOMUS_BACKUP_ROOT:-$HOME/domus-backups}/$(date -u +%Y%m%dT%H%M%SZ)"
+          mkdir -p "$backup_dir"
+          export PGHOST PGPORT PGUSER PGPASSWORD
+          PGHOST=$(jq -r '.services["domus-databases"].environment.PGHOST' <<< "$config")
+          PGPORT=$(jq -r '.services["domus-databases"].environment.PGPORT' <<< "$config")
+          PGUSER=$(jq -r '.services["domus-databases"].environment.PGUSER' <<< "$config")
+          PGPASSWORD=$(jq -r '.services["domus-databases"].environment.PGPASSWORD' <<< "$config")
+          writers=()
+          while IFS= read -r id; do [[ -z "$id" ]] || writers+=("$id"); done < <(
+           docker ps --filter "label=com.docker.compose.project=$project" --format '{{.ID}} {{.Label "com.docker.compose.service"}}' |
+           awk '$2 ~ /^domus-/ && $2 != "domus-databases" {print $1}')
+          restore_on_error() {
+           status=$?
+           if [[ $status != 0 && ${#writers[@]} != 0 ]]; then docker start "${writers[@]}" >/dev/null || true; fi
+           exit "$status"
+          }
+          trap restore_on_error EXIT
+          if [[ ${#writers[@]} != 0 ]]; then
+           docker inspect "${writers[@]}" | jq '[.[] | {name:.Name,image:.Config.Image,imageId:.Image}]' > "$backup_dir/previous-images.json"
+           docker stop --time 60 "${writers[@]}" >/dev/null
+          fi
+          for key in DOMUS_MEMBERSHIP_DATABASE DOMUS_BOARDS_DATABASE DOMUS_AUTOMATIONS_DATABASE DOMUS_AI_DATABASE; do
+           case "$key" in DOMUS_MEMBERSHIP_DATABASE) fallback=membership;; DOMUS_BOARDS_DATABASE) fallback=boards;; DOMUS_AUTOMATIONS_DATABASE) fallback=automations;; *) fallback=ai;; esac
+           database=$(jq -r --arg key "$key" --arg fallback "$fallback" '.services["domus-databases"].environment[$key] // $fallback' <<< "$config")
+           [[ "$database" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo 'Unsupported database name for backup' >&2; exit 1; }
+           exists=$(docker run --rm --network homelab_static -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD postgres:18-bookworm psql -d postgres -Atc "SELECT count(*) FROM pg_database WHERE datname='$database'")
+           if [[ "$exists" == 1 ]]; then
+            docker run --rm --network homelab_static -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -v "$backup_dir:/backup" postgres:18-bookworm pg_dump --format=custom --dbname "$database" --file "/backup/$database.dump"
+           fi
+          done
+          for suffix in domus-work-keys domus-automation-data domus-automation-keys domus-rabbitmq-data domus-ai-data; do
+           volume="${project}_$suffix"
+           if docker volume inspect "$volume" >/dev/null 2>&1; then
+            docker run --rm -v "$volume:/source:ro" -v "$backup_dir:/backup" postgres:18-bookworm sh -c 'tar -czf "/backup/$1.tar.gz" -C /source .' sh "$suffix"
+           fi
+          done
+          docker run --rm -v "$backup_dir:/backup" postgres:18-bookworm sh -c 'chmod -R go-rwx /backup; chown -R "$1:$2" /backup' sh "$(id -u)" "$(id -g)"
+          printf 'Domus database and persistent-volume backups: %s\n' "$backup_dir"
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then printf 'Private Domus backups on the runner: `%s`\n' "$backup_dir" >> "$GITHUB_STEP_SUMMARY"; fi
+          # The following Compose installation starts the updated domain services.
       - name: Manage selected services and dependencies
         env:
           SERVICE_ACTION: ${{ inputs.action }}
           DRY_RUN: ${{ inputs.dry_run }}
           UPDATE_IMAGES: ${{ inputs.update_images }}
           BRING_DOWN_FIRST: ${{ inputs.bring_down_first }}
-        run: bash scripts/workflow.step.manage-services.sh
+        run: |
+          validate_compose() (
+          set -euo pipefail
+
+          # Read resolved JSON from: docker compose --env-file .env config --format json
+          jq -er '
+            def require($ok; $message): if $ok then . else error($message) end;
+            def visit($services; $name; $path):
+              if ($path | index($name)) != null then error("Dependency cycle involving " + $name)
+              else $services[$name].depends_on // {} | keys[] | visit($services; .; $path + [$name])
+              end;
+
+            .services as $services
+            | require(($services | type) == "object"; "Missing services")
+            | [$services | to_entries[] as $service
+                | ($service.value.depends_on // {} | to_entries[])
+                | .key as $dependency
+                | require($services | has($dependency); "Missing dependency " + $dependency + " for " + $service.key)
+                | if .value.condition == "service_healthy" then
+                    ($services[$dependency].healthcheck // {}) as $health
+                    | require(($health.test != null and $health.test != ["NONE"] and $health.disable != true);
+                              "Dependency " + $dependency + " needs a healthcheck")
+                  else . end] as $dependencies
+            | [$services | keys[] | visit($services; .; [])] as $cycles
+            | [$services[] | .container_name // empty] as $names
+            | require(($names | length) == ($names | unique | length); "Duplicate container name")
+            | [$services | to_entries[] as $service | $service.value.ports[]?
+                | select(.published != null)
+                | (.published | tostring | split("-") | map(tonumber)) as $range
+                | {service: $service.key, host: (.host_ip // "0.0.0.0"), protocol: (.protocol // "tcp"),
+                   start: $range[0], end: $range[-1]}
+                | require((.start >= 1 and .end <= 65535 and .start <= .end); "Invalid published port")
+              ] as $ports
+            | [$ports | to_entries[] as $left | to_entries[]
+                | select(.key > $left.key) | .value as $right | $left.value
+                | select(.protocol == $right.protocol and .start <= $right.end and $right.start <= .end)
+                | select(.host == $right.host or .host == "0.0.0.0" or .host == "::"
+                         or $right.host == "0.0.0.0" or $right.host == "::")
+                | .service + " and " + $right.service + " on " + (.start | tostring) + "/" + .protocol
+              ] as $conflicts
+            | require(($conflicts | length) == 0; "Published port conflict: " + ($conflicts | join(", ")))
+            | "Validated \($services | length) services, their dependencies, and \($ports | length) published port bindings; no conflicts."
+          '
+          )
+
+          validate_postgres_storage() (
+          set -euo pipefail
+          # Inspect only the existing version marker; never initialize, move or upgrade data.
+          config=${1:?Resolved Compose JSON file is required}
+          source=$(jq -er '.services.postgres.volumes[] | select(.target == "/var/lib/postgresql/data") | .source' "$config")
+          expected=$(jq -er '.services.postgres.labels["io.homelab.postgres.major"] // "15"' "$config")
+          image=$(jq -er '.services.postgres.image' "$config")
+          if [[ ! "$expected" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'POSTGRES_MAJOR must be a positive integer.' >&2; exit 1
+          fi
+          if [[ "$image" =~ :pg([0-9]+)(-|$) || "$image" =~ :([0-9]+)(-|$) ]]; then
+            image_major=${BASH_REMATCH[1]}
+            if [[ "$image_major" != "$expected" ]]; then
+              echo "PostgreSQL image major $image_major differs from POSTGRES_MAJOR $expected." >&2; exit 1
+            fi
+          fi
+          if [[ -f "$source/PG_VERSION" ]]; then
+            actual=$(< "$source/PG_VERSION")
+            if [[ "$actual" != "$expected" ]]; then
+              echo "Existing PostgreSQL data is version $actual, but POSTGRES_MAJOR is $expected. Match POSTGRES_IMAGE/POSTGRES_MAJOR to the existing server; no automatic upgrade is performed." >&2
+              exit 1
+            fi
+          fi
+          )
+
+          set -euo pipefail
+
+          export COMPOSE_FILE=${COMPOSE_FILE:-services/compose.yaml}
+          action=${SERVICE_ACTION:-install}
+          case "$action" in install|uninstall) ;; *) echo 'Invalid service action' >&2; exit 1 ;; esac
+          for flag in DRY_RUN UPDATE_IMAGES BRING_DOWN_FIRST; do
+            case "${!flag:-false}" in true|false) ;; *) echo "Invalid boolean: $flag" >&2; exit 1 ;; esac
+          done
+
+          config=$(docker compose --env-file .env config --format json)
+          printf '%s\n' "$config" | validate_compose
+          project=$(jq -er '.name' <<< "$config")
+          SELECTED_SERVICES=${SELECTED_SERVICES-all}
+
+          # Include stopped containers and legacy projects when protecting dependencies.
+          inventory=''
+          legacy_inventory=''
+          for owner in "$project" agentic agents media tools; do
+            rows=$(docker ps -a --filter "label=com.docker.compose.project=$owner" \
+              --format '{"id":"{{.ID}}","service":"{{.Label "com.docker.compose.service"}}"}')
+            inventory+="$rows"$'\n'
+            if [[ "$owner" != "$project" ]]; then legacy_inventory+="$rows"$'\n'; fi
+          done
+          installed=$(jq -s '[.[].service] | unique' <<< "$inventory")
+
+          plan=$(jq -er --arg selection "${SELECTED_SERVICES:-}" --arg action "$action" \
+            --argjson installed "$installed" '
+            .services as $services
+            | def closure($name): $name, (($services[$name].depends_on // {} | keys[]) | closure(.));
+            ($selection | gsub("[,\\s]+"; " ") | split(" ") | map(select(length > 0)) | unique) as $names
+            | (if $names == ["all"] then ($services | keys) else $names end) as $selected
+            | if ($selected | length) == 0 then error("Select at least one service, or all") else . end
+            | ($selected - ($services | keys)) as $unknown
+            | if ($unknown | length) > 0 then error("Unknown services: " + ($unknown | join(", "))) else . end
+            | if $action == "install" then [$selected[] | closure(.)] | unique
+              else
+                [($installed - $selected)[] as $name
+                  | select($services | has($name))
+                  | [$name | closure(.)] as $dependencies
+                  | select(any($selected[]; . as $target | $dependencies | index($target)))
+                  | $name] as $blockers
+                | if ($blockers | length) > 0 then
+                    error("Cannot uninstall: installed services still depend on this selection. Also select or uninstall: " + ($blockers | join(", ")))
+                  else $selected end
+              end
+            | .[]' <<< "$config")
+          targets=()
+          while IFS= read -r service; do targets+=("$service"); done <<< "$plan"
+          if [[ $action == install ]]; then
+            # Moving a shared dependency to lab also changes its Compose network.
+            # Require legacy dependents to move together rather than stranding them.
+            legacy=$(jq -s '[.[].service] | unique' <<< "$legacy_inventory")
+            jq -e --argjson legacy "$legacy" --arg plan "$plan" '
+              .services as $services
+              | def closure($name): $name, (($services[$name].depends_on // {} | keys[]) | closure(.));
+              ($plan | split("\n")) as $targets
+              | ($legacy - ($legacy - $targets)) as $moving
+              | [($legacy - $targets)[] as $name
+                  | select($services | has($name))
+                  | [$name | closure(.)] as $dependencies
+                  | select(any($moving[]; . as $target | $dependencies | index($target)))
+                  | $name] as $blockers
+              | if ($blockers | length) > 0 then
+                  error("Also select these legacy dependents to migrate together: " + ($blockers | join(", ")))
+                else true end' <<< "$config" >/dev/null
+          fi
+          summary="$action (full stack): ${targets[*]} (dry run: ${DRY_RUN:-false})"
+          printf '%s\n' "$summary"
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ $action == install ]] && jq -e '.services.postgres.volumes // [] | any(.target == "/var/lib/postgresql/data")' <<< "$config" >/dev/null && [[ " ${targets[*]} " == *" postgres "* ]]; then
+            # Avoid accidentally starting a different PostgreSQL major against existing data.
+            validation_file=$(mktemp)
+            printf '%s\n' "$config" > "$validation_file"
+            if ! validate_postgres_storage "$validation_file"; then
+              rm -f "$validation_file"; exit 1
+            fi
+            rm -f "$validation_file"
+          fi
+          if [[ ${DRY_RUN:-false} == true ]]; then exit 0; fi
+
+          if [[ $action == install ]]; then
+            if [[ ${UPDATE_IMAGES:-false} == true ]]; then
+              pull_targets=("${targets[@]}")
+              if [[ "$SELECTED_SERVICES" != all && "$SELECTED_SERVICES" == *domus-* ]]; then
+                pull_targets=()
+                for service in "${targets[@]}"; do [[ "$service" == postgres ]] || pull_targets+=("$service"); done
+              fi
+              docker compose --env-file .env pull --ignore-buildable "${pull_targets[@]}"
+            fi
+            docker compose --env-file .env build "${targets[@]}"
+          fi
+
+          # Retire only the renamed Domus worker; preserve its named data volumes.
+          if [[ $action == install && " ${targets[*]} " == *" domus-automations-worker "* ]]; then
+            retired=$(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter 'label=com.docker.compose.service=domus-automation-worker')
+            while IFS= read -r id; do [[ -z "$id" ]] || docker rm -f "$id"; done <<< "$retired"
+          fi
+
+          # Migrate/remove only selected legacy services; leave their data in place.
+          retired_agent_ids=$(docker ps -aq \
+            --filter 'label=com.docker.compose.project=agents' \
+            --filter 'label=com.docker.compose.service=portainer_agent')
+          while IFS= read -r id; do
+            if [[ -n "$id" ]]; then docker rm -f "$id"; fi
+          done <<< "$retired_agent_ids"
+          for owner in agentic agents media tools; do
+            for service in "${targets[@]}"; do
+              ids=$(docker ps -aq --filter "label=com.docker.compose.project=$owner" \
+                --filter "label=com.docker.compose.service=$service")
+              while IFS= read -r id; do
+                if [[ -n "$id" ]]; then docker rm -f "$id"; fi
+              done <<< "$ids"
+            done
+          done
+
+          if [[ $action == uninstall ]]; then
+            docker compose --env-file .env rm --stop --force "${targets[@]}"
+          else
+            if [[ ${BRING_DOWN_FIRST:-false} == true ]]; then
+              docker compose --env-file .env stop "${targets[@]}"
+            fi
+            docker compose --env-file .env up -d --wait --wait-timeout 240 "${targets[@]}"
+          fi
       - name: Remove generated environment file
         if: ${{ always() }}
         run: |
