@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Report logging errors and connectivity without exposing raw runner logs."""
 import os
+import json
 from pathlib import Path
 import re
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -58,3 +60,23 @@ for url in ["https://pipelines.actions.githubusercontent.com/_apis/health",
     except (urllib.error.URLError, TimeoutError) as error:
         result = "connection failed: " + type(error).__name__
     print(url, result, f"({time.monotonic() - started:.1f}s)", flush=True)
+
+print("Transmission effective access settings:", flush=True)
+inspection = subprocess.run(["docker", "inspect", "transmission"], capture_output=True, text=True)
+if inspection.returncode == 0:
+    state = json.loads(inspection.stdout)[0]
+    environment = dict(value.split("=", 1) for value in state["Config"]["Env"] if "=" in value)
+    print(json.dumps({key: environment.get(key) for key in ["PUID", "PGID", "WHITELIST", "HOST_WHITELIST"]}), flush=True)
+    user = environment.get("PUID", "911") + ":" + environment.get("PGID", "911")
+    keys = ["rpc-whitelist", "rpc-whitelist-enabled", "rpc_whitelist", "rpc_whitelist_enabled",
+            "rpc-host-whitelist", "rpc-host-whitelist-enabled", "rpc_host_whitelist", "rpc_host_whitelist_enabled",
+            "rpc-authentication-required", "rpc_authentication_required"]
+    query = "with_entries(select(.key as $key | " + json.dumps(keys) + " | index($key)))"
+    settings = subprocess.run(["docker", "exec", "--user", user, "transmission", "jq", query, "/config/settings.json"], capture_output=True, text=True)
+    if settings.returncode == 0:
+        print(settings.stdout, flush=True)
+    else:
+        print("Transmission's configured user cannot read/parse settings.json.", flush=True)
+    permissions = subprocess.run(["docker", "exec", "transmission", "stat", "-c", "%u %g %a", "/config/settings.json"], capture_output=True, text=True)
+    if permissions.returncode == 0:
+        print("settings.json owner/group/mode:", permissions.stdout.strip(), flush=True)
