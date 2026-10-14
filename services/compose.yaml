@@ -61,41 +61,29 @@ services:
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
-    hostname: transmission
     networks:
       lab_net:
         ipv4_address: 10.203.0.21
     restart: unless-stopped
     environment:
-      PEERPORT: ${TRANSMISSION_PEER_PORT:-51413}
       TZ: ${TIME_ZONE:-Europe/Lisbon}
-      UMASK: "002"
-      PUID: ${TRANSMISSION_PUID:-911}
-      PGID: ${DIGGER_MEDIA_GID:-911}
-      # LinuxServer disables RPC IP filtering when WHITELIST is empty (allow all IPs).
-      WHITELIST: ""
-      HOST_WHITELIST: ""
-      USER: ${TRANSMISSION_USERNAME:-}
-      PASS: ${TRANSMISSION_PASSWORD:-}
+      PUID: 1000
+      PGID: 1000
     volumes:
       - ~/transmission/config:/config
-      - /mnt/ssd/transmission/downloads:/downloads
-      - /mnt/ssd/transmission/downloads/complete:/movies
       - ~/transmission/watch:/watch
+      - /mnt/ssd/transmission/downloads:/downloads
     ports:
       - 9091:9091
-      - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/tcp
-      - ${TRANSMISSION_PEER_PORT:-51413}:${TRANSMISSION_PEER_PORT:-51413}/udp
+      - 51413:51413
+      - 51413:51413/udp
   digger:
     image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
     container_name: digger
-    hostname: digger
     restart: unless-stopped
     networks:
       lab_net:
         ipv4_address: 10.203.0.24
-    depends_on:
-      transmission: {condition: service_started}
     group_add:
       - "${DIGGER_MEDIA_GID:-911}"
     environment:
@@ -165,5 +153,3 @@ networks:
     ipam:
       config:
         - subnet: 10.203.0.0/24
-volumes:
-  digger-data:
