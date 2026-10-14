@@ -66,7 +66,7 @@ services:
         ipv4_address: 10.203.0.21
     restart: unless-stopped
     environment:
-      TZ: ${TIME_ZONE:-Europe/Lisbon}
+      TZ: Europe/Lisbon
       PUID: 1000
       PGID: 1000
     volumes:
