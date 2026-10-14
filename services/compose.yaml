@@ -90,7 +90,7 @@ services:
       DOTNET_ENVIRONMENT: Production
       TZ: ${TIME_ZONE:-Europe/Lisbon}
       DATABASE_URL: Data Source=/data/digger.db
-      MOVIES_DIR: /mnt/ssd/transmission/downloads/complete/movies
+      MOVIES_DIR: movies
       YTS_API_URL: "${DIGGER_YTS_API_URL:-https://movies-api.accel.li/api/v2/list_movies.json?quality=2160p&sort_by=year,rating,date_added&order_by=desc&limit=50&page={0}}"
       TRANSMISSION_RPC_URL: http://transmission:9091/transmission/rpc
       TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME:-${TRANSMISSION_USERNAME:-}}
