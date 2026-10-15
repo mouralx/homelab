@@ -9,7 +9,7 @@ services:
     hostname: openclaw
     restart: unless-stopped
     init: true
-    command: [node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured]
+    command: [ node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured ]
     ports:
       - 18789:18789
     volumes:
@@ -67,7 +67,6 @@ services:
     restart: unless-stopped
     environment:
       TZ: Europe/Lisbon
-      # Rootless Docker maps container 0:0 to the daemon host account.
       PUID: "0"
       PGID: "0"
       UMASK: "002"
@@ -75,13 +74,11 @@ services:
       - ~/transmission/config:/config
       - ~/transmission/watch:/watch
       - /mnt/ssd/transmission/downloads:/downloads
-      - /mnt/ssd/transmission/downloads/complete/movies:/movies
     ports:
       - 9091:9091
       - 51413:51413
       - 51413:51413/udp
   digger:
-    # Same mapped host owner as Transmission and Jellyfin.
     user: "0:0"
     image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
     container_name: digger
