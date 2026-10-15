@@ -58,6 +58,20 @@ services:
       - ~/n8n/files:/files
     ports:
       - 5678:5678
+  media-storage-init:
+    image: alpine:3.23
+    user: "0:0"
+    restart: "no"
+    network_mode: none
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /downloads/complete/movies/.downloads
+        chown -R 0:0 /downloads
+        chmod -R u+rwX /downloads
+    volumes:
+      - /mnt/ssd/transmission/downloads:/downloads
   transmission:
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
@@ -65,6 +79,8 @@ services:
       lab_net:
         ipv4_address: 10.203.0.21
     restart: unless-stopped
+    depends_on:
+      media-storage-init: {condition: service_completed_successfully}
     environment:
       TZ: Europe/Lisbon
       # Rootless Docker maps container 0:0 to the daemon host account.
@@ -86,6 +102,9 @@ services:
     image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
     container_name: digger
     restart: unless-stopped
+    depends_on:
+      media-storage-init: {condition: service_completed_successfully}
+      transmission: {condition: service_started}
     networks:
       lab_net:
         ipv4_address: 10.203.0.24
@@ -107,6 +126,8 @@ services:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     hostname: jellyfin
+    depends_on:
+      media-storage-init: {condition: service_completed_successfully}
     environment:
       TZ: ${TIME_ZONE:-Europe/Lisbon}
       PUID: "0"

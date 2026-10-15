@@ -68,7 +68,7 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 All three media applications run as container UID/GID `0:0`: Digger uses `user: "0:0"`, while the LinuxServer images use `PUID=0` and `PGID=0` with their default init entrypoints. With [rootless Docker UID mapping](https://docs.docker.com/engine/security/rootless/uid-gid-mapping/), this maps to the host account running the Docker daemon. Do not substitute the host UID (such as 1000) here: that maps to a subordinate host UID. Transmission and Jellyfin use `UMASK=002`. The obsolete `TRANSMISSION_PUID` and `DIGGER_MEDIA_GID` variables are no longer used.
 
-Before startup, follow [media storage preparation](operations.md#rootless-media-storage). Compose cannot repair existing host ownership or a read-only SSD mount.
+The one-shot `media-storage-init` Compose service repairs download ownership and owner access before the media services start. See [media storage preparation](operations.md#rootless-media-storage) for applying this to existing containers and rootless host prerequisites.
 
 After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
 
