@@ -32,17 +32,17 @@ Prepare host storage ownership and permissions before installation. Cleanup of p
 
 Run these commands on Beelink as the account running the rootless Docker daemon (also the deployment runner account). Confirm `docker info --format '{{json .SecurityOptions}}'` includes `rootless`. The Compose media identity assumes rootless Docker.
 
-Compose's one-shot `media-storage-init` service prepares the download tree, including existing torrent files, with container ownership `0:0` and owner read/write permissions (plus directory traversal). Transmission, Digger, and Jellyfin wait for successful initialization before starting. This matches their rootless container identity without making files world-writable.
-
-To apply the repair to an existing installation, stop the media writers, rerun initialization, then recreate the media services using the current Compose configuration:
+Stop the media services before repairing existing storage. Create the directories, then transfer ownership of these specific service directories and grant their owner read/write access (and directory traversal). `sudo` is needed only when existing data belongs to another account:
 
 ```bash
-docker compose --env-file .env -f services/compose.yaml stop digger jellyfin transmission
-docker compose --env-file .env -f services/compose.yaml run --rm media-storage-init
-docker compose --env-file .env -f services/compose.yaml up -d --force-recreate transmission digger jellyfin
+docker compose -f services/compose.yaml stop digger jellyfin transmission
+mkdir -p ~/digger ~/jellyfin ~/transmission/config ~/transmission/watch /mnt/ssd/transmission/downloads/complete/movies
+sudo chown -R "$(id -u):$(id -g)" ~/digger ~/jellyfin ~/transmission/config ~/transmission/watch /mnt/ssd/transmission/downloads
+chmod -R u+rwX ~/digger ~/jellyfin ~/transmission/config ~/transmission/watch /mnt/ssd/transmission/downloads
+docker compose -f services/compose.yaml up -d transmission digger jellyfin
 ```
 
-The SSD must already be mounted read/write, and the rootless daemon account must be able to traverse `/mnt/ssd` and create or access `/mnt/ssd/transmission/downloads`. Initialization fails rather than starting dependent services with unrepaired permissions. Rootless Docker cannot repair files owned by host users outside its UID mapping; those need a host administrator to correct ownership once. Service configuration directories (`~/digger`, `~/jellyfin`, `~/transmission/config`, and `~/transmission/watch`) must also be writable by the daemon account.
+If creating the SSD directory fails, have its owner or administrator create it and assign it to the daemon account first. That account must also have traversal permission on `/mnt` and `/mnt/ssd`. For filesystems without Unix ownership support, configure the mount's UID/GID and access modes for that account instead. The SSD must be mounted read/write before starting the stack.
 
 Transmission and Digger share `/movies`, backed by `/mnt/ssd/transmission/downloads/complete/movies`; Jellyfin sees those movies at `/data/movies`. Existing Transmission torrents keep their saved download paths; check them before moving any existing media. Configure Jellyfin's movie library for `/data/movies`.
 
