@@ -78,6 +78,7 @@ services:
       - 51413:51413
       - 51413:51413/udp
   digger:
+    user: "0:0"
     image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
     container_name: digger
     restart: unless-stopped
