@@ -18,7 +18,7 @@ Published host ports are distinct per protocol. Portainer server uses container 
 
 ## Storage and builds
 
-Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `~/transmission/downloads`, and `~/transmission/watch`. Jellyfin mounts `~/transmission/downloads/complete` at `/data`. Docker socket mounts retain their system paths.
+Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `/mnt/ssd/transmission/downloads`, and `~/transmission/watch`. Jellyfin mounts `/mnt/ssd/transmission/downloads/complete` at `/data`. Docker socket mounts retain their system paths.
 
 The stack uses published images and bind-mounted configuration directories; no local image build is required.
 

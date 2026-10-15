@@ -61,12 +61,14 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 - Image: `ghcr.io/mouralx/digger:stable`; override with `DIGGER_TAG` for a version or preview.
 - Purpose: discover movies, download through Transmission, and manage a movie storage budget. No published ports.
-- SQLite persists in `~/digger`. Digger and Transmission both mount `/mnt/ssd/transmission/downloads/complete` at `/movies`; Transmission also sees it at `/downloads/complete`, and Jellyfin sees it at `/data`. The matching `/movies` paths let Digger submit download directories directly to Transmission.
+- SQLite persists in `~/digger`. Digger and Transmission both mount `/mnt/ssd/transmission/downloads/complete/movies` at `/movies`; Transmission also sees it at `/downloads/complete/movies`, and Jellyfin sees it at `/data`. The matching `/movies` paths let Digger submit download directories directly to Transmission.
 - Exclude Digger's `.downloads` and `.state` directories from Jellyfin scans.
 - Defaults for the 1 TB SSD (about 931 GiB usable before filesystem overhead): 750 GiB movie budget and 51200 MiB (50 GiB) free-space reserve. The budget includes partial downloads; the reserve protects free space across the drive when other services use it. Override with `DIGGER_MAX_LIBRARY_SIZE_GB` and `DIGGER_DISK_RESERVE_MB`; `DIGGER_YTS_API_URL` overrides discovery and must retain the `{0}` page placeholder.
 - Digger uses existing `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD` environment settings for RPC authentication. Set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to override them. Its RPC allowlists must admit Digger on `homelab_static`.
 
-Prepare host directory ownership and permissions before installation. Digger's image user (UID 1654) must be able to write to its SQLite and media directories. `DIGGER_MEDIA_GID` defaults to 911, matching Transmission's default group. Digger uses the image's default entrypoint; Transmission uses `UMASK=002`.
+All three media applications run as container UID/GID `0:0`: Digger uses `user: "0:0"`, while the LinuxServer images use `PUID=0` and `PGID=0` with their default init entrypoints. With [rootless Docker UID mapping](https://docs.docker.com/engine/security/rootless/uid-gid-mapping/), this maps to the host account running the Docker daemon. Do not substitute the host UID (such as 1000) here: that maps to a subordinate host UID. Transmission and Jellyfin use `UMASK=002`. The obsolete `TRANSMISSION_PUID` and `DIGGER_MEDIA_GID` variables are no longer used.
+
+Before startup, follow [media storage preparation](operations.md#rootless-media-storage). Compose cannot repair existing host ownership or a read-only SSD mount.
 
 After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
 

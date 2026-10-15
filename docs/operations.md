@@ -22,11 +22,29 @@ Append a service name to `logs` to inspect just that service.
 
 Open **Actions → Deploy Home Lab → Run workflow** and choose `install` or `uninstall`. The workflow runs direct Docker Compose commands on the self-hosted runner labeled `beelink`, which needs Docker Compose v2. Deployments to that host are serialized.
 
-Configure the selected GitHub environment with the variables mapped in the workflow, including `TIME_ZONE`, `USER_ID`, `TRANSMISSION_PEER_PORT`, `TRANSMISSION_PUID`, `DIGGER_MEDIA_GID`, and optional `DIGGER_*` settings. Store `OPENCLAW_GATEWAY_TOKEN`, `TRANSMISSION_USERNAME`, `TRANSMISSION_PASSWORD`, and optional Digger RPC credential overrides as secrets. `GH_PAT` and `GH_USER` optionally override the workflow token and actor for GHCR login; the token must have access to the Digger package.
+Configure the selected GitHub environment with the variables mapped in the workflow, including `TIME_ZONE`, `USER_ID`, `TRANSMISSION_PEER_PORT`, and optional `DIGGER_*` settings. Store `OPENCLAW_GATEWAY_TOKEN`, `TRANSMISSION_USERNAME`, `TRANSMISSION_PASSWORD`, and optional Digger RPC credential overrides as secrets. `GH_PAT` and `GH_USER` optionally override the workflow token and actor for GHCR login; the token must have access to the Digger package.
 
 A dry run validates Compose configuration without changing containers. Install optionally pulls images and stops services, then starts the full stack and waits for health checks. Uninstall runs `docker compose down`, preserving bind-mounted data and named volumes. Runtime values are passed directly through workflow environment mappings; no environment file is generated.
 
 Prepare host storage ownership and permissions before installation. Cleanup of previous Compose projects is manual. Application SSO remains unconfigured; see [Authentication options](authentication.md).
+
+## Rootless media storage
+
+Run these commands on Beelink as the account running the rootless Docker daemon (also the deployment runner account). Confirm `docker info --format '{{json .SecurityOptions}}'` includes `rootless`. The Compose media identity assumes rootless Docker.
+
+Stop the media services before repairing existing storage. Create the directories, then transfer ownership of these specific service directories and grant their owner read/write access (and directory traversal). `sudo` is needed only when existing data belongs to another account:
+
+```bash
+docker compose -f services/compose.yaml stop digger jellyfin transmission
+mkdir -p ~/digger ~/jellyfin ~/transmission/config ~/transmission/watch /mnt/ssd/transmission/downloads/complete/movies
+sudo chown -R "$(id -u):$(id -g)" ~/digger ~/jellyfin ~/transmission/config ~/transmission/watch /mnt/ssd/transmission/downloads
+chmod -R u+rwX ~/digger ~/jellyfin ~/transmission/config ~/transmission/watch /mnt/ssd/transmission/downloads
+docker compose -f services/compose.yaml up -d transmission digger jellyfin
+```
+
+If creating the SSD directory fails, have its owner or administrator create it and assign it to the daemon account first. That account must also have traversal permission on `/mnt` and `/mnt/ssd`. For filesystems without Unix ownership support, configure the mount's UID/GID and access modes for that account instead. The SSD must be mounted read/write before starting the stack.
+
+Transmission and Digger share `/movies`, backed by `/mnt/ssd/transmission/downloads/complete/movies`; Jellyfin sees those movies at `/data/movies`. Existing Transmission torrents keep their saved download paths; check them before moving any existing media. Configure Jellyfin's movie library for `/data/movies`.
 
 ## Moving everything to the Beelink
 
