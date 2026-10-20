@@ -90,7 +90,7 @@ services:
       DOTNET_ENVIRONMENT: Production
       TZ: ${TIME_ZONE:-Europe/Lisbon}
       DATABASE_URL: Data Source=/data/digger.db
-      MOVIES_DIR: /movies
+      MOVIES_DIR: /downloads/complete/movies
       YTS_API_URL: "${DIGGER_YTS_API_URL:-https://movies-api.accel.li/api/v2/list_movies.json?quality=2160p&sort_by=year,rating,date_added&order_by=desc&limit=50&page={0}}"
       TRANSMISSION_RPC_URL: http://transmission:9091/transmission/rpc
       TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME:-${TRANSMISSION_USERNAME:-}}
@@ -99,7 +99,7 @@ services:
       DISK_RESERVE_MB: ${DIGGER_DISK_RESERVE_MB:-51200}
     volumes:
       - ~/digger:/data
-      - /mnt/ssd/transmission/downloads/complete/movies:/movies
+      - /mnt/ssd/transmission/downloads/complete/movies:/downloads/complete/movies
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
