@@ -3,9 +3,10 @@
 Tempo is a fresh installation in the existing `lab` project. No local Tempo data or users are copied. Homelab pulls Tempo's own published images; it does not build or check out Tempo source.
 
 - Portal: `https://tempo.mouras.me`, container `10.203.0.26:8080`.
-- Identity: `https://keycloak.mouras.me`, container `10.203.0.27:8080`.
+- Identity: `https://keycloak.mouras.me`, container `keycloak` at `10.203.0.27:8080`.
 - Images: `ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}` and `ghcr.io/mouralx/tempo/portal:${TEMPO_TAG:-stable}`.
-- PostgreSQL 17 holds separate application and Keycloak databases in `lab_tempo_postgres_data`. Host mappings: portal `8080`, Keycloak `8081`, API `8082`, PostgreSQL `127.0.0.1:5433`. The migration job has no listener or published port.
+- Container `postgres` runs PostgreSQL 17 and holds separate application and Keycloak databases in `lab_tempo_postgres_data`. Host mappings: portal `8080`, Keycloak `8081`, API `8082`, PostgreSQL `127.0.0.1:5433`. The migration job has no listener or published port.
+- Compose service names remain `tempo-postgres` and `tempo-keycloak` for dependency resolution and workflow commands. Docker displays the container names `postgres` and `keycloak`; existing service DNS names and persistent storage are preserved.
 - The migration service uses the same API image and completes before API startup.
 
 ## Registry access and publication

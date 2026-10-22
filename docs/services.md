@@ -40,7 +40,7 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `digger` | `10.203.0.24` |
 | `homeassistant` | `10.203.0.25` |
 | `tempo-portal` | `10.203.0.26` |
-| `tempo-keycloak` | `10.203.0.27` |
+| `keycloak` (Compose service `tempo-keycloak`) | `10.203.0.27` |
 | `gitea-runner` | `10.203.0.31` |
 
 Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
