@@ -1,6 +1,6 @@
 # Authentication options
 
-No centralized identity provider is deployed in this stack. Applications retain their existing authentication settings. The following integrations are options if an external identity provider is added later; none are enabled by the current Compose configuration. Database credentials remain separate from user login.
+Tempo adds a dedicated Keycloak instance at `keycloak.mouras.me`; see [Tempo deployment](tempo.md). Other services are not automatically connected to it. Applications retain their existing authentication settings. The following integrations are options if an external identity provider is added later; none are enabled by the current Compose configuration. Database credentials remain separate from user login.
 
 ## Service compatibility
 

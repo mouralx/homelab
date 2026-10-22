@@ -1,0 +1,45 @@
+name: Deploy Gitea Runner
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate without changing running services
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: [self-hosted, beelink]
+    environment: mouras-home-lab
+    concurrency:
+      group: home-lab-beelink
+      cancel-in-progress: false
+    env:
+      COMPOSE_FILE: services/gitea-runner.yaml
+      USER_ID: ${{ vars.USER_ID || '1000' }}
+      GITEA_INSTANCE_URL: ${{ vars.GITEA_INSTANCE_URL || 'http://gitea:3000' }}
+      GITEA_RUNNER_TAG: ${{ vars.GITEA_RUNNER_TAG || '2' }}
+      GITEA_RUNNER_NAME: ${{ vars.GITEA_RUNNER_NAME || 'beelink' }}
+      GITEA_RUNNER_REGISTRATION_TOKEN: ${{ secrets.GITEA_RUNNER_REGISTRATION_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: docker compose config --quiet
+      - name: Check runner registration and host prerequisites
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network inspect homelab_static >/dev/null
+          test -S "/run/user/${USER_ID}/docker.sock"
+          if [ -z "$GITEA_RUNNER_REGISTRATION_TOKEN" ]; then
+            echo 'Configure the GITEA_RUNNER_REGISTRATION_TOKEN environment secret before deployment.' >&2
+            exit 1
+          fi
+      - name: Pull runner image
+        if: ${{ !inputs.dry_run }}
+        run: docker compose pull
+      - name: Start runner
+        if: ${{ !inputs.dry_run }}
+        run: docker compose up -d --wait --wait-timeout 120

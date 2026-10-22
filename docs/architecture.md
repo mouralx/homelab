@@ -28,4 +28,4 @@ Local runtime variables come from a repository-root `.env` file. GitHub Actions 
 
 ## Authentication
 
-No centralized identity provider is deployed, and application SSO has not been enabled. See [authentication.md](authentication.md) for supported integrations, licensing requirements, and setup steps. Database credentials remain separate from user authentication.
+Tempo uses a dedicated Keycloak instance; other applications retain their existing authentication and are not connected to it. See [authentication.md](authentication.md) for supported integrations, licensing requirements, and setup steps. Database credentials remain separate from user authentication.

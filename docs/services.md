@@ -1,6 +1,6 @@
 # Services
 
-All services are defined in [services/compose.yaml](../services/compose.yaml).
+The main stack is defined in [services/compose.yaml](../services/compose.yaml). The [Gitea Actions runner](gitea-runner.md) has a separate [Compose project](../services/gitea-runner.yaml) for independent deployment.
 
 All services run together on Beelink in the `lab` Compose project.
 
@@ -18,6 +18,9 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `portainer` | `10.203.0.23` |
 | `digger` | `10.203.0.24` |
 | `homeassistant` | `10.203.0.25` |
+| `tempo-portal` | `10.203.0.26` |
+| `tempo-keycloak` | `10.203.0.27` |
+| `gitea-runner` | `10.203.0.31` |
 
 Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
 
@@ -104,3 +107,7 @@ Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp`
 Nginx Proxy Manager, n8n, Home Assistant Recorder and Jellyfin keep their default SQLite databases. OpenClaw retains local storage, Portainer uses BoltDB, and Transmission uses configuration and torrent state files.
 
 For authentication and optional centralized login, see [Authentication options](authentication.md).
+
+## Tempo
+
+See [Tempo deployment](tempo.md) for private-image PAT access, fresh installation, credentials and HTTPS routes. API and PostgreSQL use a separate private network.

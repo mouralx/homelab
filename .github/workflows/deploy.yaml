@@ -52,6 +52,13 @@ jobs:
       TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
       DIGGER_TRANSMISSION_USERNAME: ${{ secrets.DIGGER_TRANSMISSION_USERNAME || vars.DIGGER_TRANSMISSION_USERNAME }}
       DIGGER_TRANSMISSION_PASSWORD: ${{ secrets.DIGGER_TRANSMISSION_PASSWORD }}
+      TEMPO_TAG: ${{ vars.TEMPO_TAG || 'stable' }}
+      TEMPO_PORTAL_URL: ${{ vars.TEMPO_PORTAL_URL || 'https://tempo.mouras.me' }}
+      TEMPO_IDENTITY_URL: ${{ vars.TEMPO_IDENTITY_URL || 'https://keycloak.mouras.me' }}
+      TEMPO_POSTGRES_PASSWORD: ${{ secrets.TEMPO_POSTGRES_PASSWORD }}
+      TEMPO_APP_DB_PASSWORD: ${{ secrets.TEMPO_APP_DB_PASSWORD }}
+      TEMPO_IDENTITY_DB_PASSWORD: ${{ secrets.TEMPO_IDENTITY_DB_PASSWORD }}
+      TEMPO_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.TEMPO_KEYCLOAK_ADMIN_PASSWORD }}
       DIGGER_TAG: ${{ vars.DIGGER_TAG || 'stable' }}
       DIGGER_YTS_API_URL: ${{ vars.DIGGER_YTS_API_URL }}
       DIGGER_MAX_LIBRARY_SIZE_GB: ${{ vars.DIGGER_MAX_LIBRARY_SIZE_GB || '750' }}
@@ -59,6 +66,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Prepare persistent Tempo credentials
+        run: python3 scripts/prepare-tempo-env.py
       - name: Validate Compose configuration
         run: docker compose config --quiet
       - name: Log in to GHCR
@@ -67,7 +76,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ secrets.GH_USER || github.actor }}
-          password: ${{ secrets.GH_PAT || github.token }}
+          password: ${{ secrets.GH_PAT }}
       - name: Pull images
         if: ${{ inputs.action == 'install' && !inputs.dry_run && inputs.update_images }}
         run: docker compose pull
