@@ -8,7 +8,7 @@ All services run together on Beelink in the `lab` Compose project.
 
 | Service | Host → container ports |
 | --- | --- |
-| Gitea | `3000 → 3000` HTTP, `3001 → 2222` SSH |
+| Gitea | `3000 → 3000` HTTP, `3001 → 22` SSH |
 | OpenClaw | `18789 → 18789` |
 | Nginx Proxy Manager | `8088 → 80`, `8448 → 443`, `8181 → 81` |
 | n8n | `5678 → 5678` |
