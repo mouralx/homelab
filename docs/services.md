@@ -4,7 +4,28 @@ The main stack is defined in [services/compose.yaml](../services/compose.yaml). 
 
 All services run together on Beelink in the `lab` Compose project.
 
-## Fixed container addresses
+## Host ports
+
+| Service | Host → container ports |
+| --- | --- |
+| Gitea | `3000 → 3000` HTTP, `3001 → 2222` SSH |
+| OpenClaw | `18789 → 18789` |
+| Nginx Proxy Manager | `8088 → 80`, `8448 → 443`, `8181 → 81` |
+| n8n | `5678 → 5678` |
+| Transmission | `9091 → 9091`, `51413 → 51413` TCP/UDP |
+| Jellyfin | `8096 → 8096` TCP, `7359 → 7359` UDP |
+| Portainer | `9000 → 9000`, `9443 → 9443` |
+| Home Assistant | `8123 → 8123` |
+| Tempo portal | `8080 → 8080` |
+| Tempo Keycloak | `8081 → 8080` |
+| Tempo API | `8082 → 8080` |
+| Tempo PostgreSQL | `127.0.0.1:5433 → 5432` |
+| Gitea runner cache | `127.0.0.1:8089 → 8088` |
+| Digger / Tempo migration | No network listener; no port mapping |
+
+Ports are TCP unless specified otherwise. Loopback mappings are reachable only from Beelink. The remaining mappings bind on all host interfaces. Tempo sign-in continues to use the configured HTTPS domains.
+
+## Container addresses
 
 The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service calls can use these addresses or the Compose service names:
 

@@ -5,7 +5,7 @@ Tempo is a fresh installation in the existing `lab` project. No local Tempo data
 - Portal: `https://tempo.mouras.me`, container `10.203.0.26:8080`.
 - Identity: `https://keycloak.mouras.me`, container `10.203.0.27:8080`.
 - Images: `ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}` and `ghcr.io/mouralx/tempo/portal:${TEMPO_TAG:-stable}`.
-- Private PostgreSQL 17 holds separate application and Keycloak databases in `lab_tempo_postgres_data`. No database or API host ports are published.
+- PostgreSQL 17 holds separate application and Keycloak databases in `lab_tempo_postgres_data`. Host mappings: portal `8080`, Keycloak `8081`, API `8082`, PostgreSQL `127.0.0.1:5433`. The migration job has no listener or published port.
 - The migration service uses the same API image and completes before API startup.
 
 ## Registry access and publication
@@ -24,7 +24,7 @@ Back up this file with the database backups. Subsequent deployments reuse it; ch
 
 Run **Deploy Tempo** on main, first with `dry_run=true`, then with `dry_run=false`. It uses the existing Beelink runner and deployment concurrency group, pulls the images through the PAT, and starts only Tempo and its dependencies. The full **Deploy Home Lab** workflow also includes Tempo. Compose with `include` support (2.20+) is required.
 
-The focused workflow intentionally performs no DNS, proxy-manager or account changes. It publishes no host ports and leaves existing service containers alone. A successful container health check does not prove external login works.
+The focused workflow intentionally performs no DNS, proxy-manager or account changes and leaves existing service containers alone. A successful container health check does not prove external login works. Published HTTP ports do not change the configured HTTPS portal and identity URLs; use those URLs for sign-in. The Keycloak host port exposes its HTTP interface, including administrative routes, to the LAN; keep public traffic routed through Nginx Proxy Manager's restricted HTTPS configuration below.
 
 ## HTTPS routing
 

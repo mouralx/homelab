@@ -2,7 +2,7 @@
 
 The runner uses the official `docker.io/gitea/runner:2` image and the existing Beelink rootless Docker daemon. It has a separate `gitea-runner` Compose project so it can be installed through GitHub Actions without changing the main homelab or requiring Tempo credentials.
 
-It joins the existing `homelab_static` network at `10.203.0.31`. Gitea must already be running on that network with the `gitea` DNS alias. The default registration URL is `http://gitea:3000`. If Gitea's configured public URL differs, set `GITEA_INSTANCE_URL` to that URL and ensure both the runner and job containers can reach it; checkout uses Gitea's configured clone URLs. No host ports are published. Job containers share this network so they can reach Gitea and the runner's Actions cache.
+It joins the existing `homelab_static` network at `10.203.0.31`. Gitea must already be running on that network with the `gitea` DNS alias. The default registration URL is `http://gitea:3000`. If Gitea's configured public URL differs, set `GITEA_INSTANCE_URL` to that URL and ensure both the runner and job containers can reach it; checkout uses Gitea's configured clone URLs. The Actions cache is published at `127.0.0.1:8089` (container port `8088`). Job containers share this network and reach the cache at `10.203.0.31:8088`.
 
 ## Register and deploy through GitHub Actions
 
