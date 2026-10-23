@@ -1,116 +1,5 @@
 name: lab
-x-tempo-api: &tempo-api
-  image: ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}
-  environment: &tempo-api-env
-    ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-    ASPNETCORE_URLS: http://+:8080
-    ConnectionStrings__Tempo: Host=tempo-postgres;Database=tempo;Username=tempo;Password=${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
-    Auth__Authority: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}/realms/tempo
-    Auth__InternalBaseUrl: http://tempo-keycloak:8080
-    Auth__Audience: tempo-api
-  networks: [tempo_backend]
-  security_opt: [no-new-privileges:true]
-  cap_drop: [ALL]
-  read_only: true
-  tmpfs: [/tmp]
-  logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
 services:
-  gitea:
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.30
-    image: docker.gitea.com/gitea:28.2.0-rootless
-    container_name: gitea
-    environment:
-      - USER_UID=1000
-      - USER_GID=1000
-    restart: always
-    volumes:
-      - ~/gitea/data:/var/lib/gitea
-      - ~/gitea/config:/etc/gitea
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    ports:
-      - "3000:3000"
-      - "3001:22"
-  openclaw:
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.10
-    image: ghcr.io/openclaw/openclaw:latest
-    container_name: openclaw
-    hostname: openclaw
-    restart: unless-stopped
-    init: true
-    command: [ node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured ]
-    ports:
-      - 18789:18789
-    volumes:
-      - ~/openclaw:/home/node/.openclaw
-      - ~/openclaw/auth-profile-secrets:/home/node/.config/openclaw
-    environment:
-      HOME: /home/node
-      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
-      TZ: ${TIME_ZONE:-Europe/Lisbon}
-  npm:
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.12
-    container_name: npm
-    hostname: npm
-    image: jc21/nginx-proxy-manager:latest
-    restart: unless-stopped
-    environment:
-      TZ: ${TIME_ZONE}
-    volumes:
-      - ~/npm/data:/data
-      - ~/npm/certs:/etc/letsencrypt
-    ports:
-      - 8448:443
-      - 8088:80
-      - 8181:81
-  n8n:
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.20
-    image: n8nio/n8n:latest
-    container_name: n8n
-    hostname: n8n
-    restart: unless-stopped
-    environment:
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
-      N8N_HOST: https://n8n.mouras.me
-      N8N_PROTOCOL: https
-      NODE_ENV: production
-      WEBHOOK_URL: https://n8n.mouras.me/webhook
-      GENERIC_TIMEZONE: Europe/Lisbon
-      TZ: Europe/Lisbon
-      N8N_RESTRICT_FILE_ACCESS_TO: /files
-    volumes:
-      - ~/n8n/data:/home/node/.n8n
-      - ~/n8n/files:/files
-    ports:
-      - 5678:5678
-  transmission:
-    image: lscr.io/linuxserver/transmission:latest
-    container_name: transmission
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.21
-    restart: unless-stopped
-    environment:
-      TZ: Europe/Lisbon
-      PUID: "0"
-      PGID: "0"
-      UMASK: "002"
-    volumes:
-      - ~/transmission/config:/config
-      - ~/transmission/watch:/watch
-      - /mnt/ssd/transmission/downloads:/downloads
-    ports:
-      - 9091:9091
-      - 51413:51413
-      - 51413:51413/udp
   digger:
     user: "0:0"
     image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
@@ -133,40 +22,50 @@ services:
     volumes:
       - ~/digger:/data
       - /mnt/ssd/transmission/downloads/complete/movies:/downloads/complete/movies
-  jellyfin:
-    image: lscr.io/linuxserver/jellyfin:latest
-    container_name: jellyfin
-    hostname: jellyfin
+  gitea:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.30
+    image: docker.gitea.com/gitea:28.2.0-rootless
+    container_name: gitea
     environment:
-      TZ: ${TIME_ZONE:-Europe/Lisbon}
-      PUID: "0"
-      PGID: "0"
-      UMASK: "002"
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.22
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
     volumes:
-      - ~/jellyfin:/config
-      - /mnt/ssd/transmission/downloads/complete:/data:rw
+      - ~/gitea/data:/var/lib/gitea
+      - ~/gitea/config:/etc/gitea
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
-      - 8096:8096
-      - 7359:7359/udp
-  portainer:
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.23
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    hostname: portainer
+      - "3000:3000"
+      - "3001:22"
+  gitea-runner:
+    image: docker.io/gitea/runner:${GITEA_RUNNER_TAG:-2}
+    container_name: gitea-runner
+    hostname: gitea-runner
     restart: unless-stopped
-    volumes:
-      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
-      - ~/portainer:/data
-    environment:
-      - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+    stop_grace_period: 65s
     ports:
-      - 9000:9000
-      - 9443:9443
+      - "127.0.0.1:8089:8088"
+    environment:
+      CONFIG_FILE: /config.yaml
+      GITEA_INSTANCE_URL: ${GITEA_INSTANCE_URL:-http://gitea:3000}
+      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_REGISTRATION_TOKEN:-}
+      GITEA_RUNNER_NAME: ${GITEA_RUNNER_NAME:-beelink}
+      GITEA_RUNNER_LABELS: ubuntu-latest:docker://node:22-bookworm,homelab:docker://node:22-bookworm
+    volumes:
+      - gitea_runner_data:/data
+      - ./gitea-runner/config.yaml:/config.yaml:ro
+      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.31
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
   homeassistant:
     container_name: homeassistant
     hostname: homeassistant
@@ -184,29 +83,129 @@ services:
       TZ: Europe/Lisbon
     ports:
       - 8123:8123
-  tempo-postgres:
-    container_name: postgres
-    image: postgres:17-alpine
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    hostname: jellyfin
+    environment:
+      TZ: ${TIME_ZONE:-Europe/Lisbon}
+      PUID: "0"
+      PGID: "0"
+      UMASK: "002"
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.22
+    volumes:
+      - ~/jellyfin:/config
+      - /mnt/ssd/transmission/downloads/complete:/data
     ports:
-      - "127.0.0.1:5433:5432"
+      - 8096:8096
+      - 7359:7359/udp
+  n8n:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.20
+    image: n8nio/n8n:latest
+    container_name: n8n
+    hostname: n8n
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
-      POSTGRES_PASSWORD: ${TEMPO_POSTGRES_PASSWORD:?Configure Tempo deployment secrets}
-      APP_DB_PASSWORD: ${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
-      IDENTITY_DB_PASSWORD: ${TEMPO_IDENTITY_DB_PASSWORD:?Configure Tempo deployment secrets}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
+      N8N_HOST: https://n8n.mouras.me
+      N8N_PROTOCOL: https
+      NODE_ENV: production
+      WEBHOOK_URL: https://n8n.mouras.me/webhook
+      GENERIC_TIMEZONE: Europe/Lisbon
+      TZ: Europe/Lisbon
+      N8N_RESTRICT_FILE_ACCESS_TO: /files
     volumes:
-      - tempo_postgres_data:/var/lib/postgresql/data
-      - ./tempo/init.sh:/docker-entrypoint-initdb.d/10-tempo.sh:ro
-    healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U postgres -d postgres']
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    networks: [tempo_backend]
+      - ~/n8n/data:/home/node/.n8n
+      - ~/n8n/files:/files
+    ports:
+      - 5678:5678
+  npm:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.12
+    container_name: npm
+    hostname: npm
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    environment:
+      TZ: ${TIME_ZONE}
+    volumes:
+      - ~/npm/data:/data
+      - ~/npm/certs:/etc/letsencrypt
+    ports:
+      - 8448:443
+      - 8088:80
+      - 8181:81
+  openclaw:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.10
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw
+    hostname: openclaw
+    restart: unless-stopped
+    init: true
+    command: [ node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured ]
+    ports:
+      - 18789:18789
+    volumes:
+      - ~/openclaw:/home/node/.openclaw
+      - ~/openclaw/auth-profile-secrets:/home/node/.config/openclaw
+    environment:
+      HOME: /home/node
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      TZ: ${TIME_ZONE:-Europe/Lisbon}
+  portainer:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.23
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    hostname: portainer
+    restart: unless-stopped
+    volumes:
+      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - ~/portainer:/data
+    environment:
+      - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+    ports:
+      - 9000:9000
+      - 9443:9443
+  tempo-api:
+    container_name: tempo-api
+    image: ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Tempo: Host=tempo-postgres;Database=tempo;Username=tempo;Password=${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
+      Auth__Authority: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}/realms/tempo
+      Auth__InternalBaseUrl: http://tempo-keycloak:8080
+      Auth__Audience: tempo-api
     security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
     logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
+    ports:
+      - "8082:8080"
+    networks:
+      tempo_backend:
+        aliases: [api]
+    restart: unless-stopped
+    depends_on:
+      tempo-migrate: {condition: service_completed_successfully}
+      tempo-keycloak: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, /app/Tempo.Api, --healthcheck]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 512m
   tempo-keycloak:
     container_name: keycloak
     image: quay.io/keycloak/keycloak:26.8.1
@@ -246,29 +245,22 @@ services:
     logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
   tempo-migrate:
     container_name: tempo-migrate
-    <<: *tempo-api
+    image: ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Tempo: Host=tempo-postgres;Database=tempo;Username=tempo;Password=${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
+      Auth__Authority: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}/realms/tempo
+      Auth__InternalBaseUrl: http://tempo-keycloak:8080
+      Auth__Audience: tempo-api
+    networks: [tempo_backend]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
     command: [--migrate]
-    restart: 'no'
     depends_on: {tempo-postgres: {condition: service_healthy}}
-  tempo-api:
-    container_name: tempo-api
-    <<: *tempo-api
-    ports:
-      - "8082:8080"
-    networks:
-      tempo_backend:
-        aliases: [api]
-    restart: unless-stopped
-    depends_on:
-      tempo-migrate: {condition: service_completed_successfully}
-      tempo-keycloak: {condition: service_healthy}
-    healthcheck:
-      test: [CMD, /app/Tempo.Api, --healthcheck]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    mem_limit: 512m
   tempo-portal:
     container_name: tempo-portal
     image: ghcr.io/mouralx/tempo/portal:${TEMPO_TAG:-stable}
@@ -294,32 +286,49 @@ services:
     tmpfs: ["/tmp:mode=1777", "/var/cache/nginx:uid=101,gid=101", "/var/run:uid=101,gid=101", "/etc/nginx/conf.d:uid=101,gid=101"]
     mem_limit: 128m
     logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
-  gitea-runner:
-    image: docker.io/gitea/runner:${GITEA_RUNNER_TAG:-2}
-    container_name: gitea-runner
-    hostname: gitea-runner
-    restart: unless-stopped
-    stop_grace_period: 65s
+  tempo-postgres:
+    container_name: postgres
+    image: postgres:17-alpine
     ports:
-      - "127.0.0.1:8089:8088"
+      - "127.0.0.1:5433:5432"
+    restart: unless-stopped
     environment:
-      CONFIG_FILE: /config.yaml
-      GITEA_INSTANCE_URL: ${GITEA_INSTANCE_URL:-http://gitea:3000}
-      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_REGISTRATION_TOKEN:-}
-      GITEA_RUNNER_NAME: ${GITEA_RUNNER_NAME:-beelink}
-      GITEA_RUNNER_LABELS: ubuntu-latest:docker://node:22-bookworm,homelab:docker://node:22-bookworm
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${TEMPO_POSTGRES_PASSWORD:?Configure Tempo deployment secrets}
+      APP_DB_PASSWORD: ${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
+      IDENTITY_DB_PASSWORD: ${TEMPO_IDENTITY_DB_PASSWORD:?Configure Tempo deployment secrets}
     volumes:
-      - gitea_runner_data:/data
-      - ./gitea-runner/config.yaml:/config.yaml:ro
-      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - tempo_postgres_data:/var/lib/postgresql/data
+      - ./tempo/init.sh:/docker-entrypoint-initdb.d/10-tempo.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [tempo_backend]
+    security_opt: [no-new-privileges:true]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
     networks:
       lab_net:
-        ipv4_address: 10.203.0.31
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: '3'
+        ipv4_address: 10.203.0.21
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Lisbon
+      PUID: "0"
+      PGID: "0"
+      UMASK: "002"
+    volumes:
+      - ~/transmission/config:/config
+      - ~/transmission/watch:/watch
+      - /mnt/ssd/transmission/downloads:/downloads
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
 volumes:
   tempo_postgres_data:
   gitea_runner_data:
@@ -329,7 +338,6 @@ networks:
     internal: true
   lab_net:
     name: homelab_static
-    driver: bridge
     ipam:
       config:
         - subnet: 10.203.0.0/24
