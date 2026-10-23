@@ -11,7 +11,7 @@ Tempo is a fresh installation in the existing `lab` project. No local Tempo data
 
 ## Registry access and publication
 
-In the `mouras-home-lab` GitHub environment, configure `GH_PAT` with package-read permission and access to the private Tempo packages; configure `GH_USER` for the PAT owner if different from the workflow actor. Both deployment workflows use this PAT to log into GHCR. The homelab's default GitHub token does not substitute for private cross-repository access. Do not store the PAT in Compose, source files or image URLs.
+In the `mouras-home-lab` GitHub environment, configure `GH_PAT` with package-read permission and access to the private Tempo packages; configure `GH_USER` for the PAT owner if different from the workflow actor. The deployment workflow uses this PAT to log into GHCR. The homelab's default GitHub token does not substitute for private cross-repository access. Do not store the PAT in Compose, source files or image URLs.
 
 Tempo's publication workflow must publish the API and portal images before initial installation. Its main branch publishes `vMAJOR.MINOR.PATCH`, `stable`, `latest` and SHA tags; develop publishes `prev-vMAJOR.MINOR.PATCH`, `preview` and preview SHA tags. Set `TEMPO_TAG` to a shared explicit version for reproducible deployment, or `stable` to follow stable publications. Publication only updates affected components, so channel aliases may point to different version numbers; an explicit version must exist for both images before pinning both to it.
 
@@ -23,9 +23,9 @@ Back up this file with the database backups. Subsequent deployments reuse it; ch
 
 ## Deploy
 
-Run **Deploy Tempo** on main, first with `dry_run=true`, then with `dry_run=false`. It uses the existing Beelink runner and deployment concurrency group, pulls the images through the PAT, and starts only Tempo and its dependencies. The full **Deploy Home Lab** workflow also includes Tempo. Compose with `include` support (2.20+) is required.
+Run **Deploy Home Lab** with `action=install`, first with `dry_run=true`, then with `dry_run=false`. Enable `update_images` to pull image updates through the PAT. It uses the existing Beelink runner and deploys the full stack, including Tempo. Set the GitHub environment variable `TEMPO_TAG` to choose the Tempo image version. All Tempo services are defined directly in `services/compose.yaml`.
 
-The focused workflow intentionally performs no DNS, proxy-manager or account changes and leaves existing service containers alone. A successful container health check does not prove external login works. Published HTTP ports do not change the configured HTTPS portal and identity URLs; use those URLs for sign-in. The Keycloak host port exposes its HTTP interface, including administrative routes, to the LAN; keep public traffic routed through Nginx Proxy Manager's restricted HTTPS configuration below.
+The deployment workflow performs no DNS, proxy-manager or account changes. A successful container health check does not prove external login works. Published HTTP ports do not change the configured HTTPS portal and identity URLs; use those URLs for sign-in. The Keycloak host port exposes its HTTP interface, including administrative routes, to the LAN; keep public traffic routed through Nginx Proxy Manager's restricted HTTPS configuration below.
 
 ## HTTPS routing
 

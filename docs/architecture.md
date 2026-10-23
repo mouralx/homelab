@@ -1,6 +1,6 @@
 # Architecture
 
-All eight services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
+All fifteen services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
 
 ## Services and networking
 

@@ -1,6 +1,6 @@
 # Services
 
-The main stack is defined in [services/compose.yaml](../services/compose.yaml). The [Gitea Actions runner](gitea-runner.md) has a separate [Compose project](../services/gitea-runner.yaml) for independent deployment.
+All services, including Tempo and the [Gitea Actions runner](gitea-runner.md), are defined in [services/compose.yaml](../services/compose.yaml) under the `lab` project.
 
 All services run together on Beelink in the `lab` Compose project.
 

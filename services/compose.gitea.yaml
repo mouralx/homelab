@@ -1,6 +1,23 @@
-name: gitea-runner
-
+name: gitea
 services:
+  gitea:
+    networks:
+      lab_net:
+        ipv4_address: 10.203.0.30
+    image: docker.gitea.com/gitea:28.2.0-rootless
+    container_name: gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
+    volumes:
+      - ~/gitea/data:/var/lib/gitea
+      - ~/gitea/config:/etc/gitea
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "3001:22"
   gitea-runner:
     image: docker.io/gitea/runner:${GITEA_RUNNER_TAG:-2}
     container_name: gitea-runner
@@ -27,10 +44,6 @@ services:
       options:
         max-size: 10m
         max-file: '3'
-
-volumes:
-  gitea_runner_data:
-
 networks:
   lab_net:
     external: true
