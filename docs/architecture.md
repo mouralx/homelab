@@ -1,6 +1,6 @@
 # Architecture
 
-All fifteen services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
+All sixteen services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
 
 ## Services and networking
 
@@ -8,7 +8,7 @@ The stack includes the AI service OpenClaw, home automation and media services, 
 
 All services run together on the Beelink. The Compose file has no workload profiles, so an unqualified `compose up` starts the full stack. Portainer manages the local Docker host through its mounted socket; no Portainer Agent is needed.
 
-Services share the user-defined Docker bridge network `homelab_static` (`10.203.0.0/24`). Services on the lab network have reserved addresses, listed in [services.md](services.md#fixed-container-addresses). Check that this subnet does not overlap Beelink's LAN, VPN, or another Docker network before deployment.
+Services share the user-defined Docker bridge network `homelab_static` (`10.203.0.0/24`). Services on the lab network have reserved addresses, listed in [services.md](services.md#container-addresses). Check that this subnet does not overlap Beelink's LAN, VPN, or another Docker network before deployment.
 
 All services, including Home Assistant, use bridge networking so each can have a fixed container address. Home Assistant's mDNS and other broadcast-based device discovery may not cross the Docker bridge; use the Home Assistant UI to add integrations manually or configure a discovery relay if automatic discovery is needed. The former host-networked media and download services now publish their application ports explicitly.
 

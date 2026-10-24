@@ -38,7 +38,7 @@ docker compose --env-file .env -f services/compose.yaml exec vault vault operato
 
 Sign in with the initial root token to configure authentication, policies, and secrets engines. Create scoped access for normal use and revoke the initial root token after setup. No development token or automatic initialization is configured.
 
-Vault seals again after every restart and needs three shares to unseal. The Compose health check accepts sealed and uninitialized responses so the full-stack deployment can finish before manual setup. It checks HTTP availability, not readiness to serve secrets. Check the actual seal state with:
+Vault seals again after every restart and needs three shares to unseal. Container health checks are disabled, and deployment does not wait for Vault to be initialized or unsealed. Check the actual seal state with:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml exec vault vault status

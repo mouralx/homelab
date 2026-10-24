@@ -6,7 +6,7 @@ Tempo is a fresh installation in the existing `lab` project. No local Tempo data
 - Identity: `https://keycloak.mouras.me`, container `keycloak` at `10.203.0.27:8080`.
 - Images: `ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}` and `ghcr.io/mouralx/tempo/portal:${TEMPO_TAG:-stable}`.
 - Container `postgres` runs PostgreSQL 17 and holds separate application and Keycloak databases in `lab_tempo_postgres_data`. Host mappings: portal `8080`, Keycloak `8081`, API `8082`, PostgreSQL `127.0.0.1:5433`. The migration job has no listener or published port.
-- Compose service names remain `tempo-postgres` and `tempo-keycloak` for dependency resolution and workflow commands. Docker displays the container names `postgres` and `keycloak`; existing service DNS names and persistent storage are preserved.
+- Compose service names are `postgres` and `keycloak`. Both join `homelab_static` with all other services and retain the DNS aliases `tempo-postgres` and `tempo-keycloak` for existing application URLs. The API and migration job also use this shared network.
 - The migration service uses the same API image and completes before API startup.
 
 ## Registry access and publication
@@ -25,7 +25,7 @@ Back up this file with the database backups. Subsequent deployments reuse it; ch
 
 Run **Deploy Home Lab** with `action=install`, first with `dry_run=true`, then with `dry_run=false`. Enable `update_images` to pull image updates through the PAT. It uses the existing Beelink runner and deploys the full stack, including Tempo. Set the GitHub environment variable `TEMPO_TAG` to choose the Tempo image version. All Tempo services are defined directly in `services/compose.yaml`.
 
-The deployment workflow performs no DNS, proxy-manager or account changes. A successful container health check does not prove external login works. Published HTTP ports do not change the configured HTTPS portal and identity URLs; use those URLs for sign-in. The Keycloak host port exposes its HTTP interface, including administrative routes, to the LAN; keep public traffic routed through Nginx Proxy Manager's restricted HTTPS configuration below.
+The deployment workflow performs no DNS, proxy-manager or account changes. Container health checks are disabled, and deployment does not wait for application readiness. Dependencies enforce startup order, while the API waits for successful migrations. The migration job retries on failure, including when PostgreSQL is still starting. Check service logs and verify external login after deployment. Published HTTP ports do not change the configured HTTPS portal and identity URLs; use those URLs for sign-in. The Keycloak host port exposes its HTTP interface, including administrative routes, to the LAN; keep public traffic routed through Nginx Proxy Manager's restricted HTTPS configuration below.
 
 ## HTTPS routing
 

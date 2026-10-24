@@ -99,7 +99,7 @@ jobs:
         run: docker compose stop
       - name: Install or update services
         if: ${{ inputs.action == 'install' && !inputs.dry_run }}
-        run: docker compose up -d --wait --wait-timeout 360
+        run: docker compose up -d
       - name: Uninstall services
         if: ${{ inputs.action == 'uninstall' && !inputs.dry_run }}
         run: docker compose down

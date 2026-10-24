@@ -24,7 +24,7 @@ Open **Actions → Deploy Home Lab → Run workflow** and choose `install` or `u
 
 Configure the selected GitHub environment with the variables mapped in the workflow, including `TIME_ZONE`, `USER_ID`, `TRANSMISSION_PEER_PORT`, and optional `DIGGER_*` settings. Store `GITEA_RUNNER_REGISTRATION_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, `TRANSMISSION_USERNAME`, `TRANSMISSION_PASSWORD`, and optional Digger RPC credential overrides as secrets. `GH_PAT` and `GH_USER` optionally override the workflow token and actor for GHCR login; the token must have access to the Digger package.
 
-A dry run validates Compose configuration without changing containers. Install optionally pulls images and stops services, then starts the full stack and waits for health checks. Uninstall runs `docker compose down`, preserving bind-mounted data and named volumes. Runtime values are passed directly through workflow environment mappings; no environment file is generated.
+A dry run validates Compose configuration without changing containers. Install optionally pulls images and stops services, then starts the full stack without waiting for application readiness. Container health checks, including image-provided checks, are disabled. Startup dependencies enforce container order; the API still waits for successful database migrations. Uninstall runs `docker compose down`, preserving bind-mounted data and named volumes. Runtime values are passed directly through workflow environment mappings; no environment file is generated.
 
 Prepare host storage ownership and permissions before installation. Cleanup of previous Compose projects is manual. Application SSO remains unconfigured; see [Authentication options](authentication.md).
 
