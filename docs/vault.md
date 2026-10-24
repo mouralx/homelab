@@ -2,7 +2,7 @@
 
 Vault runs as a single server with persistent Raft storage, using the [official configuration guidance](https://developer.hashicorp.com/vault/docs/configuration). This provides persistence but no high availability. Memory locking is disabled for Raft; disable swap on the host or use encrypted swap.
 
-Configuration lives in `services/vault/vault.hcl`, mounted read-only from the repository checkout. No separate host copy under `~/vault` is required; Raft data remains in `~/vault/data`.
+Configuration lives in `services/vault/vault.hcl`, mounted read-only from the repository checkout. No separate host copy under `~/vault` is required; Raft data remains in `~/vault/data`. The Compose command is `server`: the official image entrypoint already loads `/vault/config`, so adding the mounted HCL file again as a `-config` argument would load the listener twice.
 
 ## Start and configure HTTPS
 

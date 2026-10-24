@@ -397,7 +397,6 @@ services:
     restart: unless-stopped
     command:
       - server
-      - -config=/vault/config/vault.hcl
     environment:
       VAULT_ADDR: ${VAULT_VAULT_ADDR}
       VAULT_API_ADDR: ${VAULT_API_ADDR}

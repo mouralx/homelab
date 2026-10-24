@@ -25,7 +25,7 @@ cp -n .env.example .env
 chmod 600 .env
 ```
 
-The example contains names only. Edit `.env` and fill every required value, including `COMPOSE_FILE=services/compose.yaml`, `USER_ID`, timezone, image tags, service settings, public URLs and credentials. Generate each new password/token separately with `openssl rand -hex 32`. Reuse actual credentials for existing databases. Blank required values intentionally prevent a complete first boot.
+The example has empty assignments with commented sample values and per-setting instructions. Edit `.env` and fill every required value, including `COMPOSE_FILE=services/compose.yaml`, `USER_ID`, timezone, image tags, service settings, public URLs and credentials. Generate each new password/token separately with `openssl rand -hex 32`. Reuse actual credentials for existing databases. Blank required values intentionally prevent a complete first boot.
 
 Prepare [host storage and the SSD](docs/operations.md#rootless-media-storage), complete [OpenClaw onboarding](docs/services.md#openclaw), and configure the [Tempo HTTPS routes](docs/tempo.md#https-routing). Set `VAULT_API_ADDR` in `.env` for your Vault domain. Sign in to GHCR using `docker login ghcr.io` with a package-read token that can access the private Tempo and Digger images.
 
