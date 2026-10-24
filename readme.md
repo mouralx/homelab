@@ -35,3 +35,4 @@ For an existing multi-host installation, review the [migration instructions](doc
 - [Authentication options](docs/authentication.md)
 - [Tempo deployment and private images](docs/tempo.md)
 - [Gitea Actions runner](docs/gitea-runner.md)
+- [Vault setup and recovery](docs/vault.md)

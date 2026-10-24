@@ -21,6 +21,7 @@ All services run together on Beelink in the `lab` Compose project.
 | Tempo API | `8082 → 8080` |
 | Tempo PostgreSQL | `127.0.0.1:5433 → 5432` |
 | Gitea runner cache | `127.0.0.1:8089 → 8088` |
+| Vault | `127.0.0.1:8200 → 8200` |
 | Digger / Tempo migration | No network listener; no port mapping |
 
 Ports are TCP unless specified otherwise. Loopback mappings are reachable only from Beelink. The remaining mappings bind on all host interfaces. Tempo sign-in continues to use the configured HTTPS domains.
@@ -41,6 +42,7 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `homeassistant` | `10.203.0.25` |
 | `tempo-portal` | `10.203.0.26` |
 | `keycloak` (Compose service `tempo-keycloak`) | `10.203.0.27` |
+| `vault` | `10.203.0.28` |
 | `gitea-runner` | `10.203.0.31` |
 
 Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
@@ -104,6 +106,13 @@ docker compose --env-file .env -f services/compose.yaml logs --tail 100 digger
 ```
 
 ## Platform services
+
+### `vault`
+
+- Image: `hashicorp/vault:2.2.1`, running in server mode with the UI enabled.
+- Single-node Raft storage persists in the `vault_data` named volume.
+- Host API access is limited to localhost port `8200`; Nginx Proxy Manager can reach `http://vault:8200` on `homelab_static`.
+- See [Vault setup and recovery](vault.md) for HTTPS routing, initialization, unsealing, and backups.
 
 ### `npm`
 - Image: `jc21/nginx-proxy-manager:latest`
