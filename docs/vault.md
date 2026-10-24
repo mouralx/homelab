@@ -2,6 +2,8 @@
 
 Vault runs as a single server with persistent Raft storage, using the [official configuration guidance](https://developer.hashicorp.com/vault/docs/configuration). This provides persistence but no high availability. Memory locking is disabled for Raft; disable swap on the host or use encrypted swap.
 
+Configuration lives in `services/vault/vault.hcl`, mounted read-only from the repository checkout. No separate host copy under `~/vault` is required; Raft data remains in `~/vault/data`.
+
 ## Start and configure HTTPS
 
 From the repository root, using the stack's existing `.env`:
@@ -10,7 +12,7 @@ From the repository root, using the stack's existing `.env`:
 docker compose --env-file .env -f services/compose.yaml up -d vault
 ```
 
-In Nginx Proxy Manager, create a proxy host for `vault.mouras.me`, forwarding HTTP to `vault:8200`. Configure a valid certificate and force HTTPS. Point DNS at the same ingress as your other HTTPS services. If you choose another domain, update `VAULT_API_ADDR` in Compose to match it.
+In Nginx Proxy Manager, create a proxy host for `vault.mouras.me`, forwarding HTTP to `vault:8200`. Configure a valid certificate and force HTTPS. Point DNS at the same ingress as your other HTTPS services. If you choose another domain, set `VAULT_API_ADDR` in `.env` or the GitHub environment variables to match it.
 
 TLS terminates at the proxy. Traffic from the proxy to Vault crosses the shared Docker bridge over HTTP, so services on that bridge must be trusted. The host listener is bound to localhost only. For direct administrative access, forward it over SSH:
 
@@ -56,4 +58,4 @@ exit
 docker compose --env-file .env -f services/compose.yaml cp vault:/tmp/vault.snap ./vault.snap
 ```
 
-Keep snapshots in protected off-host storage, outside the repository, and retain the unseal shares separately. Regularly test restoration using the [Raft snapshot restore procedure](https://developer.hashicorp.com/vault/docs/commands/operator/raft). `docker compose down` retains the volume; `down -v` deletes it.
+Keep snapshots in protected off-host storage, outside the repository, and retain the unseal shares separately. Regularly test restoration using the [Raft snapshot restore procedure](https://developer.hashicorp.com/vault/docs/commands/operator/raft). Raft data is bind-mounted from `~/vault/data`; both `docker compose down` and `down -v` leave that host directory intact.

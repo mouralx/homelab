@@ -28,4 +28,4 @@ Retain a local administrator recovery path while testing SSO. Verify login, logo
 
 The workflow maps required variables and secrets explicitly from the selected GitHub environment. Add a workflow environment mapping when introducing a new setting. No identity-provider client secrets are currently consumed by Compose. Add secrets to that environment only when their corresponding application configuration is implemented.
 
-The workflow deploys repository configuration, but it does not provision an identity provider or its clients, configure Portainer through its UI, install Jellyfin plugins, or edit Home Assistant's host configuration. These actions remain separate from container deployment.
+The workflow deploys Keycloak for Tempo, with a realm and public OIDC clients imported on first startup from `services/tempo/tempo-realm.json`. It does not provision user accounts, SMTP, or SSO for other applications. Configuring Portainer through its UI, installing Jellyfin plugins and editing Home Assistant's host configuration remain separate from container deployment.

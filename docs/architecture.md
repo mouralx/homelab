@@ -1,6 +1,6 @@
 # Architecture
 
-All sixteen services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
+All fifteen services are defined in [services/compose.yaml](../services/compose.yaml), under the Compose project `lab`.
 
 ## Services and networking
 
@@ -18,13 +18,13 @@ Published host ports are distinct per protocol. Portainer server uses container 
 
 ## Storage and builds
 
-Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `/mnt/ssd/transmission/downloads`, and `~/transmission/watch`. Jellyfin mounts `/mnt/ssd/transmission/downloads/complete` at `/data`. Docker socket mounts retain their system paths.
+Persistent bind mounts live directly under `~/<service-name>`, with subdirectories for services that need separate storage locations, as defined in Compose. Host paths remain defined in Compose. Nginx Proxy Manager uses `~/npm/data` and `~/npm/certs`; Transmission uses `~/transmission/config`, `/mnt/ssd/transmission/downloads`, and `~/transmission/watch`. Jellyfin mounts `/mnt/ssd/transmission/downloads/complete` at `/data`. Docker socket mounts retain their system paths.
 
-The stack uses published images and bind-mounted configuration directories; no local image build is required.
+The stack uses published images; no local image build is required. Service configuration files live under `services/` and are mounted read-only from the repository checkout. Compose uses block lists and mappings throughout; braces in `${...}` environment interpolation remain part of the variable syntax.
 
 ## Environment and deployment
 
-Local runtime variables come from a repository-root `.env` file. GitHub Actions maps selected environment variables and secrets directly into the deployment job and runs Docker Compose commands on the self-hosted runner labeled `beelink`. The workflow validates Compose configuration and serializes deployments. Storage preparation and cleanup of previous Compose projects are manual host operations.
+Compose has no fallback values. Local runtime variables come from a repository-root `.env` file; `.env.example` is only a local setup reference. GitHub Actions reads configuration exclusively from GitHub variables and secrets through `.github/scripts/prepare-config.py`, validates the variables referenced by Compose and runs Docker Compose commands on the self-hosted runner labeled `beelink`. The workflow calls scripts in `.github/scripts/`, validates credentials and Compose configuration, and serializes deployments. Installation stops the Tempo portal/API, waits for PostgreSQL health, tests both database logins, runs the API image once with `--migrate`, then starts the stack. There is no persistent migration service. Tempo API and Keycloak wait for PostgreSQL to be healthy; other service health checks are disabled. Storage preparation and cleanup of previous Compose projects are manual host operations.
 
 ## Authentication
 

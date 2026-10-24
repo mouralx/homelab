@@ -1,38 +1,40 @@
 name: lab
 services:
   digger:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     user: "0:0"
-    image: ghcr.io/mouralx/digger:${DIGGER_TAG:-stable}
+    image: ghcr.io/mouralx/digger:${DIGGER_TAG}
     container_name: digger
     restart: unless-stopped
     networks:
       lab_net:
         ipv4_address: 10.203.0.24
     environment:
-      DOTNET_ENVIRONMENT: Production
-      TZ: ${TIME_ZONE:-Europe/Lisbon}
-      DATABASE_URL: Data Source=/data/digger.db
-      MOVIES_DIR: /downloads/complete/movies
-      YTS_API_URL: "${DIGGER_YTS_API_URL:-https://movies-api.accel.li/api/v2/list_movies.json?quality=2160p&sort_by=year,rating,date_added&order_by=desc&limit=50&page={0}}"
-      TRANSMISSION_RPC_URL: http://transmission:9091/transmission/rpc
-      TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME:-${TRANSMISSION_USERNAME:-}}
-      TRANSMISSION_PASSWORD: ${DIGGER_TRANSMISSION_PASSWORD:-${TRANSMISSION_PASSWORD:-}}
-      MAX_LIBRARY_SIZE_GB: ${DIGGER_MAX_LIBRARY_SIZE_GB:-750}
-      DISK_RESERVE_MB: ${DIGGER_DISK_RESERVE_MB:-51200}
+      DOTNET_ENVIRONMENT: ${DIGGER_ENVIRONMENT}
+      TZ: ${TIME_ZONE}
+      DATABASE_URL: ${DIGGER_DATABASE_URL}
+      MOVIES_DIR: ${DIGGER_MOVIES_DIR}
+      YTS_API_URL: ${DIGGER_YTS_API_URL}
+      TRANSMISSION_RPC_URL: ${DIGGER_TRANSMISSION_RPC_URL}
+      TRANSMISSION_USERNAME: ${DIGGER_TRANSMISSION_USERNAME}
+      TRANSMISSION_PASSWORD: ${DIGGER_TRANSMISSION_PASSWORD}
+      MAX_LIBRARY_SIZE_GB: ${DIGGER_MAX_LIBRARY_SIZE_GB}
+      DISK_RESERVE_MB: ${DIGGER_DISK_RESERVE_MB}
     volumes:
       - ~/digger:/data
       - /mnt/ssd/transmission/downloads/complete/movies:/downloads/complete/movies
   gitea:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     networks:
       lab_net:
         ipv4_address: 10.203.0.30
     image: docker.gitea.com/gitea:28.2.0-rootless
     container_name: gitea
     environment:
-      - USER_UID=1000
-      - USER_GID=1000
+      - USER_UID=${GITEA_UID}
+      - USER_GID=${GITEA_GID}
     restart: always
     volumes:
       - ~/gitea/data:/var/lib/gitea
@@ -40,27 +42,33 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - 3000:3000
-      - 3001:22
+      - "3000:3000"
+      - "3001:22"
   gitea-runner:
-    healthcheck: { disable: true }
-    image: docker.io/gitea/runner:${GITEA_RUNNER_TAG:-2}
+    healthcheck:
+      disable: true
+    image: docker.io/gitea/runner:${GITEA_RUNNER_TAG}
     container_name: gitea-runner
     hostname: gitea-runner
     restart: unless-stopped
     stop_grace_period: 65s
     ports:
-      - 127.0.0.1:8089:8088
+      - "127.0.0.1:8089:8088"
     environment:
-      CONFIG_FILE: /config.yaml
-      GITEA_INSTANCE_URL: ${GITEA_INSTANCE_URL:-http://gitea:3000}
-      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_REGISTRATION_TOKEN:-}
-      GITEA_RUNNER_NAME: ${GITEA_RUNNER_NAME:-beelink}
-      GITEA_RUNNER_LABELS: ubuntu-latest:docker://node:22-bookworm,homelab:docker://node:22-bookworm
+      CONFIG_FILE: ${GITEA_RUNNER_CONFIG_FILE}
+      GITEA_INSTANCE_URL: ${GITEA_INSTANCE_URL}
+      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_REGISTRATION_TOKEN}
+      GITEA_RUNNER_NAME: ${GITEA_RUNNER_NAME}
+      GITEA_RUNNER_LABELS: ${GITEA_RUNNER_LABELS}
     volumes:
       - ~/gitea/runner/data:/data
-      - ./gitea-runner/config.yaml:/config.yaml:ro
-      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - type: bind
+        source: ./gitea-runner/config.yaml
+        target: /config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - /run/user/${USER_ID}/docker.sock:/var/run/docker.sock
     networks:
       lab_net:
         ipv4_address: 10.203.0.31
@@ -68,12 +76,13 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
   homeassistant:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     container_name: homeassistant
     hostname: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
+    image: ghcr.io/home-assistant/home-assistant:stable
     networks:
       lab_net:
         ipv4_address: 10.203.0.25
@@ -84,19 +93,20 @@ services:
     restart: unless-stopped
     privileged: true
     environment:
-      TZ: Europe/Lisbon
+      TZ: ${TIME_ZONE}
     ports:
-      - 8123:8123
+      - "8123:8123"
   jellyfin:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     hostname: jellyfin
     environment:
-      TZ: ${TIME_ZONE:-Europe/Lisbon}
-      PUID: "0"
-      PGID: "0"
-      UMASK: "002"
+      TZ: ${TIME_ZONE}
+      PUID: ${MEDIA_UID}
+      PGID: ${MEDIA_GID}
+      UMASK: ${MEDIA_UMASK}
     networks:
       lab_net:
         ipv4_address: 10.203.0.22
@@ -104,10 +114,11 @@ services:
       - ~/jellyfin:/config
       - /mnt/ssd/transmission/downloads/complete:/data
     ports:
-      - 8096:8096
-      - 7359:7359/udp
+      - "8096:8096"
+      - "7359:7359/udp"
   n8n:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     networks:
       lab_net:
         ipv4_address: 10.203.0.20
@@ -116,21 +127,22 @@ services:
     hostname: n8n
     restart: unless-stopped
     environment:
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
-      N8N_HOST: https://n8n.mouras.me
-      N8N_PROTOCOL: https
-      NODE_ENV: production
-      WEBHOOK_URL: https://n8n.mouras.me/webhook
-      GENERIC_TIMEZONE: Europe/Lisbon
-      TZ: Europe/Lisbon
-      N8N_RESTRICT_FILE_ACCESS_TO: /files
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: ${N8N_N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS}
+      N8N_HOST: ${N8N_HOST}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      NODE_ENV: ${N8N_NODE_ENV}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+      GENERIC_TIMEZONE: ${TIME_ZONE}
+      TZ: ${TIME_ZONE}
+      N8N_RESTRICT_FILE_ACCESS_TO: ${N8N_N8N_RESTRICT_FILE_ACCESS_TO}
     volumes:
       - ~/n8n/data:/home/node/.n8n
       - ~/n8n/files:/files
     ports:
-      - 5678:5678
+      - "5678:5678"
   npm:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     networks:
       lab_net:
         ipv4_address: 10.203.0.12
@@ -144,11 +156,12 @@ services:
       - ~/npm/data:/data
       - ~/npm/certs:/etc/letsencrypt
     ports:
-      - 8448:443
-      - 8088:80
-      - 8181:81
+      - "8448:443"
+      - "8088:80"
+      - "8181:81"
   openclaw:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     networks:
       lab_net:
         ipv4_address: 10.203.0.10
@@ -157,18 +170,27 @@ services:
     hostname: openclaw
     restart: unless-stopped
     init: true
-    command: [ node, dist/index.js, gateway, --bind, lan, --port, "18789", --allow-unconfigured ]
+    command:
+      - node
+      - dist/index.js
+      - gateway
+      - --bind
+      - lan
+      - --port
+      - "18789"
+      - --allow-unconfigured
     ports:
-      - 18789:18789
+      - "18789:18789"
     volumes:
       - ~/openclaw:/home/node/.openclaw
       - ~/openclaw/auth-profile-secrets:/home/node/.config/openclaw
     environment:
-      HOME: /home/node
-      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
-      TZ: ${TIME_ZONE:-Europe/Lisbon}
+      HOME: ${OPENCLAW_HOME}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      TZ: ${TIME_ZONE}
   portainer:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     networks:
       lab_net:
         ipv4_address: 10.203.0.23
@@ -177,139 +199,176 @@ services:
     hostname: portainer
     restart: unless-stopped
     volumes:
-      - /run/user/${USER_ID:-1000}/docker.sock:/var/run/docker.sock
+      - /run/user/${USER_ID}/docker.sock:/var/run/docker.sock
       - ~/portainer:/data
     environment:
-      - PORTAINER_MANAGE_EXTERNAL_STACKS=1
+      - PORTAINER_MANAGE_EXTERNAL_STACKS=${PORTAINER_MANAGE_EXTERNAL_STACKS}
     ports:
-      - 9000:9000
-      - 9443:9443
+      - "9000:9000"
+      - "9443:9443"
   tempo-api:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     container_name: tempo-api
-    image: ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}
+    image: ghcr.io/mouralx/tempo/api:${TEMPO_TAG}
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS: ${TEMPO_API_ASPNETCORE_URLS}
       ConnectionStrings__Tempo: Host=tempo-postgres;Database=tempo;Username=tempo;Password=${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
-      Auth__Authority: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}/realms/tempo
-      Auth__InternalBaseUrl: http://tempo-keycloak:8080
-      Auth__Audience: tempo-api
-    security_opt: [ no-new-privileges:true ]
-    cap_drop: [ ALL ]
+      Auth__Authority: ${TEMPO_IDENTITY_URL}/realms/tempo
+      Auth__InternalBaseUrl: ${TEMPO_API_AUTH__INTERNALBASEURL}
+      Auth__Audience: ${TEMPO_API_AUTH__AUDIENCE}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     read_only: true
-    tmpfs: [ /tmp ]
-    logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
+    tmpfs:
+      - /tmp
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     ports:
-      - 8082:8080
+      - "8082:8080"
     networks:
       lab_net:
         ipv4_address: 10.203.0.29
-        aliases: [ api ]
+        aliases:
+          - api
     restart: unless-stopped
     depends_on:
-      tempo-migrate: { condition: service_completed_successfully }
-      keycloak: { condition: service_started }
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
     mem_limit: 512m
   keycloak:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     container_name: keycloak
     image: quay.io/keycloak/keycloak:26.8.1
     ports:
-      - 8081:8080
-    command: [ start, --import-realm ]
+      - "8081:8080"
+    command:
+      - start
+      - --import-realm
     restart: unless-stopped
     environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://tempo-postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
+      KC_DB: ${KEYCLOAK_KC_DB}
+      KC_DB_URL: ${KEYCLOAK_KC_DB_URL}
+      KC_DB_USERNAME: ${KEYCLOAK_KC_DB_USERNAME}
       KC_DB_PASSWORD: ${TEMPO_IDENTITY_DB_PASSWORD:?Configure Tempo deployment secrets}
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${TEMPO_KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${TEMPO_KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${TEMPO_KEYCLOAK_ADMIN_PASSWORD:?Configure Tempo deployment secrets}
-      KC_HOSTNAME: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}
-      KC_HTTP_ENABLED: 'true'
-      KC_METRICS_ENABLED: 'true'
-      KC_PROXY_HEADERS: xforwarded
-      KC_PROXY_TRUSTED_ADDRESSES: 10.203.0.12/32
-      TEMPO_PORTAL_URL: ${TEMPO_PORTAL_URL:-https://tempo.mouras.me}
+      KC_HOSTNAME: ${TEMPO_IDENTITY_URL}
+      KC_HTTP_ENABLED: ${KEYCLOAK_KC_HTTP_ENABLED}
+      KC_METRICS_ENABLED: ${KEYCLOAK_KC_METRICS_ENABLED}
+      KC_PROXY_HEADERS: ${KEYCLOAK_PROXY_HEADERS}
+      KC_PROXY_TRUSTED_ADDRESSES: ${KEYCLOAK_PROXY_TRUSTED_ADDRESSES}
+      TEMPO_PORTAL_URL: ${TEMPO_PORTAL_URL}
     volumes:
-      - ~/tempo/tempo-realm.json:/opt/keycloak/data/import/tempo-realm.json:ro
+      - type: bind
+        source: ./tempo/tempo-realm.json
+        target: /opt/keycloak/data/import/tempo-realm.json
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       lab_net:
         ipv4_address: 10.203.0.27
-        aliases: [ tempo-keycloak ]
-    security_opt: [ no-new-privileges:true ]
-    cap_drop: [ ALL ]
+        aliases:
+          - tempo-keycloak
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     mem_limit: 1g
-    logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
-  tempo-migrate:
-    healthcheck: { disable: true }
-    restart: on-failure
-    container_name: tempo-migrate
-    image: ghcr.io/mouralx/tempo/api:${TEMPO_TAG:-stable}
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Tempo: Host=tempo-postgres;Database=tempo;Username=tempo;Password=${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
-      Auth__Authority: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}/realms/tempo
-      Auth__InternalBaseUrl: http://tempo-keycloak:8080
-      Auth__Audience: tempo-api
-    networks:
-      lab_net:
-        ipv4_address: 10.203.0.32
-    security_opt: [ no-new-privileges:true ]
-    cap_drop: [ ALL ]
-    read_only: true
-    tmpfs: [ /tmp ]
-    logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
-    command: [ --migrate ]
-    depends_on: { postgres: { condition: service_started } }
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
   tempo-portal:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     container_name: tempo-portal
-    image: ghcr.io/mouralx/tempo/portal:${TEMPO_TAG:-stable}
+    image: ghcr.io/mouralx/tempo/portal:${TEMPO_TAG}
     ports:
-      - 8080:8080
+      - "8080:8080"
     restart: unless-stopped
     environment:
-      KEYCLOAK_PUBLIC_URL: ${TEMPO_IDENTITY_URL:-https://keycloak.mouras.me}
-      PORTAL_PUBLIC_URL: ${TEMPO_PORTAL_URL:-https://tempo.mouras.me}
-    depends_on: { tempo-api: { condition: service_started } }
+      KEYCLOAK_PUBLIC_URL: ${TEMPO_IDENTITY_URL}
+      PORTAL_PUBLIC_URL: ${TEMPO_PORTAL_URL}
+    depends_on:
+      tempo-api:
+        condition: service_started
     networks:
       lab_net:
         ipv4_address: 10.203.0.26
-    security_opt: [ no-new-privileges:true ]
-    cap_drop: [ ALL ]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     read_only: true
-    tmpfs: [ "/tmp:mode=1777", "/var/cache/nginx:uid=101,gid=101", "/var/run:uid=101,gid=101", "/etc/nginx/conf.d:uid=101,gid=101" ]
+    tmpfs:
+      - /tmp:mode=1777
+      - /var/cache/nginx:uid=101,gid=101
+      - /var/run:uid=101,gid=101
+      - /etc/nginx/conf.d:uid=101,gid=101
     mem_limit: 128m
-    logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
   postgres:
-    healthcheck: { disable: true }
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"'
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     container_name: postgres
     image: postgres:17-alpine
     ports:
-      - 127.0.0.1:5433:5432
+      - "127.0.0.1:5433:5432"
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_POSTGRES_DB}
       POSTGRES_PASSWORD: ${TEMPO_POSTGRES_PASSWORD:?Configure Tempo deployment secrets}
       APP_DB_PASSWORD: ${TEMPO_APP_DB_PASSWORD:?Configure Tempo deployment secrets}
       IDENTITY_DB_PASSWORD: ${TEMPO_IDENTITY_DB_PASSWORD:?Configure Tempo deployment secrets}
     volumes:
       - ~/postgres/data:/var/lib/postgresql/data
-      - ~/tempo/init.sh:/docker-entrypoint-initdb.d/10-tempo.sh:ro
+      - type: bind
+        source: ./tempo/init.sh
+        target: /docker-entrypoint-initdb.d/10-tempo.sh
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       lab_net:
         ipv4_address: 10.203.0.33
-        aliases: [ tempo-postgres ]
-    security_opt: [ no-new-privileges:true ]
-    logging: { driver: json-file, options: { max-size: 10m, max-file: '3' } }
+        aliases:
+          - tempo-postgres
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
   transmission:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     image: lscr.io/linuxserver/transmission:latest
     container_name: transmission
     networks:
@@ -317,34 +376,42 @@ services:
         ipv4_address: 10.203.0.21
     restart: unless-stopped
     environment:
-      TZ: Europe/Lisbon
-      PUID: "0"
-      PGID: "0"
-      UMASK: "002"
+      TZ: ${TIME_ZONE}
+      PUID: ${MEDIA_UID}
+      PGID: ${MEDIA_GID}
+      UMASK: ${MEDIA_UMASK}
     volumes:
       - ~/transmission/config:/config
       - ~/transmission/watch:/watch
       - /mnt/ssd/transmission/downloads:/downloads
     ports:
-      - 9091:9091
-      - 51413:51413
-      - 51413:51413/udp
+      - "9091:9091"
+      - "51413:51413"
+      - "51413:51413/udp"
   vault:
-    healthcheck: { disable: true }
+    healthcheck:
+      disable: true
     image: hashicorp/vault:2.2.1
     container_name: vault
     hostname: vault
     restart: unless-stopped
-    command: [ server, -config=/vault/config/vault.hcl ]
+    command:
+      - server
+      - -config=/vault/config/vault.hcl
     environment:
-      VAULT_ADDR: http://127.0.0.1:8200
-      VAULT_API_ADDR: https://vault.mouras.me
-      SKIP_SETCAP: "true"
+      VAULT_ADDR: ${VAULT_VAULT_ADDR}
+      VAULT_API_ADDR: ${VAULT_API_ADDR}
+      SKIP_SETCAP: ${VAULT_SKIP_SETCAP}
     volumes:
       - ~/vault/data:/vault/data
-      - ~/vault/vault.hcl:/vault/config/vault.hcl:ro
+      - type: bind
+        source: ./vault/vault.hcl
+        target: /vault/config/vault.hcl
+        read_only: true
+        bind:
+          create_host_path: false
     ports:
-      - 8200:8200
+      - "127.0.0.1:8200:8200"
     networks:
       lab_net:
         ipv4_address: 10.203.0.28
@@ -352,7 +419,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
 networks:
   lab_net:
     name: homelab_static

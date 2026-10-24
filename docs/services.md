@@ -4,6 +4,8 @@ All services, including Tempo and the [Gitea Actions runner](gitea-runner.md), a
 
 All services run together on Beelink in the `lab` Compose project.
 
+Ports, addresses, storage paths and image versions below are defined in Compose. Service environment settings and the existing image tag overrides are documented in [`.env.example`](../.env.example).
+
 ## Host ports
 
 | Service | Host → container ports |
@@ -22,7 +24,7 @@ All services run together on Beelink in the `lab` Compose project.
 | Tempo PostgreSQL | `127.0.0.1:5433 → 5432` |
 | Gitea runner cache | `127.0.0.1:8089 → 8088` |
 | Vault | `127.0.0.1:8200 → 8200` |
-| Digger / Tempo migration | No network listener; no port mapping |
+| Digger | No network listener; no port mapping |
 
 Ports are TCP unless specified otherwise. Loopback mappings are reachable only from Beelink. The remaining mappings bind on all host interfaces. Tempo sign-in continues to use the configured HTTPS domains.
 
@@ -44,8 +46,8 @@ The `homelab_static` bridge uses subnet `10.203.0.0/24`. Service-to-service call
 | `keycloak` | `10.203.0.27` |
 | `vault` | `10.203.0.28` |
 | `tempo-api` | `10.203.0.29` |
+| `gitea` | `10.203.0.30` |
 | `gitea-runner` | `10.203.0.31` |
-| `tempo-migrate` | `10.203.0.32` |
 | `postgres` | `10.203.0.33` |
 
 Make sure `10.203.0.0/24` is unused on Beelink's LAN, VPN, and Docker networks before deployment. Home Assistant is on the bridge to receive a fixed address; automatic mDNS/broadcast discovery may be limited. Its web interface remains published on host port `8123`.
@@ -90,30 +92,34 @@ Configure `gateway.controlUi.allowedOrigins` in `~/openclaw/openclaw.json` for t
 
 - Image: `ghcr.io/mouralx/digger:stable`; override with `DIGGER_TAG` for a version or preview.
 - Purpose: discover movies, download through Transmission, and manage a movie storage budget. No published ports.
-- SQLite persists in `~/digger`. Digger and Transmission both mount `/mnt/ssd/transmission/downloads/complete/movies` at `/movies`; Transmission also sees it at `/downloads/complete/movies`, and Jellyfin sees it at `/data`. The matching `/movies` paths let Digger submit download directories directly to Transmission.
+- SQLite persists in `~/digger`. Digger mounts `/mnt/ssd/transmission/downloads/complete/movies` at `/downloads/complete/movies`; Transmission sees the same path through its `/downloads` mount, and Jellyfin sees the movie directory at `/data/movies`. The matching download paths let Digger submit directories directly to Transmission.
 - Exclude Digger's `.downloads` and `.state` directories from Jellyfin scans.
 - Defaults for the 1 TB SSD (about 931 GiB usable before filesystem overhead): 750 GiB movie budget and 51200 MiB (50 GiB) free-space reserve. The budget includes partial downloads; the reserve protects free space across the drive when other services use it. Override with `DIGGER_MAX_LIBRARY_SIZE_GB` and `DIGGER_DISK_RESERVE_MB`; `DIGGER_YTS_API_URL` overrides discovery and must retain the `{0}` page placeholder.
-- Digger uses existing `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD` environment settings for RPC authentication. Set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to override them. Its RPC allowlists must admit Digger on `homelab_static`.
+- Digger uses `TRANSMISSION_USERNAME` and `TRANSMISSION_PASSWORD` as fallback values for its RPC client credentials. Set `DIGGER_TRANSMISSION_USERNAME` and `DIGGER_TRANSMISSION_PASSWORD` to override them. Configure the Transmission server’s matching credentials and RPC allowlists separately: the current Compose service does not pass these credential variables to Transmission.
 
 All three media applications run as container UID/GID `0:0`: Digger uses `user: "0:0"`, while the LinuxServer images use `PUID=0` and `PGID=0` with their default init entrypoints. With [rootless Docker UID mapping](https://docs.docker.com/engine/security/rootless/uid-gid-mapping/), this maps to the host account running the Docker daemon. Do not substitute the host UID (such as 1000) here: that maps to a subordinate host UID. Transmission and Jellyfin use `UMASK=002`. The obsolete `TRANSMISSION_PUID` and `DIGGER_MEDIA_GID` variables are no longer used.
 
 Before startup, follow [media storage preparation](operations.md#rootless-media-storage). Compose cannot repair existing host ownership or a read-only SSD mount.
 
-After preparing storage and the existing stack's `.env`, install only Digger and its Transmission dependency:
+After preparing storage and the existing stack's `.env`, start Transmission and Digger:
 
 ```bash
 docker compose --env-file .env -f services/compose.yaml config --quiet
 docker compose --env-file .env -f services/compose.yaml pull digger
-docker compose --env-file .env -f services/compose.yaml up -d digger
+docker compose --env-file .env -f services/compose.yaml up -d transmission digger
 docker compose --env-file .env -f services/compose.yaml logs --tail 100 digger
 ```
 
 ## Platform services
 
+### `gitea` and `gitea-runner`
+
+Gitea uses `docker.gitea.com/gitea:28.2.0-rootless`, with data under `~/gitea/data` and configuration under `~/gitea/config`. Its Actions runner stores registration and cache data under `~/gitea/runner/data` and mounts `services/gitea-runner/config.yaml` read-only. See [runner setup](gitea-runner.md).
+
 ### `vault`
 
 - Image: `hashicorp/vault:2.2.1`, running in server mode with the UI enabled.
-- Single-node Raft storage persists in the `vault_data` named volume.
+- Single-node Raft storage persists in `~/vault/data`.
 - Host API access is limited to localhost port `8200`; Nginx Proxy Manager can reach `http://vault:8200` on `homelab_static`.
 - See [Vault setup and recovery](vault.md) for HTTPS routing, initialization, unsealing, and backups.
 
@@ -127,7 +133,7 @@ docker compose --env-file .env -f services/compose.yaml logs --tail 100 digger
 - Image: `portainer/portainer-ce:latest`
 - Published ports: `9000/tcp`, `9443/tcp`
 
-Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp` (container `81`), and `8448/tcp` (container `443`). Jellyfin also publishes discovery on `7359/udp`. Transmission's TCP/UDP peer port follows `TRANSMISSION_PEER_PORT` (default `51413`).
+Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp` (container `81`), and `8448/tcp` (container `443`). Jellyfin also publishes discovery on `7359/udp`. Transmission publishes fixed TCP/UDP port `51413`.
 
 ### `n8n`
 
@@ -137,7 +143,7 @@ Nginx Proxy Manager publishes host ports `8088/tcp` (container `80`), `8181/tcp`
 
 ## Database storage
 
-Nginx Proxy Manager, n8n, Home Assistant Recorder and Jellyfin keep their default SQLite databases. OpenClaw retains local storage, Portainer uses BoltDB, and Transmission uses configuration and torrent state files.
+Nginx Proxy Manager, n8n, Home Assistant Recorder and Jellyfin use their default local databases unless their persistent configuration overrides those defaults. Tempo and Keycloak use PostgreSQL with separate roles and databases; see [PostgreSQL access](tempo.md#postgresql-access). Gitea database settings live in its persistent configuration. OpenClaw retains local storage, Portainer uses BoltDB, and Transmission uses configuration and torrent state files.
 
 For authentication and optional centralized login, see [Authentication options](authentication.md).
 

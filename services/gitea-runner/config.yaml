@@ -14,7 +14,5 @@ cache:
 container:
   network: homelab_static
   privileged: false
-  # Create job containers through the host daemon, without automatically
-  # exposing the Docker socket inside each job.
   docker_host: '-'
   valid_volumes: []

@@ -43,47 +43,31 @@ jobs:
       group: home-lab-beelink
       cancel-in-progress: false
     env:
-      COMPOSE_FILE: services/compose.yaml
-      TIME_ZONE: ${{ vars.TIME_ZONE || 'Europe/Lisbon' }}
+      HOMELAB_VARIABLES_JSON: ${{ toJSON(vars) }}
       OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
-      GITEA_INSTANCE_URL: ${{ vars.GITEA_INSTANCE_URL || 'http://gitea:3000' }}
-      GITEA_RUNNER_TAG: ${{ vars.GITEA_RUNNER_TAG || '2' }}
-      GITEA_RUNNER_NAME: ${{ vars.GITEA_RUNNER_NAME || 'beelink' }}
       GITEA_RUNNER_REGISTRATION_TOKEN: ${{ secrets.GITEA_RUNNER_REGISTRATION_TOKEN }}
-      USER_ID: ${{ vars.USER_ID || '1000' }}
-      TRANSMISSION_PEER_PORT: ${{ vars.TRANSMISSION_PEER_PORT || '51413' }}
-      TRANSMISSION_USERNAME: ${{ secrets.TRANSMISSION_USERNAME || vars.TRANSMISSION_USERNAME }}
+      TRANSMISSION_USERNAME: ${{ secrets.TRANSMISSION_USERNAME }}
       TRANSMISSION_PASSWORD: ${{ secrets.TRANSMISSION_PASSWORD }}
-      DIGGER_TRANSMISSION_USERNAME: ${{ secrets.DIGGER_TRANSMISSION_USERNAME || vars.DIGGER_TRANSMISSION_USERNAME }}
+      DIGGER_TRANSMISSION_USERNAME: ${{ secrets.DIGGER_TRANSMISSION_USERNAME }}
       DIGGER_TRANSMISSION_PASSWORD: ${{ secrets.DIGGER_TRANSMISSION_PASSWORD }}
-      TEMPO_TAG: ${{ vars.TEMPO_TAG || 'stable' }}
-      TEMPO_PORTAL_URL: ${{ vars.TEMPO_PORTAL_URL || 'https://tempo.mouras.me' }}
-      TEMPO_IDENTITY_URL: ${{ vars.TEMPO_IDENTITY_URL || 'https://keycloak.mouras.me' }}
       TEMPO_POSTGRES_PASSWORD: ${{ secrets.TEMPO_POSTGRES_PASSWORD }}
       TEMPO_APP_DB_PASSWORD: ${{ secrets.TEMPO_APP_DB_PASSWORD }}
       TEMPO_IDENTITY_DB_PASSWORD: ${{ secrets.TEMPO_IDENTITY_DB_PASSWORD }}
       TEMPO_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.TEMPO_KEYCLOAK_ADMIN_PASSWORD }}
-      DIGGER_TAG: ${{ vars.DIGGER_TAG || 'stable' }}
-      DIGGER_YTS_API_URL: ${{ vars.DIGGER_YTS_API_URL }}
-      DIGGER_MAX_LIBRARY_SIZE_GB: ${{ vars.DIGGER_MAX_LIBRARY_SIZE_GB || '750' }}
-      DIGGER_DISK_RESERVE_MB: ${{ vars.DIGGER_DISK_RESERVE_MB || '51200' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Prepare persistent Tempo credentials
-        run: python3 scripts/prepare-tempo-env.py
+      - name: Load deployment configuration
+        run: python3 .github/scripts/prepare-config.py
+      - name: Validate Tempo secrets
+        shell: bash
+        run: bash .github/scripts/validate-tempo-secrets.sh
       - name: Validate Compose configuration
-        run: docker compose config --quiet
+        run: bash .github/scripts/validate-compose.sh
       - name: Check runner host prerequisites
         if: ${{ inputs.action == 'install' && !inputs.dry_run }}
         shell: bash
-        run: |
-          set -euo pipefail
-          test -S "/run/user/${USER_ID}/docker.sock"
-          if [ -z "$GITEA_RUNNER_REGISTRATION_TOKEN" ]; then
-            echo 'Configure the GITEA_RUNNER_REGISTRATION_TOKEN environment secret before deployment.' >&2
-            exit 1
-          fi
+        run: bash .github/scripts/check-host.sh
       - name: Log in to GHCR
         if: ${{ inputs.action == 'install' && !inputs.dry_run }}
         uses: docker/login-action@v3
@@ -93,13 +77,17 @@ jobs:
           password: ${{ secrets.GH_PAT }}
       - name: Pull images
         if: ${{ inputs.action == 'install' && !inputs.dry_run && inputs.update_images }}
-        run: docker compose pull
+        run: bash .github/scripts/pull-images.sh
       - name: Stop services before installation
         if: ${{ inputs.action == 'install' && !inputs.dry_run && inputs.bring_down_first }}
-        run: docker compose stop
+        run: bash .github/scripts/stop-services.sh
+      - name: Apply Tempo database migrations
+        if: ${{ inputs.action == 'install' && !inputs.dry_run }}
+        shell: bash
+        run: bash .github/scripts/migrate-tempo.sh
       - name: Install or update services
         if: ${{ inputs.action == 'install' && !inputs.dry_run }}
-        run: docker compose up -d
+        run: bash .github/scripts/install-services.sh
       - name: Uninstall services
         if: ${{ inputs.action == 'uninstall' && !inputs.dry_run }}
-        run: docker compose down
+        run: bash .github/scripts/uninstall-services.sh
